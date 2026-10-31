@@ -50,3 +50,20 @@ Referencias:
 https://developer.apple.com/videos/play/wwdc2026/310/
 https://docs.ntfy.sh/subscribe/phone/
 https://docs.ntfy.sh/publish/
+
+SEM DEPENDER DO ICLOUD
+
+Mova JARVIS-iPhone.json em Arquivos para No Meu iPhone/JARVIS.
+No editor de Executar+Comando e Notificacoes, selecione essa pasta local
+na acao Obter arquivo (toque na pasta Shortcuts). Em Conectar+iPhone,
+selecione a mesma pasta na acao Salvar arquivo para proximas conexoes.
+Execute Executar+Comando uma vez para autorizar o acesso.
+O iOS exige selecionar a pasta no proprio aparelho. O arquivo e privado.
+A chave e o canal atuais sao preservados; mover o arquivo nao exige novo QR.
+
+VERIFICAR O ARQUIVO LOCAL
+
+O atalho JARVIS+Verificar+Conexao permite selecionar JARVIS-iPhone.json
+diretamente em No Meu iPhone/JARVIS. Ele verifica o endereco e a chave
+com a ponte, sem consumir comandos e sem confirmar o teste em segundo plano.
+O resultado nunca mostra a chave e nenhum ajuste do celular e executado.
