@@ -23,8 +23,8 @@ No Xcode: Product > Archive > Distribute App > App Store Connect > Upload.
 Depois, em App Store Connect, selecione o build do app na aba TestFlight.
 O Bundle ID precisa corresponder ao registro do app na sua conta.
 
-O ZIP não é um IPA instalável. A compilação e assinatura do aplicativo precisam
-acontecer no macOS/Xcode. Os testes físicos do iPhone ainda estão pendentes.
+O ZIP de código não é um IPA instalável. A compilação usa macOS/Xcode; o binário
+para aparelho ainda precisa de assinatura. Os testes físicos estão pendentes.
 Este pacote não conecta ao Jarvis no PC; essa integração ficou para depois.
 
 ALTERNATIVA NO WINDOWS

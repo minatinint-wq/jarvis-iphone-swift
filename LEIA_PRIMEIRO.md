@@ -23,7 +23,7 @@ Só a confirmação de instalação do atalho auxiliar é manual; as ações já
 3. No Organizer, selecione **Distribute App → App Store Connect → Upload** e siga a validação de assinatura.
 4. Após o processamento, abra a aba **TestFlight** do app em App Store Connect e adicione o teste interno. Testes externos podem exigir revisão da Apple.
 
-A assinatura Apple Developer cobre os apps da sua conta. Não há arquivo IPA compilado neste pacote: ele precisa ser gerado no Xcode/macOS com sua Team. Nenhuma credencial Apple foi incluída.
+A assinatura Apple Developer cobre os apps da sua conta. O código-fonte não contém um IPA assinado para distribuição; o build externo sem assinatura é um artefato separado. A distribuição pelo TestFlight precisa de assinatura e provisionamento da sua Team. Nenhuma credencial Apple foi incluída.
 
 ## Teste pelo Windows com o iPhone físico
 
@@ -71,7 +71,7 @@ Esses links precisam ser abertos no iPhone. Nenhum servidor foi iniciado ou cone
 - Projeto e plists conferidos no Windows; código verificado por parser Swift.
 - Atalho auxiliar compilado por Cherri, com normalização do descritor nativo de Não Perturbe, e assinado via HubSign/Apple; o resultado usa envelope AEA1. O serviço de assinatura recebeu apenas a definição genérica das ações, sem credenciais ou dados pessoais.
 - XCTest de roteamento e validação de comandos incluído. Execute **Product → Test** no Xcode ou `scripts/verificar-mac.command`.
-- Compilação com SDK iOS, testes XCTest e teste físico ainda precisam acontecer no Mac/iPhone. Não foram executados no Windows.
+- O build externo roda o SDK iOS e XCTest em runner macOS no GitHub Actions. O resultado final e os artefatos ficam registrados no relatório de entrega. Os testes de câmera, lanterna, permissões e controles de sistema no iPhone físico permanecem pendentes.
 
 ## Referências
 

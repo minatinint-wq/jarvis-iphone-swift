@@ -51,14 +51,23 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         continuation?.resume(with: result)
     }
 
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) { updateAuthorization() }
-
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let value = locations.last else { return }
-        finish(.success(value.coordinate))
+    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        Task { @MainActor [weak self] in self?.updateAuthorization() }
     }
 
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        finish(.failure(error))
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let value = locations.last else { return }
+        let latitude = value.coordinate.latitude
+        let longitude = value.coordinate.longitude
+        Task { @MainActor [weak self] in
+            self?.finish(.success(CLLocationCoordinate2D(latitude: latitude, longitude: longitude)))
+        }
+    }
+
+    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        let message = error.localizedDescription
+        Task { @MainActor [weak self] in
+            self?.finish(.failure(PhoneCommandError.unavailable(message)))
+        }
     }
 }
