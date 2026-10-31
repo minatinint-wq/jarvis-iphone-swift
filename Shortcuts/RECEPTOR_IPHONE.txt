@@ -1,0 +1,26 @@
+JARVIS Receber Comandos — controle por voz do PC, sem Siri
+
+1. Importe JARVIS Receber Comandos.shortcut no iPhone.
+2. No PC, abra http://127.0.0.1:9884/iphone e clique Conectar iPhone.
+3. Com o iPhone na mesma rede Wi-Fi, leia o QR com a câmera e permita abrir Atalhos.
+4. Permita as solicitações de rede do receptor. Mantenha o atalho em execução.
+5. Fale ao Jarvis no PC:
+   Jarvis, brilho do celular em 30 por cento.
+   Jarvis, volume do iPhone em vinte por cento.
+   Jarvis, aumente o volume do celular.
+   Jarvis, ligue a lanterna.
+   Jarvis, desligue a lanterna.
+
+O receptor executa as ações nativas do iOS e confirma ao Jarvis. Não instala app,
+não usa Siri e não toca no brilho, volume ou lâmpada do PC.
+
+Limite desta versão por Atalhos: mantenha o iPhone desbloqueado e o receptor
+rodando. O iOS pode interromper a sessão ao bloquear o celular ou sair do app.
+Se encerrar, gere um novo QR no Jarvis e conecte novamente. Não é um serviço
+permanente em segundo plano. O app Swift é uma entrega separada.
+
+O QR é temporário e usado uma vez. O arquivo público é genérico, sem endereço,
+código ou credenciais da sua rede. A sessão substitui conexões anteriores.
+
+Assinatura do arquivo: AEA1, compilado por Cherri; plist e fonte inclusos para
+inspeção e reconstrução. O funcionamento físico depende do teste no iPhone.
