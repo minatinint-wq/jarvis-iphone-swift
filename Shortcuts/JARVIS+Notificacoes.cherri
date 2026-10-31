@@ -1,0 +1,23 @@
+#define name JARVIS+Notificacoes
+#define version 17
+#define mac false
+#define color teal
+#define glyph gear
+#define inputs text
+#include 'actions/web'
+#include 'actions/text'
+#include 'actions/documents'
+
+// A automação recebe a notificação inteira. O conteúdo nunca é um comando.
+const rawText = getText(ShortcutInput)
+const pieces = matchText('(?s)^.{1,1800}', rawText)
+const pieceCount = count(pieces)
+if pieceCount == 0 { stop() }
+const noticeText = getFirstItem(pieces)
+const saved = getFile("JARVIS-iPhone.json", nil, false)
+const savedCount = count(saved)
+if savedCount == 0 { stop() }
+const config = getDictionary(saved)
+const serverURL = getValue(config, "server")
+const token = getValue(config, "token")
+jsonRequest("{serverURL}/v1/notifications", "POST", {"app":"iPhone","text":"{noticeText}"}, {"Authorization":"Bearer {token}"})

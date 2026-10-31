@@ -1,0 +1,74 @@
+#define name JARVIS+Executar+Comando
+#define version 17
+#define mac false
+#define color teal
+#define glyph gear
+#include 'actions/device'
+#include 'actions/web'
+#include 'actions/text'
+#include 'actions/documents'
+#include 'actions/shortcuts'
+
+const saved = getFile("JARVIS-iPhone.json", nil, false)
+const savedCount = count(saved)
+if savedCount == 0 { stop() }
+const config = getDictionary(saved)
+const serverURL = getValue(config, "server")
+const token = getValue(config, "token")
+// O evento não fornece ações. Toda ação vem da caixa autenticada do Jarvis.
+repeat cycle for 8 {
+    const currentBrightness = getDeviceDetail("Current Brightness")
+    const currentVolume = getDeviceDetail("Current Volume")
+    const packet = jsonRequest("{serverURL}/v1/next-once", "POST", {"brilho":"{currentBrightness}","volume":"{currentVolume}"}, {"Authorization":"Bearer {token}"})
+    const command = getDictionary(packet)
+    const identifier = getValue(command, "id")
+    const actionName = getValue(command, "action")
+    @action = "{actionName}"
+    if @action == "idle" {
+        const probe = getValue(command, "probe_id")
+        const probeLength = count(probe, "Characters")
+        if probeLength > 8 {
+            jsonRequest("{serverURL}/v1/background/ack", "POST", {"probe_id":"{probe}"}, {"Authorization":"Bearer {token}"})
+        }
+        stop()
+    }
+    @done = 0
+    if @action == "brilho" {
+        const brightnessValue = getValue(command, "value")
+        const brightnessFraction = brightnessValue / 100
+        rawAction("is.workflow.actions.setbrightness", {"WFBrightness":"${brightnessFraction}"})
+        @done = 1
+    }
+    if @action == "volume" {
+        const volumeValue = getValue(command, "value")
+        const volumeFraction = volumeValue / 100
+        rawAction("is.workflow.actions.setvolume", {"WFVolume":"${volumeFraction}","WFVolumeControlType":"Media"})
+        @done = 1
+    }
+    if @action == "lanterna_ligar" {
+        flashlightOn(1.0)
+        @done = 1
+    }
+    if @action == "lanterna_desligar" {
+        flashlightOff()
+        @done = 1
+    }
+    if @action == "social" {
+        const rawPlan = getValue(command, "value")
+        const plan = getDictionary(rawPlan)
+        const operation = getValue(plan, "operation")
+        const recipient = getValue(plan, "recipient")
+        const message = getValue(plan, "text")
+        const username = getValue(plan, "username")
+        const subject = getValue(plan, "subject")
+        const socialInput = {"operation":"{operation}","recipient":"{recipient}","text":"{message}","username":"{username}","subject":"{subject}","apiBase":"{serverURL}","apiToken":"{token}"}
+        jsonRequest("{serverURL}/v1/ack", "POST", {"id":"{identifier}","stage":"handed_off"}, {"Authorization":"Bearer {token}"})
+        run("JARVIS+SOCIAL", socialInput)
+        stop()
+    }
+    if @done == 1 {
+        const actualBrightness = getDeviceDetail("Current Brightness")
+        const actualVolume = getDeviceDetail("Current Volume")
+        jsonRequest("{serverURL}/v1/ack", "POST", {"id":"{identifier}","brilho":"{actualBrightness}","volume":"{actualVolume}"}, {"Authorization":"Bearer {token}"})
+    }
+}

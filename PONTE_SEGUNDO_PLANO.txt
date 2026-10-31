@@ -1,0 +1,52 @@
+JARVIS / IPHONE / IOS 27 — PONTE POR NOTIFICACAO
+
+Use os tres atalhos novos. O aplicativo Swift existente nao precisa ser
+instalado para este fluxo. Nao usa Siri, audio silencioso ou receptor infinito.
+
+1. Instale o ntfy no iPhone e permita notificacoes:
+   https://apps.apple.com/app/ntfy/id1625396347
+
+2. Importe, mantendo os nomes:
+   JARVIS+Executar+Comando.shortcut
+   JARVIS+Conectar+iPhone.shortcut
+   JARVIS+Notificacoes.shortcut
+
+3. Abra o painel iPhone no Jarvis do PC. Clique Conectar iPhone e leia o QR.
+   Autorize salvar o arquivo e acessar a rede quando o iOS pedir.
+   O canal do ntfy sera copiado para a area de transferencia do iPhone.
+   Adicione uma assinatura no app ntfy: servidor ntfy.sh, canal colado.
+
+4. No Atalhos, adicione o gatilho Notificacao recebida do app ntfy, filtrando
+   JARVIS_COMANDO. Escolha Executar imediatamente. A acao deve Executar Atalho
+   JARVIS+Executar+Comando. A notificacao apenas desperta: as instrucoes sao
+   consultadas com autenticacao diretamente na caixa do Jarvis.
+
+5. Saia do Atalhos e volte a tela inicial. No PC, clique Testar com Atalhos
+   fechado. O teste so fica confirmado quando a automacao responde ao Jarvis.
+   Depois peca: brilho do celular em 30%; ligue a lanterna; desligue a lanterna.
+
+6. Para ler notificacoes dos demais apps, adicione gatilhos de Notificacao
+   recebida para os apps desejados. Execute JARVIS+Notificacoes, passando a
+   notificacao recebida como entrada. Escolha Executar imediatamente.
+   Nao inclua ntfy, Atalhos e WhatsApp: o WhatsApp continua pela API existente.
+   Se o iOS apresentar um seletor por app, repita o gatilho para cada desejado.
+
+O iOS exige que voce configure esses gatilhos e permissoes no proprio iPhone.
+As previas disponibilizadas pelo sistema sao encaminhadas para leitura em fila.
+Isso nao da acesso ao historico da Central de Notificacoes ou a previas ocultas.
+O arquivo JARVIS-iPhone.json guarda a conexao na pasta do Atalhos; nao publique
+esse arquivo. Os atalhos distribuidos neste projeto nao contem credenciais.
+
+Telefone e PC precisam estar no mesmo Wi-Fi. O servidor deve estar ligado.
+Notificacoes podem sofrer atrasos do iOS/rede. O Jarvis confirma cada ajuste
+somente apos receber o retorno do telefone; pedidos vencidos nao sao repetidos.
+Brilho e volume sao conferidos com o nivel retornado pelo proprio iPhone.
+Volume corresponde a midia. Aberturas de apps sociais podem exigir desbloqueio.
+
+Leitura de notificacoes: somente memoria da sessao, sem historico em disco.
+Notificacoes nunca sao interpretadas como ordens para controlar aparelhos.
+
+Referencias:
+https://developer.apple.com/videos/play/wwdc2026/310/
+https://docs.ntfy.sh/subscribe/phone/
+https://docs.ntfy.sh/publish/
