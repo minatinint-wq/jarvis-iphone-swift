@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+    <key>CFBundleDisplayName</key><string>JARVIS XLV</string>
+    <key>CFBundleName</key><string>$(PRODUCT_NAME)</string>
+    <key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>$(MARKETING_VERSION)</string>
+    <key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
+    <key>CFBundleDevelopmentRegion</key><string>pt_BR</string>
+    <key>CFBundleURLTypes</key><array><dict>
+        <key>CFBundleURLName</key><string>com.jarvisxlv.iphone.command</string>
+        <key>CFBundleURLSchemes</key><array><string>jarvisiphone</string></array>
+    </dict></array>
+    <key>LSApplicationQueriesSchemes</key><array><string>whatsapp</string><string>instagram</string><string>shortcuts</string></array>
+    <key>NSCameraUsageDescription</key><string>O JARVIS usa a câmera quando você abre o visor de captura ou liga a lanterna.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key><string>Salvar em Fotos as imagens que você capturar pelo JARVIS.</string>
+    <key>NSLocationWhenInUseUsageDescription</key><string>Mostrar sua localização atual no Mapas quando você pedir.</string>
+    <key>NSRemindersFullAccessUsageDescription</key><string>Salvar os lembretes que você criar pelo JARVIS no app Lembretes.</string>
+    <key>UILaunchScreen</key><dict/>
+    <key>UIApplicationSceneManifest</key><dict>
+        <key>UIApplicationSupportsMultipleScenes</key><false/>
+        <key>UISceneConfigurations</key><dict/>
+    </dict>
+    <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string></array>
+    <key>UIApplicationSupportsIndirectInputEvents</key><true/>
+    <key>ITSAppUsesNonExemptEncryption</key><false/>
+</dict></plist>

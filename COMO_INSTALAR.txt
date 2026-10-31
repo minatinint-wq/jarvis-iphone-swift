@@ -1,0 +1,30 @@
+JARVIS IPHONE — COMO INSTALAR
+
+APP SWIFT
+1. Extraia o ZIP em um Mac com Xcode instalado.
+2. Abra JarvisPhone.xcodeproj.
+3. No target JarvisPhone, abra Signing & Capabilities e escolha sua Team Apple.
+4. Conecte o iPhone, escolha-o como destino e clique no botão Run (triângulo).
+5. Abra o JARVIS XLV instalado.
+
+ATALHO AUXILIAR (UM ÚNICO ARQUIVO)
+1. No PC, entre em icloud.com/iclouddrive e envie:
+   Shortcuts/JARVIS Sistema.shortcut
+2. No iPhone, abra Arquivos > iCloud Drive > JARVIS Sistema.shortcut.
+3. Toque em Adicionar Atalho e preserve o nome JARVIS Sistema.
+4. Ele já tem o menu de controles do sistema montado. Não cadastre ações à mão.
+
+NO APP ATALHOS
+Depois de instalar e abrir o app Swift, procure JARVIS XLV em Adicionar Ação.
+As ações nativas aparecem diretamente ali. Não é preciso usar ou configurar Siri.
+
+TESTFLIGHT
+No Xcode: Product > Archive > Distribute App > App Store Connect > Upload.
+Depois, em App Store Connect, selecione o build do app na aba TestFlight.
+O Bundle ID precisa corresponder ao registro do app na sua conta.
+
+O ZIP não é um IPA instalável. A compilação e assinatura do aplicativo precisam
+acontecer no macOS/Xcode. Os testes físicos do iPhone ainda estão pendentes.
+Este pacote não conecta ao Jarvis no PC; essa integração ficou para depois.
+
+Detalhes e limitações: LEIA_PRIMEIRO.md.

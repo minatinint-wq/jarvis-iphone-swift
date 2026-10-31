@@ -1,0 +1,10 @@
+*.swift text eol=lf
+*.cherri text eol=lf
+*.command text eol=lf
+*.yml text eol=lf
+*.plist text eol=lf
+*.pbxproj text eol=lf
+*.xcscheme text eol=lf
+*.xcprivacy text eol=lf
+*.shortcut binary
+*.png binary

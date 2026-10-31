@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "jarvis_connected": false,
+  "voice_provider": null,
+  "actions": [
+    {
+      "id": "lanterna_ligar",
+      "url": "jarvisiphone://command?action=lanterna_ligar",
+      "system_shortcut": false
+    },
+    {
+      "id": "lanterna_desligar",
+      "url": "jarvisiphone://command?action=lanterna_desligar",
+      "system_shortcut": false
+    },
+    {
+      "id": "volume",
+      "url": "jarvisiphone://command?action=volume",
+      "system_shortcut": false
+    },
+    {
+      "id": "brilho",
+      "url": "jarvisiphone://command?action=brilho",
+      "system_shortcut": false
+    },
+    {
+      "id": "bateria",
+      "url": "jarvisiphone://command?action=bateria",
+      "system_shortcut": false
+    },
+    {
+      "id": "reuniao",
+      "url": "jarvisiphone://command?action=reuniao",
+      "system_shortcut": true
+    },
+    {
+      "id": "encerrar_reuniao",
+      "url": "jarvisiphone://command?action=encerrar_reuniao",
+      "system_shortcut": true
+    },
+    {
+      "id": "economizar",
+      "url": "jarvisiphone://command?action=economizar",
+      "system_shortcut": true
+    },
+    {
+      "id": "pausar",
+      "url": "jarvisiphone://command?action=pausar",
+      "system_shortcut": true
+    },
+    {
+      "id": "continuar",
+      "url": "jarvisiphone://command?action=continuar",
+      "system_shortcut": true
+    },
+    {
+      "id": "proxima",
+      "url": "jarvisiphone://command?action=proxima",
+      "system_shortcut": true
+    },
+    {
+      "id": "whatsapp",
+      "url": "jarvisiphone://command?action=whatsapp",
+      "system_shortcut": false
+    },
+    {
+      "id": "instagram",
+      "url": "jarvisiphone://command?action=instagram",
+      "system_shortcut": false
+    },
+    {
+      "id": "camera",
+      "url": "jarvisiphone://command?action=camera",
+      "system_shortcut": false
+    },
+    {
+      "id": "foto",
+      "url": "jarvisiphone://command?action=foto",
+      "system_shortcut": false
+    },
+    {
+      "id": "localizacao",
+      "url": "jarvisiphone://command?action=localizacao",
+      "system_shortcut": false
+    },
+    {
+      "id": "lembrete",
+      "url": "jarvisiphone://command?action=lembrete",
+      "system_shortcut": false
+    },
+    {
+      "id": "anotar",
+      "url": "jarvisiphone://command?action=anotar",
+      "system_shortcut": false
+    },
+    {
+      "id": "bloquear",
+      "url": "jarvisiphone://command?action=bloquear",
+      "system_shortcut": true
+    }
+  ]
+}

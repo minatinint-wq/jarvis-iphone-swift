@@ -1,0 +1,16 @@
+JARVIS XLV — versão local para iPhone
+
+Este projeto não contém SDK de anúncios, rastreamento, analytics ou cliente de rede.
+As notas são salvas localmente com proteção de arquivos do iOS. O histórico mostrado
+no painel existe apenas na memória enquanto o aplicativo permanece aberto.
+Fotos são adicionadas à biblioteca mediante permissão. Lembretes são salvos no
+serviço de Lembretes configurado no próprio iPhone, que pode sincronizar pela
+conta escolhida pelo usuário. Localização é consultada apenas ao solicitar a ação
+e aberta no app Mapas. Compartilhar notas depende da ação explícita do usuário.
+
+O aplicativo pode abrir WhatsApp, Instagram, Mapas e Atalhos, sujeitos às políticas
+e permissões desses apps. Não lê conversas nem envia mensagens.
+
+A futura integração com o backend Jarvis não está habilitada. Antes de publicar
+na App Store, o titular deve revisar esta declaração, fornecer sua URL pública de
+política e contato de suporte e preencher as informações no App Store Connect.

@@ -1,0 +1,66 @@
+name: iPhone build and tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jarvis-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulator:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Xcode and simulator
+        id: simulator
+        shell: bash
+        run: |
+          xcodebuild -version
+          python3 - <<'PY'
+          import json, os, subprocess
+          data = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devices', 'available', '-j']))
+          devices = [device for group in data['devices'].values() for device in group
+                     if device.get('isAvailable') and 'iPhone' in device['name']]
+          if not devices:
+              raise SystemExit('No available iPhone simulator')
+          device = devices[0]
+          print('Simulator:', device['name'], device['udid'])
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('udid=' + device['udid'] + '\n')
+          PY
+      - name: Compile and run XCTest
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild -project JarvisPhone.xcodeproj -scheme JarvisPhone \
+            -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}' \
+            -derivedDataPath .build -resultBundlePath TestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee xcodebuild.log
+      - name: Launch app and capture screenshot
+        shell: bash
+        run: |
+          xcrun simctl bootstatus '${{ steps.simulator.outputs.udid }}' -b
+          xcrun simctl install '${{ steps.simulator.outputs.udid }}' .build/Build/Products/Debug-iphonesimulator/JarvisPhone.app
+          xcrun simctl launch '${{ steps.simulator.outputs.udid }}' com.jarvisxlv.iphone
+          sleep 3
+          xcrun simctl io '${{ steps.simulator.outputs.udid }}' screenshot JARVIS-IPHONE-SIMULADOR.png
+          ditto -c -k --sequesterRsrc --keepParent .build/Build/Products/Debug-iphonesimulator/JarvisPhone.app JarvisPhone-Simulator.zip
+      - name: Save build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-iphone-build
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            xcodebuild.log
+            TestResults.xcresult
+            JARVIS-IPHONE-SIMULADOR.png
+            JarvisPhone-Simulator.zip

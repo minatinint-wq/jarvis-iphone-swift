@@ -1,0 +1,94 @@
+#define name JARVIS Sistema
+#define version 17
+#define mac false
+#define color teal
+#define glyph gear
+#define inputs text
+#include 'actions/device'
+#include 'actions/settings'
+#include 'actions/music'
+
+comment('JARVIS XLV — controles locais do iPhone. Não envia dados para servidor. Não usa Siri. A entrada opcional é acao|valor; por exemplo volume|50.')
+
+@entry = "{ShortcutInput}"
+@command = ""
+@percentage = -1
+if @entry {
+    const parts = splitText(@entry, "|")
+    @command = getFirstItem(parts)
+    const total = count(parts)
+    if total > 1 {
+        const rawValue = getListItem(parts, 2)
+        @percentage = getNumbers(rawValue)
+    }
+} else {
+    menu "JARVIS — controles do sistema" {
+        item "Modo reunião":
+            @command = "reuniao"
+        item "Encerrar reunião":
+            @command = "encerrar_reuniao"
+        item "Economizar bateria":
+            @command = "economizar"
+        item "Ajustar volume":
+            @command = "volume"
+        item "Pausar música":
+            @command = "pausar"
+        item "Continuar música":
+            @command = "continuar"
+        item "Próxima faixa":
+            @command = "proxima"
+        item "Bloquear tela":
+            @command = "bloquear"
+    }
+}
+
+if @command == "reuniao" {
+    DNDOn()
+    setVolume(0.0)
+    output("Não Perturbe ativado e volume de mídia em 0%.")
+}
+if @command == "encerrar_reuniao" {
+    DNDOff()
+    setVolume(0.5)
+    output("Não Perturbe desativado e volume de mídia em 50%.")
+}
+if @command == "economizar" {
+    setLowPowerMode(true)
+    setBrightness(0.25)
+    output("Modo Pouca Energia ativado e brilho em 25%.")
+}
+if @command == "volume" {
+    if @percentage < 0 {
+        @percentage = prompt("Qual volume de mídia? Digite de 0 a 100.", "Number", "50")
+    }
+    if @percentage < 0 {
+        show("Volume inválido. Informe de 0 a 100.")
+        stop()
+    }
+    if @percentage > 100 {
+        show("Volume inválido. Informe de 0 a 100.")
+        stop()
+    }
+    const fraction = @percentage / 100
+    rawAction("is.workflow.actions.setvolume", {
+        "WFVolume": "${fraction}"
+    })
+    output("Volume de mídia ajustado.")
+}
+if @command == "pausar" {
+    pause()
+    output("Pausa solicitada ao reprodutor do iPhone.")
+}
+if @command == "continuar" {
+    play()
+    output("Reprodução solicitada ao reprodutor do iPhone.")
+}
+if @command == "proxima" {
+    skipFwd()
+    output("Próxima faixa solicitada ao reprodutor do iPhone.")
+}
+if @command == "bloquear" {
+    lockScreen()
+    stop()
+}
+show("Comando não reconhecido pelo JARVIS Sistema. Abra este atalho sem entrada para usar o menu.")
