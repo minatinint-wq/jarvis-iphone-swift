@@ -1,5 +1,8 @@
 JARVIS Receber Comandos — controle por voz do PC, sem Siri
 
+Atualização: corrigida a leitura dos campos da resposta de pareamento e dos
+comandos. Se importou a versão anterior, escolha Substituir ao importar esta.
+
 1. Importe JARVIS Receber Comandos.shortcut no iPhone.
 2. No PC, abra http://127.0.0.1:9884/iphone e clique Conectar iPhone.
 3. Com o iPhone na mesma rede Wi-Fi, leia o QR com a câmera e permita abrir Atalhos.

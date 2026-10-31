@@ -29,7 +29,7 @@ if hostCount != 1 {
 }
 const response = jsonRequest("{serverURL}/v1/pair", "POST", {"code":"{pairCode}"})
 @connection = getDictionary(response)
-@token = @connection['token']
+@token = getValue(@connection, "token")
 const tokenLength = count(@token, "Characters")
 if tokenLength < 20 {
     show("O código expirou ou já foi usado. Peça Conectar iPhone ao Jarvis e leia o novo QR.")
@@ -41,17 +41,18 @@ repeat cycle for 10000 {
     const currentVolume = getDeviceDetail("Current Volume")
     const packet = jsonRequest("{serverURL}/v1/next", "POST", {"brilho":"{currentBrightness}","volume":"{currentVolume}"}, {"Authorization":"Bearer {@token}"})
     @command = getDictionary(packet)
-    @action = "{@command['action']}"
-    @identifier = @command['id']
+    const actionName = getValue(@command, "action")
+    @action = "{actionName}"
+    @identifier = getValue(@command, "id")
     @done = 0
     if @action == "brilho" {
-        @value = @command['value']
+        @value = getValue(@command, "value")
         const brightnessFraction = @value / 100
         rawAction("is.workflow.actions.setbrightness", {"WFBrightness":"${brightnessFraction}"})
         @done = 1
     }
     if @action == "volume" {
-        @value = @command['value']
+        @value = getValue(@command, "value")
         const volumeFraction = @value / 100
         rawAction("is.workflow.actions.setvolume", {"WFVolume":"${volumeFraction}","WFVolumeControlType":"Media"})
         @done = 1
