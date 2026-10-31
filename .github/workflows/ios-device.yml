@@ -1,0 +1,37 @@
+name: Physical iPhone build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  device:
+    runs-on: macos-15
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile iPhone arm64
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild -version
+          xcodebuild -project JarvisPhone.xcodeproj -scheme JarvisPhone \
+            -configuration Release -destination 'generic/platform=iOS' \
+            -derivedDataPath .device-build CODE_SIGNING_ALLOWED=NO build \
+            2>&1 | tee device-build.log
+          mkdir -p DevicePackage/Payload
+          ditto .device-build/Build/Products/Release-iphoneos/JarvisPhone.app DevicePackage/Payload/JarvisPhone.app
+          cd DevicePackage
+          ditto -c -k --keepParent Payload ../JARVIS-iPhone-SEM-ASSINATURA.ipa
+      - name: Save physical build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-iphone-device
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            device-build.log
+            JARVIS-iPhone-SEM-ASSINATURA.ipa
