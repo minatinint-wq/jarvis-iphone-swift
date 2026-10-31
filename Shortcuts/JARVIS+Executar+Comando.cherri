@@ -9,9 +9,11 @@
 #include 'actions/documents'
 #include 'actions/shortcuts'
 
+action 'file' localConnectionFile(text reference: 'WFFile'): variable
+
 // No editor, selecione uma vez o JSON em No Meu iPhone/JARVIS neste cartao Arquivo.
 // A referencia local evita o iCloud e nao abre seletor durante as automacoes.
-const saved = rawAction("is.workflow.actions.file", {"WFFile":""})
+const saved = localConnectionFile("")
 const config = getDictionary(saved)
 const serverURL = getValue(config, "server")
 const token = getValue(config, "token")

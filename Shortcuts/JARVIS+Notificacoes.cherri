@@ -8,9 +8,11 @@
 #include 'actions/text'
 #include 'actions/documents'
 
+action 'file' localConnectionFile(text reference: 'WFFile'): variable
+
 // A automação recebe a notificação inteira. O conteúdo nunca é um comando.
 // Selecione o JSON local uma vez neste cartao Arquivo, no editor.
-const saved = rawAction("is.workflow.actions.file", {"WFFile":""})
+const saved = localConnectionFile("")
 const rawText = getText(ShortcutInput)
 const pieces = matchText('(?s)^.{1,1800}', rawText)
 const pieceCount = count(pieces)

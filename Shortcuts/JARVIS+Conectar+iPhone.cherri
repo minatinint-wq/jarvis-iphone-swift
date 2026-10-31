@@ -10,6 +10,10 @@
 #include 'actions/shortcuts'
 #include 'actions/sharing'
 
+action 'documentpicker.save' saveLocalConfigPrompt(variable content: 'WFInput', bool overwrite: 'WFSaveFileOverwrite') {
+    "WFAskWhereToSave": true
+}
+
 @entry = "{ShortcutInput}"
 const entryLength = count(@entry, "Characters")
 if entryLength == 0 {
@@ -43,7 +47,7 @@ if topicLength < 30 {
 const config = {"server":"{serverURL}","token":"{token}"}
 const configText = getText(config)
 const namedConfig = setName(configText, "JARVIS-iPhone.json")
-saveFilePrompt(namedConfig, true)
+saveLocalConfigPrompt(namedConfig, true)
 const activation = jsonRequest("{serverURL}/v1/background/activate", "POST", {"source":"PHONE_PAIRING"}, {"Authorization":"Bearer {token}"})
 const activationText = getText(activation)
 const approved = matchText('"ok"\s*:\s*true', activationText)
