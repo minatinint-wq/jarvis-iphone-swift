@@ -1,4 +1,4 @@
-#define name JARVIS Social
+#define name JARVIS+SOCIAL
 #define version 17
 #define mac false
 #define color teal
@@ -104,7 +104,7 @@ if bodyLength == 0 {
 if @operation == "copiar" {
     confirm("Copiar este texto?\n\n{@body}", "JARVIS — revisar texto")
     setClipboard(@body, true)
-    showNotification("Texto copiado neste iPhone.", "JARVIS Social", false)
+    showNotification("Texto copiado neste iPhone.", "JARVIS+SOCIAL", false)
     stop()
 }
 if @operation == "compartilhar" {
@@ -145,7 +145,7 @@ if @operation == "whatsapp" {
     }
     if @useAPI == 1 {
         if @apiAvailable == 0 {
-            show("Para usar a API, mantenha o receptor conectado e peça ao Jarvis no PC: WhatsApp no iPhone. Abra JARVIS Social por esse comando para receber a sessão autenticada.")
+            show("Para usar a API, mantenha o receptor conectado e peça ao Jarvis no PC: WhatsApp no iPhone. Abra JARVIS+SOCIAL por esse comando para receber a sessão autenticada.")
             stop()
         }
         @query = "{@recipient}"
@@ -216,4 +216,4 @@ if @operation == "whatsapp_app" {
     openURL("https://wa.me/{digits}?text={message}")
     stop()
 }
-show("Ação social não reconhecida. Abra JARVIS Social sem entrada para usar o menu.")
+show("Ação social não reconhecida. Abra JARVIS+SOCIAL sem entrada para usar o menu.")

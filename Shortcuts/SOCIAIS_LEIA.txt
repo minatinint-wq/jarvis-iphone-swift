@@ -1,8 +1,8 @@
-JARVIS Social — API de WhatsApp, mensagens e atalhos de apps
+JARVIS+SOCIAL — API de WhatsApp, mensagens e atalhos de apps
 
 INSTALAR
-1. Importe JARVIS Social.shortcut.
-2. Substitua JARVIS Receber Comandos pela versão deste pacote.
+1. Importe JARVIS+SOCIAL.shortcut.
+2. Substitua JARVIS+Receber+Comando pela versão deste pacote.
 3. No PC, abra http://127.0.0.1:9884/iphone, clique Conectar iPhone e leia o QR.
 4. Mantenha o receptor rodando para receber comandos do Jarvis, sem Siri.
 
@@ -28,7 +28,7 @@ WhatsApp no iPhone. O PC precisa continuar ligado e acessível pela rede local.
 A confirmação do servidor não significa entrega ou leitura pelo destinatário.
 Envios incertos não são repetidos automaticamente.
 
-Se abrir JARVIS Social sozinho, o menu local funciona. Para obter a sessão da API,
+Se abrir JARVIS+SOCIAL sozinho, o menu local funciona. Para obter a sessão da API,
 abra-o pelo comando do Jarvis com o receptor conectado. Não há chave permanente
 no arquivo público, nem contatos ou mensagens pessoais incluídos no pacote.
 

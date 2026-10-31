@@ -1,4 +1,4 @@
-#define name JARVIS Receber Comandos
+#define name JARVIS+Receber+Comando
 #define version 17
 #define mac false
 #define color teal
@@ -76,7 +76,7 @@ repeat cycle for 10000 {
         const socialSubject = getValue(socialPlan, "subject")
         const socialInput = {"operation":"{socialOperation}","recipient":"{socialRecipient}","text":"{socialText}","username":"{socialUsername}","subject":"{socialSubject}","apiBase":"{serverURL}","apiToken":"{@token}"}
         jsonRequest("{serverURL}/v1/ack", "POST", {"id":"{@identifier}","stage":"handed_off"}, {"Authorization":"Bearer {@token}"})
-        run("JARVIS Social", socialInput)
+        run("JARVIS+SOCIAL", socialInput)
     }
     if @done == 1 {
         jsonRequest("{serverURL}/v1/ack", "POST", {"id":"{@identifier}"}, {"Authorization":"Bearer {@token}"})
