@@ -7,6 +7,7 @@
 #include 'actions/device'
 #include 'actions/web'
 #include 'actions/text'
+#include 'actions/shortcuts'
 
 @entry = "{ShortcutInput}"
 const entryLength = count(@entry, "Characters")
@@ -64,6 +65,18 @@ repeat cycle for 10000 {
     if @action == "lanterna_desligar" {
         flashlightOff()
         @done = 1
+    }
+    if @action == "social" {
+        const socialRawPlan = getValue(@command, "value")
+        const socialPlan = getDictionary(socialRawPlan)
+        const socialOperation = getValue(socialPlan, "operation")
+        const socialRecipient = getValue(socialPlan, "recipient")
+        const socialText = getValue(socialPlan, "text")
+        const socialUsername = getValue(socialPlan, "username")
+        const socialSubject = getValue(socialPlan, "subject")
+        const socialInput = {"operation":"{socialOperation}","recipient":"{socialRecipient}","text":"{socialText}","username":"{socialUsername}","subject":"{socialSubject}","apiBase":"{serverURL}","apiToken":"{@token}"}
+        jsonRequest("{serverURL}/v1/ack", "POST", {"id":"{@identifier}","stage":"handed_off"}, {"Authorization":"Bearer {@token}"})
+        run("JARVIS Social", socialInput)
     }
     if @done == 1 {
         jsonRequest("{serverURL}/v1/ack", "POST", {"id":"{@identifier}"}, {"Authorization":"Bearer {@token}"})

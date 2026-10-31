@@ -1,0 +1,219 @@
+#define name JARVIS Social
+#define version 17
+#define mac false
+#define color teal
+#define glyph gear
+#define inputs text
+#include 'actions/sharing'
+#include 'actions/contacts'
+#include 'actions/text'
+#include 'actions/web'
+
+@entry = "{ShortcutInput}"
+@operation = "menu"
+@recipient = ""
+@body = ""
+@username = ""
+@subject = ""
+@apiBase = ""
+@apiToken = ""
+@apiAvailable = 0
+const entryLength = count(@entry, "Characters")
+if entryLength > 0 {
+    const plan = getDictionary(ShortcutInput)
+    const operationValue = getValue(plan, "operation")
+    @operation = "{operationValue}"
+    const recipientValue = getValue(plan, "recipient")
+    @recipient = "{recipientValue}"
+    const textValue = getValue(plan, "text")
+    @body = "{textValue}"
+    const usernameValue = getValue(plan, "username")
+    @username = "{usernameValue}"
+    const subjectValue = getValue(plan, "subject")
+    @subject = "{subjectValue}"
+    const apiBaseValue = getValue(plan, "apiBase")
+    @apiBase = "{apiBaseValue}"
+    const apiTokenValue = getValue(plan, "apiToken")
+    @apiToken = "{apiTokenValue}"
+    const localAPI = matchText('^http://(10[.][0-9]{1,3}[.][0-9]{1,3}[.][0-9]{1,3}|192[.]168[.][0-9]{1,3}[.][0-9]{1,3}|172[.](1[6-9]|2[0-9]|3[01])[.][0-9]{1,3}[.][0-9]{1,3}):[0-9]{2,5}$', "{@apiBase}")
+    const localAPICount = count(localAPI)
+    const apiTokenLength = count(@apiToken, "Characters")
+    if localAPICount == 1 {
+        if apiTokenLength > 20 { @apiAvailable = 1 }
+    }
+}
+@recognized = 0
+if @operation == "whatsapp" { @recognized = 1 }
+if @operation == "whatsapp_app" { @recognized = 1 }
+if @operation == "sms" { @recognized = 1 }
+if @operation == "instagram" { @recognized = 1 }
+if @operation == "instagram_perfil" { @recognized = 1 }
+if @operation == "email" { @recognized = 1 }
+if @operation == "compartilhar" { @recognized = 1 }
+if @operation == "copiar" { @recognized = 1 }
+if @recognized == 0 {
+    menu "JARVIS — comunicação" {
+        item "WhatsApp: enviar pela API ou abrir app": @operation = "whatsapp"
+        item "SMS ou iMessage: enviar com revisão": @operation = "sms"
+        item "Instagram: abrir Direct": @operation = "instagram"
+        item "Instagram: abrir perfil": @operation = "instagram_perfil"
+        item "E-mail: preparar rascunho": @operation = "email"
+        item "Compartilhar texto em outro app": @operation = "compartilhar"
+        item "Ditar ou escrever e copiar texto": @operation = "copiar"
+        item "Cancelar": stop()
+    }
+}
+
+if @operation == "instagram" {
+    openURL("https://www.instagram.com/direct/inbox/")
+    stop()
+}
+if @operation == "instagram_perfil" {
+    const usernameLength = count(@username, "Characters")
+    if usernameLength == 0 { @username = prompt("Qual é o @ do perfil do Instagram?") }
+    const cleanUsername = replaceText("^@", "", "{@username}", true, true)
+    const validUsername = matchText('^[A-Za-z0-9_.]{1,30}$', "{cleanUsername}")
+    const validUsernameCount = count(validUsername)
+    if validUsernameCount != 1 {
+        show("Use somente o nome do perfil, sem endereço ou espaços.")
+        stop()
+    }
+    confirm("Abrir o perfil @{cleanUsername} no Instagram?", "JARVIS — revisar perfil")
+    openURL("https://www.instagram.com/{cleanUsername}/")
+    stop()
+}
+
+const initialBodyLength = count(@body, "Characters")
+if initialBodyLength == 0 {
+    menu "Como você quer escrever o texto?" {
+        item "Ditar em português": @body = listen("After Pause", "pt-BR")
+        item "Digitar": @body = prompt("Escreva a mensagem ou o texto.")
+        item "Cancelar": stop()
+    }
+}
+const bodyLength = count(@body, "Characters")
+if bodyLength > 1800 {
+    show("Reduza o texto para até 1.800 caracteres e revise novamente.")
+    stop()
+}
+if bodyLength == 0 {
+    show("Nenhum texto foi preparado.")
+    stop()
+}
+
+if @operation == "copiar" {
+    confirm("Copiar este texto?\n\n{@body}", "JARVIS — revisar texto")
+    setClipboard(@body, true)
+    showNotification("Texto copiado neste iPhone.", "JARVIS Social", false)
+    stop()
+}
+if @operation == "compartilhar" {
+    confirm("Abrir o compartilhamento deste texto?\n\n{@body}", "JARVIS — revisar texto")
+    share(@body)
+    stop()
+}
+
+const hasSignature = matchText('(?i)-\s*JARVIS XLV\s*$', "{@body}")
+const signatureCount = count(hasSignature)
+if signatureCount == 0 { @body = "{@body}\n\n- JARVIS XLV" }
+
+if @operation == "email" {
+    const emailLength = count(@recipient, "Characters")
+    if emailLength == 0 { @recipient = prompt("E-mail do destinatário:") }
+    const validEmail = matchText('^[^\s@<>]+@[^\s@<>]+[.][^\s@<>]+$', "{@recipient}")
+    const validEmailCount = count(validEmail)
+    if validEmailCount != 1 {
+        show("Confira o endereço de e-mail.")
+        stop()
+    }
+    const subjectLength = count(@subject, "Characters")
+    if subjectLength == 0 { @subject = prompt("Assunto do e-mail:") }
+    confirm("Para: {@recipient}\nAssunto: {@subject}\n\n{@body}\n\nAbrir rascunho para revisar e enviar?", "JARVIS — confirmar destinatário")
+    const emailSubject = urlEncode("{@subject}")
+    const emailBody = urlEncode("{@body}")
+    const emailAddress = urlEncode("{@recipient}")
+    openURL("mailto:{emailAddress}?subject={emailSubject}&body={emailBody}")
+    stop()
+}
+
+if @operation == "whatsapp" {
+    @useAPI = 0
+    menu "WhatsApp — escolha como enviar" {
+        item "Enviar direto pela API do Jarvis": @useAPI = 1
+        item "Abrir conversa no app com rascunho": @operation = "whatsapp_app"
+        item "Cancelar": stop()
+    }
+    if @useAPI == 1 {
+        if @apiAvailable == 0 {
+            show("Para usar a API, mantenha o receptor conectado e peça ao Jarvis no PC: WhatsApp no iPhone. Abra JARVIS Social por esse comando para receber a sessão autenticada.")
+            stop()
+        }
+        @query = "{@recipient}"
+        const hasName = matchText('[A-Za-zÀ-ÿ]', "{@query}")
+        const hasNameCount = count(hasName)
+        if hasNameCount == 0 { @query = prompt("Qual é o nome do contato salvo no WhatsApp integrado ao Jarvis?") }
+        const lookupResponse = jsonRequest("{@apiBase}/v1/social/contacts", "POST", {"query":"{@query}"}, {"Authorization":"Bearer {@apiToken}"})
+        const lookup = getDictionary(lookupResponse)
+        const lookupStatusValue = getValue(lookup, "status")
+        @lookupStatus = "{lookupStatusValue}"
+        if @lookupStatus != "contacts" {
+            const lookupMessage = getValue(lookup, "message")
+            show("{lookupMessage}")
+            stop()
+        }
+        const contactChoices = getValue(lookup, "choices")
+        const chosenContact = chooseFromList(contactChoices, "Confirme o contato exato do WhatsApp", false)
+        const prepareResponse = jsonRequest("{@apiBase}/v1/social/prepare", "POST", {"choice":"{chosenContact}","text":"{@body}"}, {"Authorization":"Bearer {@apiToken}"})
+        const prepared = getDictionary(prepareResponse)
+        const preparedStatusValue = getValue(prepared, "status")
+        @preparedStatus = "{preparedStatusValue}"
+        if @preparedStatus != "prepared" {
+            const prepareMessage = getValue(prepared, "message")
+            show("{prepareMessage}")
+            stop()
+        }
+        const exactRecipient = getValue(prepared, "recipient")
+        const exactText = getValue(prepared, "text")
+        const sendNonce = getValue(prepared, "nonce")
+        confirm("WhatsApp pela API\n\nContato: {exactRecipient}\n\n{exactText}\n\nEnviar exatamente esta mensagem para este contato agora?", "JARVIS — confirmar envio")
+        const sendResponse = jsonRequest("{@apiBase}/v1/social/confirm", "POST", {"nonce":"{sendNonce}","confirmed":true}, {"Authorization":"Bearer {@apiToken}"})
+        const sent = getDictionary(sendResponse)
+        const sendMessageResult = getValue(sent, "message")
+        show("{sendMessageResult}")
+        stop()
+    }
+}
+
+const recipientLength = count(@recipient, "Characters")
+if recipientLength == 0 {
+    menu "Escolha o destinatário" {
+        item "Escolher telefone dos Contatos": @recipient = selectPhoneNumber()
+        item "Digitar telefone com DDI": @recipient = prompt("Número com código do país e DDD. Exemplo Brasil: +55 DDD número.")
+        item "Cancelar": stop()
+    }
+}
+if @operation == "sms" {
+    const phones = getPhoneNumbers(@recipient)
+    const phoneCount = count(phones)
+    if phoneCount != 1 {
+        show("Escolha somente um telefone válido para esta mensagem.")
+        stop()
+    }
+    confirm("Destinatário: {@recipient}\n\n{@body}\n\nConferiu o contato e a mensagem? A tela de envio abrirá para sua revisão final.", "JARVIS — confirmar mensagem")
+    sendMessage(phones, "{@body}", true)
+    stop()
+}
+if @operation == "whatsapp_app" {
+    const digits = replaceText("[^0-9]", "", "{@recipient}", true, true)
+    const validPhone = matchText('^[1-9][0-9]{7,14}$', "{digits}")
+    const validPhoneCount = count(validPhone)
+    if validPhoneCount != 1 {
+        show("Informe o telefone completo com DDI, DDD e número.")
+        stop()
+    }
+    confirm("WhatsApp: +{digits}\n\n{@body}\n\nConfirme o número completo, incluindo o código do país. O WhatsApp abrirá com este rascunho; toque em Enviar lá.", "JARVIS — revisar WhatsApp")
+    const message = urlEncode("{@body}")
+    openURL("https://wa.me/{digits}?text={message}")
+    stop()
+}
+show("Ação social não reconhecida. Abra JARVIS Social sem entrada para usar o menu.")

@@ -1,0 +1,42 @@
+JARVIS Social — API de WhatsApp, mensagens e atalhos de apps
+
+INSTALAR
+1. Importe JARVIS Social.shortcut.
+2. Substitua JARVIS Receber Comandos pela versão deste pacote.
+3. No PC, abra http://127.0.0.1:9884/iphone, clique Conectar iPhone e leia o QR.
+4. Mantenha o receptor rodando para receber comandos do Jarvis, sem Siri.
+
+EXEMPLOS DE VOZ NO JARVIS
+Jarvis, sociais no iPhone.
+Jarvis, WhatsApp no iPhone.
+Jarvis, WhatsApp no celular para NOME DO CONTATO dizendo TEXTO DA MENSAGEM.
+Jarvis, abra WhatsApp no iPhone.
+Jarvis, SMS no iPhone.
+Jarvis, Instagram no iPhone.
+Jarvis, perfil do Instagram no celular @usuario.
+Jarvis, compartilhar no iPhone dizendo TEXTO.
+
+ENVIO DIRETO POR API
+Ao abrir pelo receptor, o atalho recebe em memória a sessão local autenticada.
+Escolha Enviar direto pela API do Jarvis, pesquise o nome salvo no WhatsApp,
+selecione o contato e revise o destinatário e o texto devolvidos pelo servidor.
+Só o botão OK da confirmação final permite solicitar o envio. Cancelar interrompe
+o atalho. O rascunho expira. A assinatura padrão é - JARVIS XLV.
+
+O envio usa o WhatsApp integrado já conectado ao Jarvis. Não exige abrir o app do
+WhatsApp no iPhone. O PC precisa continuar ligado e acessível pela rede local.
+A confirmação do servidor não significa entrega ou leitura pelo destinatário.
+Envios incertos não são repetidos automaticamente.
+
+Se abrir JARVIS Social sozinho, o menu local funciona. Para obter a sessão da API,
+abra-o pelo comando do Jarvis com o receptor conectado. Não há chave permanente
+no arquivo público, nem contatos ou mensagens pessoais incluídos no pacote.
+
+ABRIR APPS
+WhatsApp: também pode abrir a conversa com texto preenchido; você toca em Enviar.
+SMS/iMessage: abre a composição nativa para sua revisão final.
+Instagram: abre Direct ou perfil; este atalho não envia Direct pela API.
+E-mail: abre um rascunho. Compartilhar e Copiar oferecem texto ditado ou digitado.
+
+Quando outra tela ou app abrir, o receptor pode ficar suspenso pelo iOS. Volte ao
+Atalhos para continuar. Essa versão não promete execução contínua com tela bloqueada.
