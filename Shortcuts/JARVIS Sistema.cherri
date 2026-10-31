@@ -13,7 +13,8 @@ comment('JARVIS XLV — controles locais do iPhone. Não envia dados para servid
 @entry = "{ShortcutInput}"
 @command = ""
 @percentage = -1
-if @entry {
+const inputLength = count(@entry, "Characters")
+if inputLength > 0 {
     const parts = splitText(@entry, "|")
     @command = getFirstItem(parts)
     const total = count(parts)
@@ -21,7 +22,34 @@ if @entry {
         const rawValue = getListItem(parts, 2)
         @percentage = getNumbers(rawValue)
     }
-} else {
+}
+@recognized = 0
+if @command == "reuniao" {
+    @recognized = 1
+}
+if @command == "encerrar_reuniao" {
+    @recognized = 1
+}
+if @command == "economizar" {
+    @recognized = 1
+}
+if @command == "volume" {
+    @recognized = 1
+}
+if @command == "pausar" {
+    @recognized = 1
+}
+if @command == "continuar" {
+    @recognized = 1
+}
+if @command == "proxima" {
+    @recognized = 1
+}
+if @command == "bloquear" {
+    @recognized = 1
+}
+if @recognized == 0 {
+    @percentage = -1
     menu "JARVIS — controles do sistema" {
         item "Modo reunião":
             @command = "reuniao"
