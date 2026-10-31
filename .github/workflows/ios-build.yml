@@ -41,6 +41,7 @@ jobs:
           set -o pipefail
           xcodebuild -project JarvisPhone.xcodeproj -scheme JarvisPhone \
             -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}' \
+            -parallel-testing-enabled NO \
             -derivedDataPath .build -resultBundlePath TestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee xcodebuild.log
       - name: Launch app and capture screenshot
@@ -52,6 +53,18 @@ jobs:
           sleep 3
           xcrun simctl io '${{ steps.simulator.outputs.udid }}' screenshot JARVIS-IPHONE-SIMULADOR.png
           ditto -c -k --sequesterRsrc --keepParent .build/Build/Products/Debug-iphonesimulator/JarvisPhone.app JarvisPhone-Simulator.zip
+      - name: Compile for physical iPhone without signing
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild -project JarvisPhone.xcodeproj -scheme JarvisPhone \
+            -configuration Release -destination 'generic/platform=iOS' \
+            -derivedDataPath .device-build CODE_SIGNING_ALLOWED=NO build \
+            2>&1 | tee device-build.log
+          mkdir -p DevicePackage/Payload
+          ditto .device-build/Build/Products/Release-iphoneos/JarvisPhone.app DevicePackage/Payload/JarvisPhone.app
+          cd DevicePackage
+          ditto -c -k --keepParent Payload ../JARVIS-iPhone-SEM-ASSINATURA.ipa
       - name: Save build evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -64,3 +77,5 @@ jobs:
             TestResults.xcresult
             JARVIS-IPHONE-SIMULADOR.png
             JarvisPhone-Simulator.zip
+            device-build.log
+            JARVIS-iPhone-SEM-ASSINATURA.ipa

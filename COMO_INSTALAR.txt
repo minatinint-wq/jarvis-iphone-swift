@@ -27,4 +27,12 @@ O ZIP não é um IPA instalável. A compilação e assinatura do aplicativo prec
 acontecer no macOS/Xcode. Os testes físicos do iPhone ainda estão pendentes.
 Este pacote não conecta ao Jarvis no PC; essa integração ficou para depois.
 
+ALTERNATIVA NO WINDOWS
+O build externo também gera JARVIS-iPhone-SEM-ASSINATURA.ipa para aparelho real.
+É necessário assiná-lo antes de instalar. O Sideloadly pode fazer a assinatura
+e instalação pelo Windows com sua conta Apple: https://sideloadly.io/
+Confira os pré-requisitos no site, conecte o iPhone por USB, carregue o IPA e
+autentique na ferramenta local. Não envie senha ou códigos neste chat.
+Este IPA sem assinatura não pode ser enviado diretamente ao TestFlight.
+
 Detalhes e limitações: LEIA_PRIMEIRO.md.

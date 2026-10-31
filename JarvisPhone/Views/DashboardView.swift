@@ -148,7 +148,7 @@ struct SetupView: View {
                         .font(.footnote).foregroundStyle(.secondary)
                 }
                 Section("No app Atalhos") {
-                    Text("Crie um atalho, toque em Adicionar Ação e procure JARVIS XLV. Escolha Executar ação no iPhone e selecione a ação desejada.")
+                    Text("Em Adicionar Ação, procure JARVIS XLV. Os 19 controles aparecem pelo nome. Use Executar ação no iPhone para fornecer uma ação e porcentagem na mesma chamada.")
                     Text("As ações ficam disponíveis em Atalhos depois de instalar e abrir este app. Não é preciso configurar a Siri.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
