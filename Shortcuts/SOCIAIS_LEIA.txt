@@ -1,5 +1,8 @@
 JARVIS+SOCIAL — API de WhatsApp, mensagens e atalhos de apps
 
+Correção do menu: os ramos de cada opção usam títulos simples no formato nativo.
+Se o Social anterior não reconhecia a opção, substitua apenas JARVIS+SOCIAL.
+
 INSTALAR
 1. Importe JARVIS+SOCIAL.shortcut.
 2. Substitua JARVIS+Receber+Comando pela versão deste pacote.
