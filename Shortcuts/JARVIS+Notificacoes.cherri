@@ -8,17 +8,31 @@
 #include 'actions/text'
 #include 'actions/documents'
 
-action 'file' localConnectionFile(text reference: 'WFFile'): variable
+action 'file' localConnectionFile(): variable
 
 // A automação recebe a notificação inteira. O conteúdo nunca é um comando.
 // Selecione o JSON local uma vez neste cartao Arquivo, no editor.
-const saved = localConnectionFile("")
+const saved = localConnectionFile()
+const configText = getText(saved)
 const rawText = getText(ShortcutInput)
 const pieces = matchText('(?s)^.{1,1800}', rawText)
 const pieceCount = count(pieces)
 if pieceCount == 0 { stop() }
 const noticeText = getFirstItem(pieces)
-const config = getDictionary(saved)
-const serverURL = getValue(config, "server")
-const token = getValue(config, "token")
+const config = getDictionary(configText)
+const rawServer = getValue(config, "server")
+const rawToken = getValue(config, "token")
+const serverURL = "{rawServer}"
+const token = "{rawToken}"
+const validHosts = matchText('^http://(10[.][0-9]{1,3}[.][0-9]{1,3}[.][0-9]{1,3}|192[.]168[.][0-9]{1,3}[.][0-9]{1,3}|172[.](1[6-9]|2[0-9]|3[01])[.][0-9]{1,3}):[0-9]{2,5}$', serverURL)
+const hostCount = count(validHosts)
+const keyLength = count(token, "Characters")
+if hostCount != 1 {
+    show("O arquivo selecionado nao forneceu um endereco local valido. Escolha JARVIS-iPhone.json no primeiro cartao Arquivo.")
+    stop()
+}
+if keyLength < 20 {
+    show("A chave nao foi lida do arquivo selecionado. Escolha JARVIS-iPhone.json. Nao compartilhe o conteudo desse arquivo.")
+    stop()
+}
 jsonRequest("{serverURL}/v1/notifications", "POST", {"app":"iPhone","text":"{noticeText}"}, {"Authorization":"Bearer {token}"})
