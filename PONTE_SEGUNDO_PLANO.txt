@@ -50,3 +50,10 @@ Referencias:
 https://developer.apple.com/videos/play/wwdc2026/310/
 https://docs.ntfy.sh/subscribe/phone/
 https://docs.ntfy.sh/publish/
+
+ATALHO DE CONTROLE COM NOME DISTINTO
+
+JARVIS+CONTROLE+iPhone (laranja) executa o mesmo protocolo do executor.
+Escolha o JSON local no primeiro cartao Arquivo. Configure nele o gatilho
+ntfy com titulo JARVIS_COMANDO. Use apenas um gatilho de controle ativo.
+Este atalho consulta comandos; JARVIS+Verificar+Conexao apenas verifica.
