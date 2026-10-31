@@ -9,14 +9,13 @@
 #include 'actions/documents'
 
 // A automação recebe a notificação inteira. O conteúdo nunca é um comando.
+// Selecione o JSON local uma vez neste cartao Arquivo, no editor.
+const saved = rawAction("is.workflow.actions.file", {"WFFile":""})
 const rawText = getText(ShortcutInput)
 const pieces = matchText('(?s)^.{1,1800}', rawText)
 const pieceCount = count(pieces)
 if pieceCount == 0 { stop() }
 const noticeText = getFirstItem(pieces)
-const saved = getFile("JARVIS-iPhone.json", nil, false)
-const savedCount = count(saved)
-if savedCount == 0 { stop() }
 const config = getDictionary(saved)
 const serverURL = getValue(config, "server")
 const token = getValue(config, "token")

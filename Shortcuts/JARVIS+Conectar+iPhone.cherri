@@ -42,10 +42,15 @@ if topicLength < 30 {
 }
 const config = {"server":"{serverURL}","token":"{token}"}
 const configText = getText(config)
-saveFile("JARVIS-iPhone.json", configText, true)
-jsonRequest("{serverURL}/v1/background/activate", "POST", {}, {"Authorization":"Bearer {token}"})
-// Primeiro uso em tela libera o arquivo e a rede para as próximas automações.
-const setupInput = {"source":"JARVIS_INICIAR"}
-run("JARVIS+Executar+Comando", setupInput)
+const namedConfig = setName(configText, "JARVIS-iPhone.json")
+saveFilePrompt(namedConfig, true)
+const activation = jsonRequest("{serverURL}/v1/background/activate", "POST", {"source":"PHONE_PAIRING"}, {"Authorization":"Bearer {token}"})
+const activationText = getText(activation)
+const approved = matchText('"ok"\s*:\s*true', activationText)
+const approvalCount = count(approved)
+if approvalCount != 1 {
+    show("A ponte nao confirmou a ativacao. Confira o Jarvis no PC; a conexao nao foi marcada como concluida.")
+    stop()
+}
 setClipboard(topic, true)
-show("Conexão salva. O canal do ntfy foi copiado: cole ao adicionar a assinatura no app ntfy (servidor ntfy.sh). Crie uma automação do app ntfy contendo JARVIS_COMANDO para Executar Imediatamente o atalho JARVIS+Executar+Comando. Depois pode sair do Atalhos.")
+show("Conexao salva. Em Executar+Comando e Notificacoes, escolha o JSON salvo em No Meu iPhone no primeiro cartao Arquivo. O canal do ntfy foi copiado: cole na assinatura ntfy.sh. Crie a automacao ntfy com titulo JARVIS_COMANDO para executar imediatamente Executar+Comando.")
