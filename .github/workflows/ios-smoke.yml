@@ -1,0 +1,37 @@
+name: iPhone simulator launch
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  launch:
+    runs-on: macos-15
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build app without XCTest injection
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild -project JarvisPhone.xcodeproj -scheme JarvisPhone \
+            -configuration Release -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath .smoke-build ARCHS="$(uname -m)" \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee simulator-build.log
+      - name: Install and launch
+        run: python3 scripts/simulator-smoke.py
+      - name: Save launch evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-iphone-launch
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            simulator-build.log
+            simulator-smoke.json
+            simulator-diagnostic.log
+            JARVIS-IPHONE-SIMULADOR.png
