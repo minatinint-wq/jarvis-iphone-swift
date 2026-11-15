@@ -2,6 +2,17 @@ import XCTest
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    func testNotificationQueueIsLiteralFreshAndOrdered() {
+        var q = VoiceInbox(); let t=Date()
+        XCTAssertTrue(q.insert("  Oi   Ana  ",now:t))
+        XCTAssertFalse(q.insert("Oi Ana",now:t))
+        XCTAssertFalse(q.insert("JARVIS_COMANDO",now:t))
+        XCTAssertTrue(q.insert("ligue a luz",now:t))
+        XCTAssertEqual(q.next(now:t), "Oi Ana")
+        XCTAssertEqual(q.next(now:t), "ligue a luz")
+        XCTAssertTrue(q.insert("antiga",now:t))
+        XCTAssertNil(q.next(now:t.addingTimeInterval(91)))
+    }
     @MainActor
     func testUnpairedPhoneCanAnswerTimeOffline() async {
         let assistant = RemoteAssistant()

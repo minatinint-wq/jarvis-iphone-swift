@@ -1,6 +1,17 @@
 import AppIntents
 import UIKit
 
+struct JarvisAnnounceNotification: AppIntent {
+    static var title: LocalizedStringResource = "Anunciar notificação no Jarvis"
+    static var description = IntentDescription("Lê a prévia no iPhone se o modo autônomo já estiver ativo. Não abre o app nem executa o texto como comando.")
+    static var openAppWhenRun: Bool = false
+    @Parameter(title:"Prévia") var preview: String
+    @MainActor func perform() async throws -> some IntentResult {
+        RemoteAssistant.shared.receivePreview(preview)
+        return .result()
+    }
+}
+
 enum PhoneActionParameter: String, AppEnum {
     case torchOn = "lanterna_ligar", torchOff = "lanterna_desligar"
     case volume, brightness = "brilho", battery = "bateria"

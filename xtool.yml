@@ -8,6 +8,7 @@ resources:
 - JarvisPhone/Resources/PrivacyInfo.xcprivacy
 - JarvisPhone/Resources/AssistantMask.png
 - JarvisPhone/Resources/jarvis-greeting.pcm
+- JarvisPhone/Resources/jarvis-connection.pcm
 - JarvisPhone/Resources/jarvis-torch-on.pcm
 - JarvisPhone/Resources/jarvis-torch-off.pcm
 - JarvisPhone/Assets.xcassets/AppIcon.appiconset/AppIcon60x60@2x.png
@@ -15,3 +16,4 @@ resources:
 
 - JarvisPhone/Resources/GeneralUser-LICENSE.txt
 - JarvisPhone/Resources/JarvisInstruments.sf2
+- JarvisPhone/Resources/WakeHelmet.mesh

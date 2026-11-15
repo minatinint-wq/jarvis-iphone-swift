@@ -86,6 +86,14 @@ private final class MicrophoneFrames: @unchecked Sendable {
     private var playbackFormat: AVAudioFormat?
     private var playbackGeneration = UUID()
     private var queuedBytes = 0
+    private var levels: [Double] = []
+    private var meterEnergy: Double = 0
+    private var meterSamples = 0
+    func playbackLevel() -> Double {
+        guard let player, let t = player.lastRenderTime, let p = player.playerTime(forNodeTime: t), p.sampleRate > 0 else { return 0 }
+        let i = Int(Double(p.sampleTime) / p.sampleRate * 25)
+        return levels.indices.contains(i) ? levels[i] : 0
+    }
     private var playbackFinished = false
     private var sessionActive = false
     private var interruptionObserver: NSObjectProtocol?
@@ -190,6 +198,11 @@ private final class MicrophoneFrames: @unchecked Sendable {
             for i in 0..<count {
                 let value = raw.loadUnaligned(fromByteOffset: 2 * i, as: Int16.self)
                 channel[i] = Float(Int16(littleEndian: value)) / 32768
+                meterEnergy += Double(channel[i] * channel[i]); meterSamples += 1
+                if meterSamples == 960 {
+                    levels.append(min(1, sqrt(meterEnergy / 960) * 4))
+                    meterSamples = 0; meterEnergy = 0
+                }
             }
         }
         let generation = playbackGeneration
@@ -217,6 +230,7 @@ private final class MicrophoneFrames: @unchecked Sendable {
 
     func stopPlayback() {
         playbackGeneration = UUID()
+        levels.removeAll(keepingCapacity: false); meterEnergy = 0; meterSamples = 0
         let wasSpeaking = queuedBytes > 0
         queuedBytes = 0
         playbackFinished = false

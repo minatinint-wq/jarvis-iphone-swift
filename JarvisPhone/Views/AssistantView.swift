@@ -269,15 +269,28 @@ private enum VoiceState {
     }
 
     private var wakeControl: some View {
+        VStack(alignment:.leading, spacing:12) {
         Toggle(isOn: Binding(get: { model.wakeEnabled }, set: { model.setWakeEnabled($0) })) {
             VStack(alignment: .leading, spacing: 3) {
                 Label("Ativar com “Oi, Jarvis”", systemImage: "waveform")
                     .font(.subheadline.weight(.medium))
-                Text("Inicie a escuta com o app aberto").font(.footnote).foregroundStyle(ConsoleColor.muted)
+                Text("Ative antes de bloquear. O Jarvis pode conversar e ler seu e-mail em voz alta.").font(.footnote).foregroundStyle(ConsoleColor.muted)
             }
         }
         .tint(ConsoleColor.cyan).frame(minHeight: 44)
-        .accessibilityHint("Permite iniciar pedidos locais por voz")
+        .accessibilityHint("Mantém a escuta com a tela bloqueada enquanto a sessão de áudio está ativa.")
+        if model.wakeEnabled {
+            Toggle(isOn:Binding(get:{ model.autonomous },set:{ model.setAutonomous($0) })) {
+                VStack(alignment:.leading,spacing:4) {
+                    Text("Modo autônomo").font(.subheadline.bold())
+                    Text("Anuncia prévias e, entre 8h e 22h, fala por iniciativa própria. Usa o volume de mídia.").font(.footnote).foregroundStyle(ConsoleColor.muted)
+                }
+            }.disabled(!model.wakeAuthorized).tint(ConsoleColor.cyan)
+            if model.autonomous {
+                Text("Para ouvir notificações: no Atalhos, use o gatilho Notificação recebida e a ação Anunciar notificação no Jarvis. Passe a entrada da automação como prévia. A voz é gerada pelo serviço configurado no PC.").font(.footnote).foregroundStyle(ConsoleColor.muted)
+            }
+        }
+        }
     }
 
     private var voiceButtonTitle: String {
@@ -572,8 +585,7 @@ private struct MaskDisplay: View {
                     context.stroke(rails, with: .color(accent.opacity(0.33)), lineWidth: 0.75)
                 }
             }
-            Image("AssistantMask").resizable().scaledToFit().padding(.vertical, 14)
-                .shadow(color: .black.opacity(0.75), radius: 6, y: 4)
+            HelmetViewport(yaw:-0.22,pitch:0,energy:active ? 0.55 : 0.08)
         }
         .frame(height: 167)
         .clipShape(RoundedRectangle(cornerRadius: 13))

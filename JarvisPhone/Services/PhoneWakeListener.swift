@@ -41,6 +41,7 @@ private final class WakeAudioInput: @unchecked Sendable {
     private var rapidFailures = 0
     private(set) var paused = false
     var running: Bool { engine != nil }
+    var receivingCommand: Bool { waiting || paused }
     var onPrompt: (() -> Void)?
     var onCommand: ((String) -> Void)?
     var onFailure: ((String) -> Void)?

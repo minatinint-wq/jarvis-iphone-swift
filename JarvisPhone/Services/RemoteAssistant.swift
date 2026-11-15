@@ -2,8 +2,81 @@ import Foundation
 import SwiftUI
 import UIKit
 import AVFoundation
+import ActivityKit
 
 @MainActor final class RemoteAssistant: ObservableObject {
+    static let shared = RemoteAssistant()
+    @Published var showingFace = false
+    @Published private(set) var autonomous = false
+    private var idleJob: Task<Void, Never>?
+    private var nextRemark = Date.distantFuture
+    private var remarkIndex = 0
+    private var previews = VoiceInbox()
+    private var activity: Activity<WakeActivityAttributes>?
+    private var lastPhase = ""
+    private var lastCall = Date.distantPast
+    func playbackLevel() -> Double { sound.playbackLevel() }
+    private func heardCall() {
+        lastCall = Date()
+        if active { showingFace = true }
+        message = "Ouvindo seu pedido…"
+        setPhase("Ouvindo seu pedido")
+    }
+    private func startBadge() {
+        guard active, UIApplication.shared.applicationState == .active, activity == nil,
+              ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        let content = ActivityContent(state: WakeActivityAttributes.ContentState(phase:"Aguardando “Oi, Jarvis”"), staleDate:nil)
+        activity = try? Activity.request(attributes: WakeActivityAttributes(), content: content, pushType:nil)
+        for old in Activity<WakeActivityAttributes>.activities where old.id != activity?.id {
+            Task { await old.end(nil, dismissalPolicy:.immediate) }
+        }
+        lastPhase = content.state.phase
+    }
+    private func setPhase(_ phase: String) {
+        guard let activity, lastPhase != phase else { return }
+        lastPhase = phase
+        Task { await activity.update(ActivityContent(state:.init(phase:phase), staleDate:nil)) }
+    }
+    private func stopBadge() {
+        guard let old = activity else { return }
+        activity = nil; lastPhase = ""
+        Task { await old.end(nil, dismissalPolicy:.immediate) }
+    }
+    func setAutonomous(_ enabled: Bool) {
+        idleJob?.cancel(); idleJob = nil
+        previews = VoiceInbox(); autonomous = enabled && wakeAuthorized && wakeEnabled
+        guard autonomous else { return }
+        remarkIndex = Int.random(in: 0..<3)
+        nextRemark = Date().addingTimeInterval(30)
+        idleJob = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for:.seconds(2))
+                guard !Task.isCancelled, let self else { return }
+                await self.autonomousTick()
+            }
+        }
+    }
+    @discardableResult func receivePreview(_ text: String) -> Bool {
+        guard autonomous, listeningInBackground else { return false }
+        return previews.insert(text, now:Date())
+    }
+    private func autonomousTick() async {
+        let now = Date()
+        guard autonomous, listeningInBackground, ready, handsetActions, let sock = ws,
+              !busy, !isSpeaking, !recording, !wakeHandling, !wake.receivingCommand,
+              localRequest == nil, studioMode == nil, now.timeIntervalSince(lastCall) > 7,
+              AVAudioSession.sharedInstance().outputVolume > 0 else { return }
+        if let preview = previews.next(now:now) {
+            await sendHandsetReply("Nova notificação. " + preview, sock)
+            return
+        }
+        let hour = Calendar.current.component(.hour, from:now)
+        guard (8..<22).contains(hour), now >= nextRemark else { return }
+        nextRemark = now.addingTimeInterval(Double.random(in:1200...2100))
+        let remarks = ["Estou por aqui, magnata. Quer conversar?", "Se quiser saber o que chegou no seu e-mail, é só me chamar.", "Que tal uma pausa para esticar as pernas, magnata?"]
+        let line = remarks[remarkIndex]; remarkIndex = (remarkIndex + 1) % remarks.count
+        await sendHandsetReply(line, sock)
+    }
     struct Line: Identifiable { let id=UUID(); let user:Bool; let text:String }
     @Published var paired = PairingStore.read() != nil
     @Published var ready = false
@@ -41,14 +114,17 @@ import AVFoundation
     private let wake = PhoneWakeListener()
     private var wakePermission: Task<Void, Never>?
     private var wakeResume: Task<Void, Never>?
-    private var wakeAuthorized = false
+    @Published private(set) var wakeAuthorized = false
     private var systemInterrupted = false
     private var interruptionObserver: NSObjectProtocol?
     private var wakeHandling = false
+    private var wakeSessionCookie: String?
+    private var lockedConversation = false
+    private var listeningInBackground: Bool { wakeEnabled && wakeAuthorized && wake.running && !systemInterrupted }
 
     init() {
         sound.sharesWakeSession = { [weak self] in self?.wake.running == true }
-        wake.onPrompt = { [weak self] in self?.message = "Ouvindo seu pedido…" }
+        wake.onPrompt = { [weak self] in self?.heardCall() }
         wake.onCommand = { [weak self] text in
             guard let self else { return }
             self.wakeHandling = true
@@ -76,6 +152,7 @@ import AVFoundation
         sound.onSpeakingChanged = { [weak self] speaking in
             guard let self else { return }
             self.isSpeaking = speaking
+            self.setPhase(speaking ? "Jarvis está falando" : (self.busy ? "Processando" : "Aguardando “Oi, Jarvis”"))
             self.updateWake()
             if speaking { self.message = "Jarvis está falando." }
             else if !self.busy && self.message == "Jarvis está falando." { self.message = "Resposta no iPhone." }
@@ -97,8 +174,11 @@ import AVFoundation
         wakeResume?.cancel()
         wakeEnabled = enabled
         wakeAuthorized = false
+        wakeSessionCookie = nil
         if !enabled {
+            setAutonomous(false); stopBadge()
             wake.stop(releaseSession: !isSpeaking)
+            if !active { drop() }
             return
         }
         guard active, UIApplication.shared.isProtectedDataAvailable else {
@@ -112,6 +192,8 @@ import AVFoundation
                 try await wake.authorize()
                 guard !Task.isCancelled, wakeEnabled, active else { return }
                 wakeAuthorized = true
+                wakeSessionCookie = PairingStore.read()
+                startBadge()
                 updateWake()
             } catch {
                 guard !Task.isCancelled else { return }
@@ -150,17 +232,36 @@ import AVFoundation
             await say(text)
             return
         }
-        guard wake.running else { return }
-        let originalSocket = ws
+        guard listeningInBackground else { return }
         let reply = await PhoneLocalKit.resolve(text, readOnly: true)
-            ?? "Abra o Jarvis no iPhone desbloqueado para este pedido."
-        guard wakeEnabled, !systemInterrupted else { return }
+        guard listeningInBackground else { return }
         add(true, text)
-        add(false, reply)
-        message = reply
-        if playBundledReply(reply) { return }
-        if ready, handsetActions, let sock = ws, sock === originalSocket {
+        if let reply {
+            add(false, reply)
+            message = reply
+            if playBundledReply(reply) { return }
+        }
+        // Wait for a reconnect before sending. Never replay a request after sending it.
+        if !ready && paired {
+            connect()
+            let deadline = ContinuousClock.now.advanced(by: .seconds(8))
+            while !ready, paired, listeningInBackground, ContinuousClock.now < deadline {
+                try? await Task.sleep(for: .milliseconds(100))
+                if Task.isCancelled { return }
+            }
+        }
+        guard listeningInBackground else { return }
+        guard ready, lockedConversation, let sock = ws else {
+            message = "A conversa bloqueada precisa da ponte atualizada e do PC online."
+            playConnectionNotice()
+            return
+        }
+        if let reply {
             await sendHandsetReply(reply, sock)
+        } else {
+            beginWait()
+            do { try await send(["type":"text", "text":text, "lockedWake":true], sock) }
+            catch { lost(sock) }
         }
     }
     func pair(_ code:String) async {
@@ -172,11 +273,14 @@ import AVFoundation
             let (_,response)=try await session.data(for:r)
             guard let h=response as? HTTPURLResponse,h.statusCode==200,let raw=h.value(forHTTPHeaderField:"Set-Cookie"),
                   let c=HTTPCookie.cookies(withResponseHeaderFields:["Set-Cookie":raw],for:r.url!).first(where:{$0.name=="__Host-jarvis" && $0.isSecure}) else { message="Pareamento recusado. Confira o código atual no PC."; return }
-            try PairingStore.save(c.value); paired=true; connect()
+            try PairingStore.save(c.value); paired=true
+            if wakeAuthorized { wakeSessionCookie = c.value }
+            connect()
         } catch { message=error.localizedDescription }
     }
     func connect() {
-        guard paired,active,ws==nil,let cookie=PairingStore.read() else { return }
+        guard paired, active || listeningInBackground, ws == nil,
+              let cookie = wakeSessionCookie ?? PairingStore.read() else { return }
         retryJob?.cancel()
         retryJob = nil
         var r=URLRequest(url:URL(string:origin.replacingOccurrences(of:"https:",with:"wss:")+"/socket")!)
@@ -237,6 +341,7 @@ import AVFoundation
         case "status":
             handshakeTimer?.cancel()
             ready = o["connected"] as? Bool == true
+            lockedConversation = ready && o["backend"] as? String == "iphone" && o["lockedConversation"] as? Bool == true
             if let enabled = o["handsetActions"] as? Bool { handsetActions = ready && enabled }
             cameraAvailable = ready && o["phoneCamera"] as? Bool == true
             if !busy && !recording { message = o["message"] as? String ?? "" }
@@ -279,7 +384,7 @@ import AVFoundation
             if let s=o["image"] as? String,let cut=s.firstIndex(of:","),s.hasPrefix("data:image/"),let d=Data(base64Encoded:String(s[s.index(after:cut)...])),let image=UIImage(data:d) {
                 if o["kind"] as? String=="generated" {artwork=image} else {display=image}
             }
-        case "voice-error": message=o["text"] as? String ?? "O pedido falhou.";finishWait()
+        case "voice-error": message=o["text"] as? String ?? "O pedido falhou.";let speakFailure = !active && listeningInBackground && busy;finishWait();if speakFailure { playConnectionNotice() }
         case "interrupted":
             sound.stopPlayback()
         case "turn-complete":
@@ -336,7 +441,7 @@ import AVFoundation
         guard active, UIApplication.shared.applicationState == .active, UIApplication.shared.isProtectedDataAvailable,
               !busy, !recording, ["sketch","music","libras"].contains(mode) else { return false }
         guard ready || mode != "libras" else { message = "Conecte ao PC para abrir Libras."; return false }
-        sound.stopPlayback()
+        showingFace = false; sound.stopPlayback()
         localStudio = !ready
         studioMode = mode
         return true
@@ -351,6 +456,7 @@ import AVFoundation
         let name: String
         switch reply {
         case PhoneLocalKit.greeting: name = "jarvis-greeting"
+        case Self.connectionNotice: name = "jarvis-connection"
         case "Lanterna ligada.": name = "jarvis-torch-on"
         case "Lanterna desligada.": name = "jarvis-torch-off"
         default: return false
@@ -376,6 +482,12 @@ import AVFoundation
     private func sendHandsetReply(_ reply: String, _ sock: URLSessionWebSocketTask) async {
         beginWait()
         do { try await send(["type":"text", "handsetResult":true, "text":reply], sock) } catch { lost(sock) }
+    }
+
+    private static let connectionNotice = "Não consegui conversar com o seu PC agora. Confira a conexão do Jarvis."
+
+    private func playConnectionNotice() {
+        _ = playBundledReply(Self.connectionNotice)
     }
 
     func activate() {
@@ -454,6 +566,7 @@ import AVFoundation
         };message="A imagem excedeu o tamanho para análise."
     }
     private func beginWait() {
+        setPhase("Processando")
         wakeResume?.cancel()
         wake.setPaused(true)
         sound.stopPlayback()
@@ -470,7 +583,7 @@ import AVFoundation
         }
     }
 
-    private func finishWait() { watchdog?.cancel(); watchdog = nil; busy = false; awaitingHandsetCommand = false; updateWake() }
+    private func finishWait() { watchdog?.cancel(); watchdog = nil; busy = false; awaitingHandsetCommand = false; if !isSpeaking { setPhase("Aguardando “Oi, Jarvis”") }; updateWake() }
 
     private func abortMic() {
         micID = nil
@@ -488,6 +601,7 @@ import AVFoundation
         let expired = closeCode == 4003 || (sock.response as? HTTPURLResponse)?.statusCode == 401
         drop()
         if expired {
+            wakeSessionCookie = nil
             PairingStore.remove()
             paired = false
             wantsVoice = false
@@ -502,7 +616,7 @@ import AVFoundation
     }
 
     private func scheduleReconnect() {
-        guard paired, active, ws == nil, retryJob == nil else { return }
+        guard paired, active || listeningInBackground, ws == nil, retryJob == nil else { return }
         let delay = UInt64(1 << min(4, retryCount))
         retryCount = min(4, retryCount + 1)
         retryJob = Task { [weak self] in
@@ -528,6 +642,7 @@ import AVFoundation
         finishWait()
         abortMic()
         ready = false
+        lockedConversation = false
         handsetActions = false
         studioWentOffline()
         cameraAvailable = false
@@ -536,6 +651,7 @@ import AVFoundation
     func foreground(_ yes: Bool) {
         active = yes
         if yes {
+            if wakeEnabled, Date().timeIntervalSince(lastCall) < 30 { showingFace = true }
             connect()
             if ready && wantsVoice { activate() }
             updateWake()
@@ -543,7 +659,7 @@ import AVFoundation
             wantsVoice = false
             localRequest = nil
             if wakeEnabled && !wakeAuthorized { setWakeEnabled(false) }
-            if !(wakeEnabled && wake.running && !recording && !busy && !isSpeaking) { drop() }
+            if !listeningInBackground || recording { drop() }
             updateWake()
         }
     }

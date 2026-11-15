@@ -11,7 +11,13 @@ with zipfile.ZipFile(sys.argv[1]) as z:
  mask = z.read(root+"AssistantMask.png")
  assert mask[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack_from(">II",mask,16) == (480,512), "máscara do assistente ausente ou inválida"
  resources = Path(__file__).resolve().parents[1] / "JarvisPhone" / "Resources"
- for name in ["jarvis-greeting.pcm","jarvis-torch-on.pcm","jarvis-torch-off.pcm","JarvisInstruments.sf2","GeneralUser-LICENSE.txt"]:
+ for name in ["jarvis-greeting.pcm","jarvis-connection.pcm","jarvis-torch-on.pcm","jarvis-torch-off.pcm","JarvisInstruments.sf2","GeneralUser-LICENSE.txt"]:
   expected = (resources / name).read_bytes()
   assert expected and z.read(root + name) == expected, f"recurso local divergente: {name}"
- print("IPA verificado: arm64, permissões, URL de ativação, máscara, voz Fish, instrumentos e privacidade.")
+ assert z.read(root+"WakeHelmet.mesh") == (resources/"WakeHelmet.mesh").read_bytes()
+ if "--with-extension" in sys.argv:
+  ext=root+"PlugIns/JarvisWake.appex/"
+  assert info.get("NSSupportsLiveActivities") and plistlib.loads(z.read(ext+"Info.plist"))["CFBundleIdentifier"]=="com.jarvisxlv.iphone.wake"
+  assert ext+"JarvisWake" in z.namelist() and ext+"WakePortrait.png" in z.namelist()
+  assert any("Anunciar notifica".encode() in z.read(n) or b"JarvisAnnounceNotification" in z.read(n) for n in z.namelist() if n.startswith(root+"Metadata.appintents/")), "ação de notificação ausente"
+ print("IPA verificado: arm64, permissões, máscara 3D, voz, instrumentos e recursos.")
