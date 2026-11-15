@@ -31,6 +31,13 @@ struct AssistantView: View {
                             preset("Gerar imagem","Gere uma imagem de ");preset("Último e-mail","Leia meu último e-mail");preset("Minha agenda","Quais são meus eventos de hoje?")
                             Button("Analisar câmera"){Task{await openCamera()}}.disabled(!model.cameraAvailable)
                         }.buttonStyle(.bordered)}.disabled(!model.ready || model.busy || model.recording)
+                        if let photo=preview {
+                            VStack(alignment:.leading){
+                                Image(uiImage:photo).resizable().scaledToFit().frame(maxHeight:180)
+                                Text("Enviar esta foto para análise pela NVIDIA?").font(.headline)
+                                HStack {Button("Enviar foto"){preview=nil;Task{await model.analyze(photo)}}.buttonStyle(.borderedProminent);Button("Descartar"){preview=nil}}
+                            }.disabled(!model.ready || model.busy)
+                        }
                         if let image=model.artwork {
                             Button { expanded=image } label:{Image(uiImage:image).resizable().scaledToFit().clipShape(RoundedRectangle(cornerRadius:16))}.accessibilityLabel("Ampliar imagem gerada pelo Jarvis")
                         }
@@ -39,11 +46,8 @@ struct AssistantView: View {
                     }
                 }.padding(22)
             }.background(Color(red:0.025,green:0.045,blue:0.066)).navigationTitle("JARVIS XLV")
+            .onChange(of:model.cameraRequested){_,requested in if requested {model.cameraRequested=false;Task{await openCamera()}}}
             .fullScreenCover(isPresented:$camera){CameraCapture(onCapture:{photo in camera=false;preview=photo},onCancel:{camera=false}).ignoresSafeArea()}
-            .confirmationDialog("Enviar esta foto ao Jarvis do PC para análise pela NVIDIA?",isPresented:Binding(get:{preview != nil && !camera},set:{if !$0 { } })){
-                Button("Enviar foto para análise"){if let photo=preview {preview=nil;Task{await model.analyze(photo)}}}
-                Button("Cancelar",role:.cancel){preview=nil}
-            }
             .sheet(isPresented:Binding(get:{expanded != nil},set:{if !$0{expanded=nil}})){if let expanded {Image(uiImage:expanded).resizable().scaledToFit().padding()}}
         }
     }

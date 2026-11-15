@@ -5,7 +5,7 @@ import UIKit
 @MainActor final class RemoteAssistant: ObservableObject {
     struct Line: Identifiable { let id=UUID(); let user:Bool; let text:String }
     @Published var paired = PairingStore.read() != nil
-    @Published var ready=false, busy=false, recording=false, cameraAvailable=false, wantsVoice=false
+    @Published var ready=false, busy=false, recording=false, cameraAvailable=false, wantsVoice=false, cameraRequested=false
     @Published var message="Conecte ao seu Jarvis.", lines:[Line]=[], artwork:UIImage?, display:UIImage?
     private let origin="https://jarvis-remoto.minatinint.workers.dev"
     private let session: URLSession = { let c=URLSessionConfiguration.ephemeral; c.httpShouldSetCookies=false; c.timeoutIntervalForRequest=20; return URLSession(configuration:c) }()
@@ -37,7 +37,7 @@ import UIKit
                 case .data(let chunk): if self.pcm.count+chunk.count <= 24*1024*1024 { self.pcm.append(chunk) }
                 case .string(let txt):
                     guard let o=(try? JSONSerialization.jsonObject(with:Data(txt.utf8))) as? [String:Any] else { continue }
-                    if o["type"] as? String=="pc-status",o["online"] as? Bool==true { try await self.send(["type":"connect"],sock);continue }
+                    if o["type"] as? String=="pc-status",o["online"] as? Bool==true { try await self.send(["type":"connect","nativeAssistant":true],sock);continue }
                     self.event(o)
                 @unknown default: break
                 }
@@ -54,7 +54,7 @@ import UIKit
         case "pc-status": if o["online"] as? Bool==false {ready=false; finishWait();abortMic();message="O PC está offline."}
         case "status": ready=o["connected"] as? Bool==true; cameraAvailable=o["phoneCamera"] as? Bool==true;message=o["message"] as? String ?? ""; if ready && wantsVoice && active {wantsVoice=false;startListening()}
         case "transcript": if let t=o["text"] as? String { add(o["role"] as? String=="user",t) }
-        case "tool-status","input-status": if let t=o["message"] as? String { message=t }; if o["phase"] as? String=="retry" {finishWait()}
+        case "tool-status","input-status": if let t=o["message"] as? String { message=t }; if o["phase"] as? String=="retry" {finishWait()}; if o["phase"] as? String=="open-phone-camera" && active { finishWait();cameraRequested=true }
         case "display":
             if let s=o["image"] as? String,let cut=s.firstIndex(of:","),s.hasPrefix("data:image/"),let d=Data(base64Encoded:String(s[s.index(after:cut)...])),let image=UIImage(data:d) {
                 if o["kind"] as? String=="generated" {artwork=image} else {display=image}
