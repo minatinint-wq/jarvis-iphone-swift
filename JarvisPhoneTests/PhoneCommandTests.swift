@@ -3,6 +3,24 @@ import AVFoundation
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    @MainActor func testMuteEndsCurrentTurnAndIgnoresSpeechUntilFreshWake() async {
+        let phone = RemoteAssistant()
+        phone.heardCall()
+        await phone.say("Oi Jarvis")
+        XCTAssertEqual(phone.lines.last?.text, PhoneLocalKit.greeting)
+        let count = phone.lines.count
+        await phone.say("Jarvis, muta")
+        XCTAssertFalse(phone.isSpeaking)
+        XCTAssertFalse(phone.followUp)
+        XCTAssertFalse(phone.showingFace)
+        await phone.say("Oi")
+        XCTAssertEqual(phone.lines.count, count)
+        phone.heardCall()
+        await phone.say("Oi Jarvis")
+        XCTAssertEqual(phone.lines.count, count + 2)
+        XCTAssertEqual(phone.lines.last?.text, PhoneLocalKit.greeting)
+        await phone.say("Jarvis, muta")
+    }
     func testBundledInstrumentsRenderAudibleSamples() throws {
         let bank = try XCTUnwrap(Bundle.main.url(forResource: "JarvisInstruments", withExtension: "sf2"))
         let format = try XCTUnwrap(AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 2))

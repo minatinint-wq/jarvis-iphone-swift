@@ -274,7 +274,7 @@ private enum VoiceState {
             VStack(alignment: .leading, spacing: 3) {
                 Label("Ativar com “Oi, Jarvis”", systemImage: "waveform")
                     .font(.subheadline.weight(.medium))
-                Text("Ative antes de bloquear. Depois de “Oi, Jarvis”, continue falando normalmente. Após um minuto de silêncio, chame de novo.").font(.footnote).foregroundStyle(ConsoleColor.muted)
+                Text("Diga “Oi, Jarvis” e converse. “Jarvis, muta” corta a fala e espera outra chamada. Após um minuto sem pedido, ele também volta à espera. Ative antes de bloquear.").font(.footnote).foregroundStyle(ConsoleColor.muted)
             }
         }
         .tint(ConsoleColor.cyan).frame(minHeight: 44)

@@ -15,8 +15,13 @@ import ActivityKit
     private var activity: Activity<WakeActivityAttributes>?
     private var lastPhase = ""
     private var lastCall = Date.distantPast
+    private var quietUntilCalled = false
+    private var spokenWords = ""
+    private var wakeTask: Task<Void, Never>?
     func playbackLevel() -> Double { sound.playbackLevel() }
-    private func heardCall() {
+    func heardCall() {
+        quietUntilCalled = false
+        spokenWords = ""
         lastCall = Date()
         if active { showingFace = true }
         message = "Ouvindo seu pedido…"
@@ -57,12 +62,12 @@ import ActivityKit
         }
     }
     @discardableResult func receivePreview(_ text: String) -> Bool {
-        guard autonomous, listeningInBackground else { return false }
+        guard autonomous, !quietUntilCalled, listeningInBackground else { return false }
         return previews.insert(text, now:Date())
     }
     private func autonomousTick() async {
         let now = Date()
-        guard autonomous, listeningInBackground, ready, handsetActions, let sock = ws,
+        guard autonomous, !quietUntilCalled, listeningInBackground, ready, handsetActions, let sock = ws,
               !busy, !isSpeaking, !recording, !wakeHandling, !wake.receivingCommand,
               localRequest == nil, studioMode == nil, now.timeIntervalSince(lastCall) > 7,
               AVAudioSession.sharedInstance().outputVolume > 0 else { return }
@@ -141,10 +146,20 @@ import ActivityKit
     init() {
         sound.sharesWakeSession = { [weak self] in self?.wake.running == true }
         wake.onPrompt = { [weak self] in self?.heardCall() }
+        wake.onMute = { [weak self] in self?.muteUntilCalled() }
+        wake.isOutputEcho = { [weak self] phrase in
+            guard let self, self.isSpeaking else { return false }
+            return (" " + self.spokenWords + " ").contains(" " + PhoneVoiceControl.words(phrase) + " ")
+        }
         wake.onWindowChanged = { [weak self] open in
             guard let self else { return }
             self.followUp = open
             if !self.busy && !self.isSpeaking {
+                if self.quietUntilCalled {
+                    self.setPhase("Em silêncio · aguardando Oi, Jarvis")
+                    self.message = "Em silêncio. Diga “Oi, Jarvis” para voltar."
+                    return
+                }
                 self.setPhase(open ? "Ouvindo seu próximo pedido" : "Aguardando “Oi, Jarvis”")
                 if self.wake.running { self.message = open ? "Pode continuar falando." : "Aguardando “Oi, Jarvis”." }
             }
@@ -152,7 +167,7 @@ import ActivityKit
         wake.onCommand = { [weak self] text in
             guard let self else { return }
             self.wakeHandling = true
-            Task { await self.handleWakeCommand(text) }
+            self.wakeTask = Task { await self.handleWakeCommand(text) }
         }
         wake.onFailure = { [weak self] text in self?.setWakeEnabled(false); self?.message = text }
         interruptionObserver = NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification,
@@ -255,15 +270,15 @@ import ActivityKit
     }
 
     private func handleWakeCommand(_ text: String) async {
-        defer { wakeHandling = false; updateWake() }
-        guard wakeEnabled, !systemInterrupted, !busy, !recording, !isSpeaking else { return }
+        defer { if !Task.isCancelled { wakeHandling = false; updateWake() } }
+        guard !Task.isCancelled, !quietUntilCalled, wakeEnabled, !systemInterrupted, !busy, !recording, !isSpeaking else { return }
         if active && UIApplication.shared.isProtectedDataAvailable && UIApplication.shared.applicationState == .active {
             await say(text)
             return
         }
-        guard listeningInBackground else { return }
+        guard !Task.isCancelled, !quietUntilCalled, listeningInBackground else { return }
         let reply = await PhoneLocalKit.resolve(text, readOnly: true)
-        guard listeningInBackground else { return }
+        guard !Task.isCancelled, !quietUntilCalled, listeningInBackground else { return }
         add(true, text)
         if let reply {
             add(false, reply)
@@ -279,7 +294,7 @@ import ActivityKit
                 if Task.isCancelled { return }
             }
         }
-        guard listeningInBackground else { return }
+        guard !Task.isCancelled, !quietUntilCalled, listeningInBackground else { return }
         guard ready, lockedConversation, let sock = ws else {
             message = "A conversa bloqueada precisa da ponte atualizada e do PC online."
             playConnectionNotice()
@@ -355,6 +370,7 @@ import ActivityKit
     }
 
     private func event(_ o:[String:Any]) async {
+        if quietUntilCalled, let type = o["type"] as? String, !["pc-status","status"].contains(type) { return }
         switch o["type"] as? String {
         case "pc-status":
             if o["online"] as? Bool == false {
@@ -373,7 +389,7 @@ import ActivityKit
             lockedConversation = ready && o["backend"] as? String == "iphone" && o["lockedConversation"] as? Bool == true
             if let enabled = o["handsetActions"] as? Bool { handsetActions = ready && enabled }
             cameraAvailable = ready && o["phoneCamera"] as? Bool == true
-            if !busy && !recording { message = o["message"] as? String ?? "" }
+            if !busy && !recording { message = quietUntilCalled ? "Em silêncio. Diga “Oi, Jarvis” para voltar." : o["message"] as? String ?? "" }
             if ready {
                 retryCount = 0
                 if wantsVoice && active { wantsVoice = false; startListening() }
@@ -429,10 +445,15 @@ import ActivityKit
         default: break
         }
     }
-    func add(_ user:Bool,_ text:String) { lines.append(Line(user:user,text:text));if lines.count>60 {lines.removeFirst()} }
+    func add(_ user:Bool,_ text:String) {
+        if !user { spokenWords = PhoneVoiceControl.words(text) }
+        lines.append(Line(user:user,text:text));if lines.count>60 {lines.removeFirst()}
+    }
     private func send(_ o:[String:Any],_ sock:URLSessionWebSocketTask) async throws {try await sock.send(.string(String(decoding:try JSONSerialization.data(withJSONObject:o),as:UTF8.self)))}
     func say(_ text:String) async {
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if PhoneVoiceControl.isMute(value) { muteUntilCalled(); return }
+        guard !quietUntilCalled else { message = "Em silêncio. Diga “Oi, Jarvis”."; return }
         guard active, !value.isEmpty, value.count <= 2000, !busy, !recording, localRequest == nil else { return }
         let request = UUID()
         localRequest = request
@@ -486,6 +507,7 @@ import ActivityKit
     }
 
     private func playBundledReply(_ reply: String) -> Bool {
+        guard !quietUntilCalled else { return false }
         let name: String
         switch reply {
         case PhoneLocalKit.greeting: name = "jarvis-greeting"
@@ -513,6 +535,8 @@ import ActivityKit
     }
 
     private func sendHandsetReply(_ reply: String, _ sock: URLSessionWebSocketTask) async {
+        guard !quietUntilCalled, ws === sock else { return }
+        spokenWords = PhoneVoiceControl.words(reply)
         beginWait()
         do { try await send(["type":"text", "handsetResult":true, "text":reply], sock) } catch { lost(sock) }
     }
@@ -531,8 +555,27 @@ import ActivityKit
 
     func endConversation() { openWhenArmed = false; wake.endConversation() }
 
+    private func muteUntilCalled() {
+        let hadRemoteTurn = busy
+        quietUntilCalled = true
+        openWhenArmed = false; wantsVoice = false
+        wakeTask?.cancel(); wakeTask = nil; wakeHandling = false
+        localRequest = nil; awaitingHandsetCommand = false
+        previews = VoiceInbox(); nextRemark = Date().addingTimeInterval(1200)
+        suppressAudio = true; spokenWords = ""
+        wake.standbyAfterMute()
+        sound.stopPlayback(); finishWait()
+        // The stream is untagged PCM. Isolate a cancelled turn on its old socket
+        // so a delayed packet can never play after the next wake.
+        if hadRemoteTurn { drop(); connect() }
+        showingFace = false
+        setPhase("Em silêncio · aguardando Oi, Jarvis")
+        message = wake.running ? "Em silêncio. Diga “Oi, Jarvis” para voltar." : "Em silêncio. Ative Oi, Jarvis para chamar por voz."
+    }
+
     func startListening() {
         guard active, !busy, localRequest == nil else { return }
+        quietUntilCalled = false
         openWhenArmed = true
         if !wakeEnabled { setWakeEnabled(true) } else { updateWake() }
     }

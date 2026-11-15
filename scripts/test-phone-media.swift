@@ -2,6 +2,12 @@ import Foundation
 @main enum MediaChecks {
  static func main() throws {
     var conversation = WakeConversationWindow()
+    for command in ["Jarvis, muta!", "oi, Jarvis, se muta", "Járvis, fique em silêncio por favor"] {
+        precondition(PhoneVoiceControl.isMute(command))
+    }
+    for other in ["Jarvis, muta o Spotify", "não muta", "ele falou Jarvis muta", "Jarvis, mutação", "Jarvis, não se mute"] {
+        precondition(!PhoneVoiceControl.isMute(other))
+    }
     precondition(conversation.phase == .standby)
     conversation.listen(at:0); conversation.pause(at:1); conversation.expire(at:80)
     precondition(conversation.phase == .answering) // A long reply must not use listening time.

@@ -1,5 +1,18 @@
 import Foundation
 
+// These commands control this handset only. Match whole utterances, never a song,
+// a quoted instruction, or a request to mute a different device.
+enum PhoneVoiceControl {
+    static func words(_ text: String) -> String {
+        text.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier:"pt_BR"))
+            .components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }.joined(separator:" ")
+    }
+    static func isMute(_ text: String) -> Bool {
+        let phrase = words(text)
+        return phrase.range(of: #"^(oi )?(jarvis|jarves|jarvbis) (muta|mute|se muta|silencie|fique em silencio)( por favor)?$"#, options:.regularExpression) != nil
+    }
+}
+
 // Monotonic time. A turn owns the microphone window; rotating a Speech request does not.
 struct WakeConversationWindow {
     enum Phase: Equatable { case standby, listening(until: TimeInterval), answering }

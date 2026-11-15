@@ -49,6 +49,10 @@ private final class WakeAudioInput: @unchecked Sendable {
     private var recognition: SFSpeechRecognitionTask?
     private var deadline: Task<Void, Never>?
     private var rotation: Task<Void, Never>?
+    private var muteDeadline: Task<Void, Never>?
+    private var pendingMute = false
+    var onMute: (() -> Void)?
+    var isOutputEcho: ((String) -> Bool)?
     private var generation = UUID()
     private var waiting = false
     private var pendingText = ""
@@ -116,7 +120,8 @@ private final class WakeAudioInput: @unchecked Sendable {
         needsNewPhrase = waiting
         greetIfSilent = false
         pendingText = ""
-        if !value { armIdleTimer(); listen(); onWindowChanged?(waiting) }
+        if !value { armIdleTimer(); onWindowChanged?(waiting) }
+        listen() // During output only the local interruption command is accepted.
     }
 
     func stop(releaseSession: Bool = true) {
@@ -137,6 +142,8 @@ private final class WakeAudioInput: @unchecked Sendable {
 
     private func clearRecognition() {
         generation = UUID()
+        muteDeadline?.cancel()
+        pendingMute = false
         deadline?.cancel()
         rotation?.cancel()
         input.replace(nil)
@@ -145,23 +152,29 @@ private final class WakeAudioInput: @unchecked Sendable {
     }
 
     private func listen() {
-        guard running, !paused, let recognizer else { return }
+        guard running, let recognizer else { return }
         clearRecognition()
         let id = generation
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.requiresOnDeviceRecognition = true
         request.shouldReportPartialResults = true
-        request.contextualStrings = ["Oi Jarvis", "Jarvis", "Spotify", "lanterna", "luz do quarto"]
+        request.contextualStrings = ["Oi Jarvis", "Jarvis muta", "Jarvis", "Spotify", "lanterna", "luz do quarto"]
         input.replace(request)
         recognition = recognizer.recognitionTask(with: request) { @Sendable [weak self] result, error in
             let text = result?.bestTranscription.formattedString
+            // A pause separates the user's interruption from words picked up from
+            // the speaker. Never interpret an arbitrary suffix of a sentence.
+            let segments = result?.bestTranscription.segments ?? []
+            var start = 0
+            for i in segments.indices.dropFirst() where segments[i].timestamp - (segments[i-1].timestamp + segments[i-1].duration) > 0.32 { start = i }
+            let latestPhrase = segments[start...].map(\.substring).joined(separator:" ")
             let final = result?.isFinal == true
             let ns = error as NSError?
             let silence = ns?.domain == "kAFAssistantErrorDomain" && ns?.code == 1110
             let failed = error != nil && !silence
             Task { @MainActor in
                 guard let self, self.generation == id else { return }
-                if let text { self.receive(text, final: final) }
+                if let text { self.receive(text, latestPhrase: latestPhrase, final: final) }
                 guard self.generation == id else { return }
                 if final || failed || silence { self.restart(afterFailure: failed) }
             }
@@ -204,6 +217,11 @@ private final class WakeAudioInput: @unchecked Sendable {
         onWindowChanged?(false)
     }
 
+    func standbyAfterMute() {
+        paused = false
+        endConversation() // Also discards the previous recognition request and its timers.
+    }
+
     private func restart(afterFailure: Bool) {
         if afterFailure {
             let now = Date()
@@ -226,12 +244,29 @@ private final class WakeAudioInput: @unchecked Sendable {
         }
     }
 
-    private func receive(_ text: String, final: Bool) {
+    private func receive(_ text: String, latestPhrase: String, final: Bool) {
+        let control = PhoneVoiceControl.isMute(text) ? text : (paused ? latestPhrase : "")
+        if PhoneVoiceControl.isMute(control), isOutputEcho?(control) != true {
+            deadline?.cancel()
+            if final { onMute?() }
+            else if !pendingMute {
+                pendingMute = true
+                let id = generation
+                muteDeadline = Task { [weak self] in
+                    try? await Task.sleep(for:.milliseconds(550))
+                    guard !Task.isCancelled, let self, self.generation == id, self.pendingMute else { return }
+                    self.onMute?()
+                }
+            }
+            return
+        }
+        pendingMute = false; muteDeadline?.cancel()
+        guard !paused else { return }
         if case let .listening(until) = window.phase, now >= until {
             window.expire(at: now); waiting = false; needsNewPhrase = false; pendingText = ""; greetIfSilent = false
             onWindowChanged?(false); listen(); return
         }
-        let wake = text.range(of: #"\boi[\s,.!?:–—-]+jarvis\b"#,
+        let wake = text.range(of: #"\boi[\s,.!?:–—-]+(?:jarvis|jarves|jarvbis)\b"#,
                               options: [.regularExpression, .caseInsensitive, .diacriticInsensitive, .backwards])
         var next: String
         if let wake {
