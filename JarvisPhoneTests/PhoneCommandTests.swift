@@ -2,6 +2,24 @@ import XCTest
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    @MainActor
+    func testUnpairedPhoneCanAnswerTimeOffline() async {
+        let assistant = RemoteAssistant()
+        assistant.paired = false
+        assistant.ready = false
+        await assistant.say("Que horas são?")
+        XCTAssertEqual(assistant.lines.first?.text, "Que horas são?")
+        XCTAssertEqual(assistant.lines.last?.user, false)
+        XCTAssertTrue(assistant.lines.last?.text.hasPrefix("Agora são ") == true)
+        XCTAssertFalse(assistant.busy)
+    }
+
+    @MainActor
+    func testLocalTimeDoesNotConsumeCalendarRequest() async {
+        let result = await PhoneLocalKit.resolve("Que horas são as reuniões da minha agenda?")
+        XCTAssertNil(result)
+    }
+
     func testAllNineteenActionsHaveUniqueIDs() {
         XCTAssertEqual(PhoneAction.allCases.count, 19)
         XCTAssertEqual(Set(PhoneAction.allCases.map(\.rawValue)).count, 19)

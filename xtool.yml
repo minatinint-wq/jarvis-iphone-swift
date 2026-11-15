@@ -7,5 +7,11 @@ resources:
 - JarvisPhone/Resources/JARVIS Sistema.shortcut
 - JarvisPhone/Resources/PrivacyInfo.xcprivacy
 - JarvisPhone/Resources/AssistantMask.png
+- JarvisPhone/Resources/jarvis-greeting.pcm
+- JarvisPhone/Resources/jarvis-torch-on.pcm
+- JarvisPhone/Resources/jarvis-torch-off.pcm
 - JarvisPhone/Assets.xcassets/AppIcon.appiconset/AppIcon60x60@2x.png
 - JarvisPhone/Assets.xcassets/AppIcon.appiconset/AppIcon60x60@3x.png
+
+- JarvisPhone/Resources/GeneralUser-LICENSE.txt
+- JarvisPhone/Resources/JarvisInstruments.sf2

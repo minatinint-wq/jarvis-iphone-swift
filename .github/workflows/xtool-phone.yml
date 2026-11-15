@@ -38,7 +38,8 @@ jobs:
       - name: Abrir a tela inicial no simulador
         run: |
           set -e
-          id=$(xcrun simctl list devices available -j | python3 -c 'import sys,json;print(next(x["udid"] for items in json.load(sys.stdin)["devices"].values() for x in items if "iPhone" in x["name"]))')
+          runtime=$(xcrun simctl list runtimes -j | python3 -c 'import sys,json;print(next(x["identifier"] for x in json.load(sys.stdin)["runtimes"] if x["isAvailable"] and "SimRuntime.iOS-" in x["identifier"]))')
+          id=$(xcrun simctl create 'Jarvis iPhone 13 Pro Max' com.apple.CoreSimulator.SimDeviceType.iPhone-13-Pro-Max "$runtime")
           xcrun simctl boot "$id"
           xcodebuild -quiet -project JarvisPhone.xcodeproj -scheme JarvisPhone -destination "id=$id" -derivedDataPath "$RUNNER_TEMP/jarvis-derived" CODE_SIGNING_ALLOWED=NO test
           xcrun simctl install "$id" "$RUNNER_TEMP/jarvis-derived/Build/Products/Debug-iphonesimulator/JarvisPhone.app"

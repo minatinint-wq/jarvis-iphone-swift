@@ -12,7 +12,8 @@ import AVFoundation
     @Published private(set) var wakeEnabled = false
     @Published var recording = false
     @Published var cameraAvailable = false
-    @Published var studioMode: String?
+    @Published var studioMode: String? { didSet { updateWake() } }
+    @Published private(set) var localStudio = false
     @Published var wantsVoice = false
     @Published var cameraRequested = false
     @Published var message = "Conecte ao seu Jarvis."
@@ -123,6 +124,7 @@ import AVFoundation
     private func updateWake() {
         wakeResume?.cancel()
         guard wakeEnabled, wakeAuthorized, !systemInterrupted else { return }
+        if studioMode != nil { wake.stop(releaseSession: !isSpeaking); return }
         guard !busy, !recording, !isSpeaking, !wakeHandling, localRequest == nil else {
             wake.setPaused(true)
             return
@@ -156,6 +158,7 @@ import AVFoundation
         add(true, text)
         add(false, reply)
         message = reply
+        if playBundledReply(reply) { return }
         if ready, handsetActions, let sock = ws, sock === originalSocket {
             await sendHandsetReply(reply, sock)
         }
@@ -225,6 +228,7 @@ import AVFoundation
                 handshakeTimer?.cancel()
                 ready = false
                 handsetActions = false
+                studioWentOffline()
                 cameraAvailable = false
                 finishWait()
                 abortMic()
@@ -254,11 +258,11 @@ import AVFoundation
                 let reply = await PhoneLocalKit.resolve(text) ?? "Não reconheci esse comando do iPhone."
                 guard ws === sock, active else { return }
                 add(false, reply)
-                await sendHandsetReply(reply, sock)
+                if playBundledReply(reply) { finishWait() } else { await sendHandsetReply(reply, sock) }
             }
             if o["phase"] as? String == "retry" { finishWait() }
             if o["phase"] as? String == "open-studio", let mod = o["mode"] as? String,
-               ["sketch","music","libras"].contains(mod), active { finishWait(); studioMode = mod }
+               ["sketch","music","libras"].contains(mod), active { finishWait(); openStudio(mod) }
             if o["phase"] as? String == "open-phone-camera", active { finishWait(); cameraRequested = true }
         case "display":
             if o["kind"] as? String == "image-part" {
@@ -295,6 +299,16 @@ import AVFoundation
         localRequest = request
         wake.setPaused(true)
         defer { updateWake() }
+        if let mode = PhoneLocalKit.studio(for: value) {
+            localRequest = nil
+            add(true, value)
+            if openStudio(mode) {
+                let reply = mode == "music" ? "Instrumentos abertos." : "Caderno de desenho aberto."
+                add(false, reply)
+                message = reply
+            }
+            return
+        }
         let originalSocket = ws
         let reply = await PhoneLocalKit.resolve(value)
         guard localRequest == request else { return }
@@ -303,6 +317,7 @@ import AVFoundation
             add(true, value)
             add(false, reply)
             message = reply
+            if playBundledReply(reply) { return }
             guard ready, handsetActions, let sock = ws, sock === originalSocket else { return }
             await sendHandsetReply(reply, sock)
             return
@@ -314,6 +329,47 @@ import AVFoundation
         beginWait()
         add(true, value)
         do { try await send(["type":"text", "text":value], sock) } catch { lost(sock) }
+    }
+
+    @discardableResult func openStudio(_ mode: String) -> Bool {
+        guard active, UIApplication.shared.applicationState == .active, UIApplication.shared.isProtectedDataAvailable,
+              !busy, !recording, ["sketch","music","libras"].contains(mode) else { return false }
+        guard ready || mode != "libras" else { message = "Conecte ao PC para abrir Libras."; return false }
+        sound.stopPlayback()
+        localStudio = !ready
+        studioMode = mode
+        return true
+    }
+
+    private func studioWentOffline() {
+        if studioMode == "libras" { studioMode = nil }
+        else if studioMode != nil { localStudio = true }
+    }
+
+    private func playBundledReply(_ reply: String) -> Bool {
+        let name: String
+        switch reply {
+        case PhoneLocalKit.greeting: name = "jarvis-greeting"
+        case "Lanterna ligada.": name = "jarvis-torch-on"
+        case "Lanterna desligada.": name = "jarvis-torch-off"
+        default: return false
+        }
+        guard let url = Bundle.main.url(forResource: name, withExtension: "pcm"),
+              let pcm = try? Data(contentsOf: url), !pcm.isEmpty, pcm.count.isMultiple(of: 2) else { return false }
+        wakeResume?.cancel()
+        wake.setPaused(true)
+        sound.stopPlayback()
+        do {
+            for at in stride(from: 0, to: pcm.count, by: 8192) {
+                try sound.enqueue(pcm.subdata(in: at..<min(at + 8192, pcm.count)))
+            }
+            sound.finishPlayback()
+            return true
+        } catch {
+            sound.stopPlayback()
+            message = error.localizedDescription
+            return false
+        }
     }
 
     private func sendHandsetReply(_ reply: String, _ sock: URLSessionWebSocketTask) async {
@@ -472,6 +528,7 @@ import AVFoundation
         abortMic()
         ready = false
         handsetActions = false
+        studioWentOffline()
         cameraAvailable = false
     }
 

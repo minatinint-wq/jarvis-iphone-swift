@@ -102,6 +102,7 @@ private enum VoiceState {
                                 VStack(alignment: .leading, spacing: 12) {
                                     wakeControl
                                     composer.id("composer")
+                                    toolsPanel
                                     if let line = model.lines.last { latestMessage(line) }
                                 }
                                 .padding(.top, 12)
@@ -141,14 +142,21 @@ private enum VoiceState {
                 if let mode = model.studioMode {
                     VStack(spacing: 0) {
                         HStack {
-                            Text(["sketch": "Desenho no ar", "music": "Instrumentos", "libras": "Libras"][mode] ?? "Estúdio")
+                            Text(["sketch": model.localStudio ? "Desenho na tela" : "Desenho no ar", "music": "Instrumentos", "libras": "Libras"][mode] ?? "Estúdio")
                                 .font(.headline)
                             Spacer()
+                            if model.localStudio && model.ready { Button("Estúdio completo") { model.openStudio(mode) } }
                             Button("Fechar") { model.studioMode = nil }
                         }.padding()
-                        StudioWeb(mode: mode, origin: model.origin) { text in
-                            model.studioMode = nil
-                            Task { await model.say(text) }
+                        if model.localStudio && mode == "sketch" {
+                            OfflineSketch()
+                        } else if model.localStudio && mode == "music" {
+                            OfflineInstruments()
+                        } else {
+                            StudioWeb(mode: mode, origin: model.origin) { text in
+                                model.studioMode = nil
+                                Task { await model.say(text) }
+                            }
                         }
                     }.preferredColorScheme(.dark)
                 }
@@ -318,19 +326,24 @@ private enum VoiceState {
         VStack(alignment: .leading, spacing: 10) {
             sectionTitle("Ferramentas")
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 9), count: typeSize.isAccessibilitySize ? 1 : 2), spacing: 9) {
-                tool("Câmera", symbol: "camera.viewfinder", color: ConsoleColor.cyan, enabled: model.cameraAvailable) {
-                    Task { await openCamera() }
+                if model.paired {
+                    tool("Câmera", symbol: "camera.viewfinder", color: ConsoleColor.cyan, enabled: model.cameraAvailable) {
+                        Task { await openCamera() }
+                    }
                 }
-                tool("Desenho no ar", symbol: "pencil.tip", color: ConsoleColor.gold) { model.studioMode = "sketch" }
-                tool("Instrumentos", symbol: "pianokeys", color: ConsoleColor.gold) { model.studioMode = "music" }
-                tool("Libras", symbol: "hand.raised.fingers.spread", color: ConsoleColor.cyan) { model.studioMode = "libras" }
+                tool(model.ready ? "Desenho no ar" : "Desenho na tela", symbol: "pencil.tip", color: ConsoleColor.gold, requiresPC: false) { model.openStudio("sketch") }
+                tool("Instrumentos", symbol: "pianokeys", color: ConsoleColor.gold, requiresPC: false) { model.openStudio("music") }
+                if model.paired {
+                    tool("Libras", symbol: "hand.raised.fingers.spread", color: ConsoleColor.cyan) { model.openStudio("libras") }
+                }
             }
         }
     }
 
-    private func tool(_ title: String, symbol: String, color: Color, enabled: Bool = true,
+    private func tool(_ title: String, symbol: String, color: Color, enabled: Bool = true, requiresPC: Bool = true,
                       action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        let available = enabled && canCompose && (!requiresPC || model.ready)
+        return Button(action: action) {
             VStack(alignment: .leading, spacing: 12) {
                 Image(systemName: symbol).font(.title3.weight(.medium)).foregroundStyle(color)
                 Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.white)
@@ -342,8 +355,8 @@ private enum VoiceState {
             .overlay { RoundedRectangle(cornerRadius: 14).strokeBorder(ConsoleColor.border) }
         }
         .buttonStyle(.plain)
-        .opacity(enabled && remoteAvailable ? 1 : 0.65)
-        .disabled(!enabled || !remoteAvailable)
+        .opacity(available ? 1 : 0.65)
+        .disabled(!available)
     }
 
     private var shortcuts: some View {

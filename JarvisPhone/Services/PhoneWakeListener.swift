@@ -35,6 +35,8 @@ private final class WakeAudioInput: @unchecked Sendable {
     private var waiting = false
     private var pendingText = ""
     private var needsNewPhrase = false
+    private var greetIfSilent = false
+    private var continueAfterGreeting = false
     private var lastFailure = Date.distantPast
     private var rapidFailures = 0
     private(set) var paused = false
@@ -84,8 +86,10 @@ private final class WakeAudioInput: @unchecked Sendable {
         guard running, paused != value else { return }
         paused = value
         clearRecognition()
-        waiting = false
-        needsNewPhrase = false
+        waiting = !value && continueAfterGreeting
+        needsNewPhrase = waiting
+        continueAfterGreeting = false
+        greetIfSilent = false
         pendingText = ""
         if !value { listen() }
     }
@@ -99,6 +103,8 @@ private final class WakeAudioInput: @unchecked Sendable {
         paused = false
         waiting = false
         needsNewPhrase = false
+        greetIfSilent = false
+        continueAfterGreeting = false
         pendingText = ""
         if releaseSession { try? session.setActive(false, options: .notifyOthersOnDeactivation) }
     }
@@ -138,7 +144,7 @@ private final class WakeAudioInput: @unchecked Sendable {
             guard !Task.isCancelled, let self, self.generation == id else { return }
             self.restart(afterFailure: false)
         }
-        if waiting { scheduleCommand(after: pendingText.isEmpty ? 7.0 : 0.9) }
+        if waiting { scheduleCommand(after: pendingText.isEmpty ? (greetIfSilent ? 1.4 : 7.0) : 0.9) }
     }
 
     private func restart(afterFailure: Bool) {
@@ -169,13 +175,14 @@ private final class WakeAudioInput: @unchecked Sendable {
         var next: String
         if let wake {
             next = String(text[wake.upperBound...])
-            if !waiting { waiting = true; onPrompt?(); scheduleCommand(after: 7.0) }
+            if !waiting { waiting = true; greetIfSilent = true; onPrompt?(); scheduleCommand(after: 1.4) }
             needsNewPhrase = false
         } else if waiting && needsNewPhrase {
             next = text
         } else { return }
         next = next.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
         guard !next.isEmpty else { return }
+        greetIfSilent = false
         if next != pendingText {
             pendingText = next
             scheduleCommand(after: 0.9)
@@ -189,6 +196,12 @@ private final class WakeAudioInput: @unchecked Sendable {
             try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
             guard !Task.isCancelled, let self, self.waiting else { return }
             if self.pendingText.isEmpty {
+                if self.greetIfSilent {
+                    self.setPaused(true)
+                    self.continueAfterGreeting = true
+                    self.onCommand?("Oi Jarvis")
+                    return
+                }
                 self.waiting = false
                 self.needsNewPhrase = false
                 self.listen()
