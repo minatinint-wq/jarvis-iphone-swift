@@ -233,6 +233,7 @@ private final class WakeAudioInput: @unchecked Sendable {
                 return
             }
         }
+        if pendingMute, !afterFailure { onMute?(); return }
         if waiting, !pendingText.isEmpty { dispatchCommand(); return }
         needsNewPhrase = waiting
         clearRecognition()
@@ -245,7 +246,7 @@ private final class WakeAudioInput: @unchecked Sendable {
     }
 
     private func receive(_ text: String, latestPhrase: String, final: Bool) {
-        let control = PhoneVoiceControl.isMute(text) ? text : (paused ? latestPhrase : "")
+        let control = PhoneVoiceControl.isMute(text) ? text : ((paused || waiting) ? latestPhrase : "")
         if PhoneVoiceControl.isMute(control), isOutputEcho?(control) != true {
             deadline?.cancel()
             if final { onMute?() }

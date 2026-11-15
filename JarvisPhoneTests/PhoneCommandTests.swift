@@ -24,7 +24,13 @@ final class PhoneCommandTests: XCTestCase {
     func testBundledInstrumentsRenderAudibleSamples() throws {
         let bank = try XCTUnwrap(Bundle.main.url(forResource: "JarvisInstruments", withExtension: "sf2"))
         let format = try XCTUnwrap(AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 2))
-        for instrument in StudioInstrument.allCases {
+        var checks = StudioInstrument.allCases.map { (instrument: $0, note: UInt8($0 == .drums ? 38 : 60), velocity: UInt8(100)) }
+        for note: UInt8 in [36, 60, 84] {
+            for velocity: UInt8 in [65, 96, 110] {
+                checks.append((.flute, note, velocity))
+            }
+        }
+        for (instrument, note, velocity) in checks {
             let engine = AVAudioEngine(), sampler = AVAudioUnitSampler()
             engine.attach(sampler)
             engine.connect(sampler, to: engine.mainMixerNode, format: format)
@@ -33,7 +39,7 @@ final class PhoneCommandTests: XCTestCase {
                                                 bankMSB: instrument == .drums ? 0x78 : 0x79, bankLSB: 0)
             try engine.start()
             let buffer = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 1024))
-            sampler.startNote(instrument == .drums ? 38 : 60, withVelocity: 100, onChannel: 0)
+            sampler.startNote(note, withVelocity: velocity, onChannel: 0)
             var peak: Float = 0
             for _ in 0..<20 {
                 if try engine.renderOffline(1024, to: buffer) == .success, let samples = buffer.floatChannelData {
@@ -41,7 +47,7 @@ final class PhoneCommandTests: XCTestCase {
                 }
             }
             engine.stop()
-            XCTAssertGreaterThan(peak, 0.0001, instrument.rawValue)
+            XCTAssertGreaterThan(peak, 0.0001, "\(instrument.rawValue), MIDI \(note), velocidade \(velocity)")
         }
     }
     @MainActor func testConversationRoutesTorchToPhoneButNotBedroomLight() {
