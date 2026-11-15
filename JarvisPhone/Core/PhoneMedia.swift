@@ -5,6 +5,10 @@ struct WakeConversationWindow {
     enum Phase: Equatable { case standby, listening(until: TimeInterval), answering }
     private(set) var phase = Phase.standby
     static let silence: TimeInterval = 60
+    // A late recognition update or background noise cannot hold a turn indefinitely.
+    static func endpointDelay(at now: TimeInterval, partial: TimeInterval, voice: TimeInterval) -> TimeInterval {
+        max(0, min(partial + 2.8, max(partial + 0.9, voice + 0.55)) - now)
+    }
     mutating func listen(at now: TimeInterval) { phase = .listening(until: now + Self.silence) }
     mutating func expire(at now: TimeInterval) {
         if case let .listening(until) = phase, now >= until { phase = .standby }

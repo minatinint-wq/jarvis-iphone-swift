@@ -8,17 +8,35 @@ private final class WakeAudioInput: @unchecked Sendable {
     private let lock = NSLock()
     private var request: SFSpeechAudioBufferRecognitionRequest?
 
+    // ASR partials sometimes stop changing before the speaker has finished. Measure
+    // recent input energy too, so that a delayed partial cannot cut off a sentence.
+    private var lastVoice: TimeInterval = -.infinity
+    private var floorRMS = 0.002
+    func latestActivity() -> TimeInterval { lock.lock(); defer { lock.unlock() }; return lastVoice }
+
     func replace(_ next: SFSpeechAudioBufferRecognitionRequest?) {
         lock.lock()
         let old = request
         request = next
+        lastVoice = -.infinity
         lock.unlock()
         old?.endAudio()
     }
 
     func append(_ buffer: AVAudioPCMBuffer, at time: AVAudioTime) {
         lock.lock()
-        request?.append(buffer)
+        if let request {
+            if let data = buffer.floatChannelData?[0], buffer.frameLength > 0 {
+                var energy = 0.0, count = 0
+                for i in stride(from: 0, to: Int(buffer.frameLength), by: 8) {
+                    let x = Double(data[i]); energy += x * x; count += 1
+                }
+                let rms = sqrt(energy / Double(max(1, count)))
+                if rms > max(0.006, floorRMS * 2.8) { lastVoice = ProcessInfo.processInfo.systemUptime }
+                floorRMS += (min(rms, floorRMS * 1.6 + 0.0001) - floorRMS) * 0.018
+            }
+            request.append(buffer)
+        }
         lock.unlock()
     }
 }
@@ -34,6 +52,7 @@ private final class WakeAudioInput: @unchecked Sendable {
     private var generation = UUID()
     private var waiting = false
     private var pendingText = ""
+    private var lastPartial: TimeInterval = 0
     private var needsNewPhrase = false
     private var greetIfSilent = false
     private var window = WakeConversationWindow()
@@ -228,6 +247,7 @@ private final class WakeAudioInput: @unchecked Sendable {
         if next != pendingText {
             window.listen(at: now); armIdleTimer()
             pendingText = next
+            lastPartial = now
             scheduleCommand(after: 0.9)
         }
         if final { dispatchCommand() }
@@ -247,7 +267,10 @@ private final class WakeAudioInput: @unchecked Sendable {
                 self.waiting = false
                 self.needsNewPhrase = false
                 self.listen()
-            } else { self.dispatchCommand() }
+            } else {
+                let wait = WakeConversationWindow.endpointDelay(at: self.now, partial: self.lastPartial, voice: self.input.latestActivity())
+                if wait > 0 { self.scheduleCommand(after: wait) } else { self.dispatchCommand() }
+            }
         }
     }
 

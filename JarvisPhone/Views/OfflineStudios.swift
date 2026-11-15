@@ -100,7 +100,7 @@ private struct DrawingSurface: UIViewRepresentable {
     }
 }
 
-private enum StudioInstrument: String, CaseIterable, Identifiable {
+enum StudioInstrument: String, CaseIterable, Identifiable {
     case piano = "Piano", guitar = "Violão", bass = "Baixo", strings = "Cordas", flute = "Flauta", drums = "Bateria"
     var id: Self { self }
     var program: UInt8 {
@@ -114,13 +114,14 @@ private enum StudioInstrument: String, CaseIterable, Identifiable {
     }
 }
 
-@MainActor private final class InstrumentPlayer: ObservableObject {
+@MainActor final class InstrumentPlayer: ObservableObject {
     @Published var error: String?
     private let engine = AVAudioEngine()
     private let sampler = AVAudioUnitSampler()
     private let session = AVAudioSession.sharedInstance()
     private var loaded: StudioInstrument?
     private var activeNotes: Set<UInt8> = []
+    private var releases: [UInt8: Task<Void, Never>] = [:]
     private var ownsSession = false
 
     init() {
@@ -128,7 +129,7 @@ private enum StudioInstrument: String, CaseIterable, Identifiable {
         engine.connect(sampler, to: engine.mainMixerNode, format: nil)
     }
 
-    func configure(_ instrument: StudioInstrument) {
+    @discardableResult func configure(_ instrument: StudioInstrument) -> Bool {
         silence()
         do {
             if !ownsSession {
@@ -146,16 +147,33 @@ private enum StudioInstrument: String, CaseIterable, Identifiable {
             }
             if !engine.isRunning { engine.prepare(); try engine.start() }
             error = nil
-        } catch { stop(); self.error = error.localizedDescription }
+            return true
+        } catch { stop(); self.error = error.localizedDescription; return false }
     }
 
-    func press(_ note: UInt8) {
-        guard engine.isRunning, activeNotes.insert(note).inserted else { return }
-        sampler.startNote(note, withVelocity: 96, onChannel: 0)
+    func press(_ note: UInt8, velocity: UInt8 = 96) {
+        if !engine.isRunning, let loaded, !configure(loaded) { return }
+        guard engine.isRunning else { return }
+        release(note)
+        activeNotes.insert(note)
+        sampler.startNote(note, withVelocity: velocity, onChannel: 0)
     }
 
     func release(_ note: UInt8) {
+        releases.removeValue(forKey: note)?.cancel()
         if activeNotes.remove(note) != nil { sampler.stopNote(note, onChannel: 0) }
+    }
+
+    func play(_ note: UInt8, instrument: StudioInstrument, velocity: UInt8, duration: Int, volume: Float) -> Bool {
+        if (instrument != loaded || !engine.isRunning), !configure(instrument) { return false }
+        engine.mainMixerNode.outputVolume = min(1, max(0, volume))
+        press(note, velocity: velocity)
+        releases[note] = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(duration) * 1_000_000)
+            guard !Task.isCancelled else { return }
+            self?.release(note)
+        }
+        return true
     }
 
     func silence() {
@@ -165,7 +183,8 @@ private enum StudioInstrument: String, CaseIterable, Identifiable {
     func stop() {
         silence()
         engine.stop()
-        if ownsSession { try? session.setActive(false, options: .notifyOthersOnDeactivation); ownsSession = false }
+        if ownsSession && session.category == .playback { try? session.setActive(false, options: .notifyOthersOnDeactivation) }
+        ownsSession = false
     }
 }
 

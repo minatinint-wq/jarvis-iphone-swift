@@ -629,9 +629,51 @@ private struct QRReader: UIViewControllerRepresentable {
 private struct StudioWeb:UIViewRepresentable {
     let mode:String,origin:String
     var submit:(String)->Void
-    final class Delegate:NSObject, WKNavigationDelegate,WKScriptMessageHandler{
+    @MainActor final class Delegate:NSObject, WKNavigationDelegate, WKScriptMessageHandler, WKScriptMessageHandlerWithReply {
         let origin:String;let submit:(String)->Void
+        private var music: InstrumentPlayer?
+        private var closed = false
         init(_ origin:String,_ submit:@escaping(String)->Void){self.origin=origin;self.submit=submit}
+        func closeMusic() { closed = true; music?.stop(); music = nil }
+        func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage,
+                                   replyHandler: @escaping @MainActor @Sendable (Any?, String?) -> Void) {
+            guard !closed, message.name == "jarvisInstrument", message.frameInfo.isMainFrame,
+                  message.frameInfo.securityOrigin.protocol == "https",
+                  message.frameInfo.securityOrigin.host == URL(string: origin)?.host,
+                  message.webView?.url?.path.hasPrefix("/studio/") == true,
+                  let command = message.body as? [String: Any], let action = command["action"] as? String else {
+                replyHandler(nil, "O estúdio não está disponível."); return
+            }
+            switch action {
+            case "pause": music?.stop()
+            case "silence": music?.silence()
+            case "release":
+                if let note = command["note"] as? Int, (0...127).contains(note) { music?.release(UInt8(note)) }
+            case "prepare", "play":
+                guard UIApplication.shared.applicationState == .active,
+                      let program = command["program"] as? Int,
+                      let instrument = StudioInstrument.allCases.first(where: {
+                          $0 == .drums ? program == 128 : Int($0.program) == program
+                      }) else { replyHandler(nil, "Instrumento indisponível."); return }
+                let player = music ?? InstrumentPlayer()
+                music = player
+                let ok: Bool
+                if action == "prepare" { ok = player.configure(instrument) }
+                else {
+                    guard let note = command["note"] as? Int, (0...127).contains(note),
+                          let velocity = command["velocity"] as? Int, (1...127).contains(velocity),
+                          let duration = command["duration"] as? Int, (10...4000).contains(duration),
+                          let volume = command["volume"] as? Double, (0...1).contains(volume) else {
+                        replyHandler(nil, "Nota inválida."); return
+                    }
+                    ok = player.play(UInt8(note), instrument: instrument, velocity: UInt8(velocity),
+                                     duration: duration, volume: Float(volume))
+                }
+                if !ok { replyHandler(nil, player.error ?? "O iPhone não iniciou o áudio."); return }
+            default: replyHandler(nil, "Comando de instrumento inválido."); return
+            }
+            replyHandler(true, nil)
+        }
         func userContentController(_ controller:WKUserContentController,didReceive message:WKScriptMessage){
             guard message.frameInfo.isMainFrame, message.frameInfo.securityOrigin.protocol=="https",message.frameInfo.securityOrigin.host==URL(string:origin)?.host,
                   let text=message.body as? String,!text.isEmpty,text.count<=1200 else{return};submit(text)
@@ -644,6 +686,7 @@ private struct StudioWeb:UIViewRepresentable {
     func makeUIView(context:Context)->WKWebView{
         let cfg=WKWebViewConfiguration();cfg.websiteDataStore = .nonPersistent();cfg.allowsInlineMediaPlayback=true
         cfg.userContentController.add(context.coordinator,name:"jarvisSubmit")
+        cfg.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "jarvisInstrument")
         let v=WKWebView(frame:.zero,configuration:cfg);v.navigationDelegate=context.coordinator
         if let token=PairingStore.read(),let base=URL(string:origin),let domain=base.host,let url=URL(string:origin+"/studio/index.html?mode="+mode),
            let cookie=HTTPCookie(properties:[.domain:domain,.path:"/",.name:"__Host-jarvis",.value:token,.secure:"TRUE",HTTPCookiePropertyKey("HttpOnly"):"TRUE"]){
@@ -651,5 +694,10 @@ private struct StudioWeb:UIViewRepresentable {
         };return v
     }
     func updateUIView(_ v:WKWebView,context:Context){}
-    static func dismantleUIView(_ v:WKWebView,coordinator:Delegate){v.configuration.userContentController.removeScriptMessageHandler(forName:"jarvisSubmit");v.stopLoading()}
+    static func dismantleUIView(_ v:WKWebView,coordinator:Delegate){
+        coordinator.closeMusic()
+        v.configuration.userContentController.removeScriptMessageHandler(forName:"jarvisSubmit")
+        v.configuration.userContentController.removeScriptMessageHandler(forName:"jarvisInstrument",contentWorld:.page)
+        v.stopLoading()
+    }
 }

@@ -1,7 +1,31 @@
 import XCTest
+import AVFoundation
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    func testBundledInstrumentsRenderAudibleSamples() throws {
+        let bank = try XCTUnwrap(Bundle.main.url(forResource: "JarvisInstruments", withExtension: "sf2"))
+        let format = try XCTUnwrap(AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 2))
+        for instrument in StudioInstrument.allCases {
+            let engine = AVAudioEngine(), sampler = AVAudioUnitSampler()
+            engine.attach(sampler)
+            engine.connect(sampler, to: engine.mainMixerNode, format: format)
+            try engine.enableManualRenderingMode(.offline, format: format, maximumFrameCount: 1024)
+            try sampler.loadSoundBankInstrument(at: bank, program: instrument.program,
+                                                bankMSB: instrument == .drums ? 0x78 : 0x79, bankLSB: 0)
+            try engine.start()
+            let buffer = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 1024))
+            sampler.startNote(instrument == .drums ? 38 : 60, withVelocity: 100, onChannel: 0)
+            var peak: Float = 0
+            for _ in 0..<20 {
+                if try engine.renderOffline(1024, to: buffer) == .success, let samples = buffer.floatChannelData {
+                    for index in 0..<Int(buffer.frameLength) { peak = max(peak, abs(samples[0][index])) }
+                }
+            }
+            engine.stop()
+            XCTAssertGreaterThan(peak, 0.0001, instrument.rawValue)
+        }
+    }
     @MainActor func testConversationRoutesTorchToPhoneButNotBedroomLight() {
         for s in ["Oi Jarvis, você pode acender a lanterna do meu celular?", "Liga o flash pra mim", "Acende minha lanterna"] {
             XCTAssertEqual(PhoneLocalKit.torchAction(s), .torchOn, s)
