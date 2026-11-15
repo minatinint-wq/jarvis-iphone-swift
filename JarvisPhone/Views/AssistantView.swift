@@ -24,7 +24,7 @@ struct AssistantView: View {
                     Text("Às suas ordens.").font(.system(size:38,weight:.semibold,design:.rounded))
                     Text(model.message).font(.callout).foregroundStyle(.secondary).accessibilityIdentifier("assistantStatus")
                     if !model.paired {
-                        Button { if DataScannerViewController.isSupported && DataScannerViewController.isAvailable {scanning=true} else {model.message="Use o código que aparece ao lado do QR no computador."} } label:{Label("Ler QR do meu PC", systemImage:"qrcode.viewfinder")}.buttonStyle(.borderedProminent)
+                        Button { Task { await openScanner() } } label:{Label("Ler QR do meu PC", systemImage:"qrcode.viewfinder")}.buttonStyle(.borderedProminent)
                         SecureField("Código de conexão do PC",text:$code).textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder)
                         Button("Conectar ao meu Jarvis"){let c=code;code="";Task{await model.pair(c)}}.buttonStyle(.borderedProminent)
                         Text("Use o código do painel Jarvis Remoto no computador.").font(.footnote).foregroundStyle(.secondary)
@@ -55,7 +55,7 @@ struct AssistantView: View {
                     }
                 }.padding(22)
             }.background(Color(red:0.025,green:0.045,blue:0.066)).navigationTitle("JARVIS XLV")
-            .sheet(isPresented:$scanning){QRReader { value in if PhoneMedia.pairingCode(value) != nil {scanning=false;Task{await model.pair(value)}} } }
+            .sheet(isPresented:$scanning){QRReader(accept:{ value in scanning=false;Task{await model.pair(value)} },failure:{ scanning=false;model.message="Não consegui abrir o leitor. Cole o código do painel do PC." }) }
             .fullScreenCover(isPresented:Binding(get:{model.studioMode != nil},set:{if !$0{model.studioMode=nil}})){
                 if let mode=model.studioMode { VStack(spacing:0){ HStack {Text(["sketch":"Desenho no ar","music":"Instrumentos","libras":"Libras"][mode] ?? "Estúdio").font(.headline);Spacer();Button("Fechar"){model.studioMode=nil} }.padding();StudioWeb(mode:mode,origin:model.origin){text in model.studioMode=nil;Task{await model.say(text)}} }.preferredColorScheme(.dark) }
             }
@@ -67,6 +67,12 @@ struct AssistantView: View {
     private func preset(_ title:String,_ command:String)->some View {
         Button(title){if title=="Gerar imagem" {draft=command}else{Task{await model.say(command)}}}
     }
+    @MainActor private func openScanner() async {
+        guard DataScannerViewController.isSupported else {model.message="Cole o código que aparece ao lado do QR no computador.";return}
+        guard await AVCaptureDevice.requestAccess(for:.video) else {model.message="Autorize a câmera em Ajustes ou cole o código do painel do PC.";return}
+        guard DataScannerViewController.isAvailable else {model.message="Leitor indisponível. Cole o código do painel do PC.";return}
+        scanning=true
+    }
     private func openCamera() async {
         guard UIImagePickerController.isSourceTypeAvailable(.camera) else {model.message="A câmera não está disponível neste aparelho.";return}
         guard await AVCaptureDevice.requestAccess(for:.video) else {model.message="Autorize a câmera em Ajustes.";return}
@@ -75,6 +81,7 @@ struct AssistantView: View {
 }
 private struct QRReader: UIViewControllerRepresentable {
     var accept:(String)->Void
+    var failure:()->Void
     final class Coordinator:NSObject, DataScannerViewControllerDelegate {
         let accept:(String)->Void
         init(_ a:@escaping(String)->Void){accept=a}
@@ -84,12 +91,15 @@ private struct QRReader: UIViewControllerRepresentable {
         func dataScanner(_ dataScanner:DataScannerViewController,didTapOn item:RecognizedItem){if case .barcode(let b)=item,let s=b.payloadStringValue,PhoneMedia.pairingCode(s) != nil {accept(s)}}
     }
     func makeCoordinator()->Coordinator{Coordinator(accept)}
-    func makeUIViewController(context:Context)->DataScannerViewController{
-        let v=DataScannerViewController(recognizedDataTypes:[.barcode(symbologies:[.qr])],recognizesMultipleItems:false,isHighlightingEnabled:true)
-        v.delegate=context.coordinator;return v
+    final class Host:UIViewController {
+        let scanner=DataScannerViewController(recognizedDataTypes:[.barcode(symbologies:[.qr])],recognizesMultipleItems:false,isHighlightingEnabled:true)
+        var failure:(()->Void)?
+        override func viewDidLoad(){super.viewDidLoad();addChild(scanner);scanner.view.frame=view.bounds;scanner.view.autoresizingMask=[.flexibleWidth,.flexibleHeight];view.addSubview(scanner.view);scanner.didMove(toParent:self)}
+        override func viewDidAppear(_ animated:Bool){super.viewDidAppear(animated);do{try scanner.startScanning()}catch{failure?()}}
+        override func viewWillDisappear(_ animated:Bool){scanner.stopScanning();super.viewWillDisappear(animated)}
     }
-    func updateUIViewController(_ v:DataScannerViewController,context:Context){Task{@MainActor in try? await Task.sleep(nanoseconds:300_000_000);if v.view.window != nil && !v.isScanning {try? v.startScanning()}}}
-    static func dismantleUIViewController(_ v:DataScannerViewController,coordinator:Coordinator){v.stopScanning()}
+    func makeUIViewController(context:Context)->Host{let h=Host();h.scanner.delegate=context.coordinator;h.failure=failure;return h}
+    func updateUIViewController(_ host:Host,context:Context){}
 }
 private struct StudioWeb:UIViewRepresentable {
     let mode:String,origin:String
