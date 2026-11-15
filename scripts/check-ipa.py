@@ -8,13 +8,18 @@ with zipfile.ZipFile(sys.argv[1]) as z:
  assert all(info.get(key) for key in ["NSCameraUsageDescription","NSMicrophoneUsageDescription","NSSpeechRecognitionUsageDescription"])
  assert any("jarvisiphone" in x["CFBundleURLSchemes"] for x in info["CFBundleURLTypes"])
  assert root+"PrivacyInfo.xcprivacy" in z.namelist()
- mask = z.read(root+"AssistantMask.png")
- assert mask[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack_from(">II",mask,16) == (480,512), "máscara do assistente ausente ou inválida"
  resources = Path(__file__).resolve().parents[1] / "JarvisPhone" / "Resources"
  for name in ["jarvis-greeting.pcm","jarvis-connection.pcm","jarvis-torch-on.pcm","jarvis-torch-off.pcm","JarvisInstruments.sf2","GeneralUser-LICENSE.txt"]:
   expected = (resources / name).read_bytes()
   assert expected and z.read(root + name) == expected, f"recurso local divergente: {name}"
- assert z.read(root+"WakeHelmet.mesh") == (resources/"WakeHelmet.mesh").read_bytes()
+ mesh=z.read(root+"WakeHelmet.mesh")
+ assert mesh == (resources/"WakeHelmet.mesh").read_bytes() and mesh[:4]==b'XLV1'
+ groups=struct.unpack_from('<I',mesh,4)[0]; offset=8; kinds=set()
+ for _ in range(groups):
+  kind,verts,faces=struct.unpack_from('<III',mesh,offset); kinds.add(kind)
+  assert verts>2 and faces>0
+  offset+=12+verts*24+faces*12
+ assert offset==len(mesh) and kinds=={0,1,2,3}, "geometria incompleta"
  if "--with-extension" in sys.argv:
   ext=root+"PlugIns/JarvisWake.appex/"
   assert info.get("NSSupportsLiveActivities") and plistlib.loads(z.read(ext+"Info.plist"))["CFBundleIdentifier"]=="com.jarvisxlv.iphone.wake"
