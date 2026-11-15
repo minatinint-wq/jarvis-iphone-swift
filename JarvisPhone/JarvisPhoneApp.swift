@@ -14,6 +14,7 @@ import SwiftUI
             .onAppear{if scenePhase == .active {remote.foreground(true)}}
             .onOpenURL{url in
                 if url.scheme?.lowercased()=="jarvisiphone",url.host?.lowercased()=="conversar" {tab=0;remote.activate()}
+                else if url.scheme=="jarvisiphone",url.host=="parear" {tab=0;if !remote.paired {Task{await remote.pair(url.absoluteString)}}}
                 else {tab=1;Task{await controller.handle(url:url)}}
             }
             .onChange(of:scenePhase){_,phase in

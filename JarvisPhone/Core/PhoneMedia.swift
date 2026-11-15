@@ -1,6 +1,16 @@
 import Foundation
 
 enum PhoneMedia {
+    static func pairingCode(_ input:String)->String? {
+        var value=input.trimmingCharacters(in:.whitespacesAndNewlines)
+        if let c=URLComponents(string:value),let scheme=c.scheme {
+            let app=scheme=="jarvisiphone" && c.host=="parear" && c.path.isEmpty
+            let site=scheme=="https" && c.host=="jarvis-remoto.minatinint.workers.dev" && c.path=="/login"
+            guard app || site,c.port==nil,c.user==nil,c.password==nil,c.query==nil,let fragment=c.fragment,fragment.hasPrefix("pair=") else{return nil}
+            value=String(fragment.dropFirst(5))
+        }
+        return value.range(of:"^(jpc1[.][0-9a-f]{64}|[A-Za-z0-9_-]{32,128})$",options:.regularExpression) != nil ? value : nil
+    }
     // Both the existing PC ASR and the Fish voice return little-endian mono PCM16.
     static func wave(_ pcm: Data, rate: UInt32) -> Data {
         var out = Data()

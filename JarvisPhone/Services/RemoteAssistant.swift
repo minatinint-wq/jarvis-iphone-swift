@@ -9,6 +9,7 @@ import UIKit
     @Published var busy = false
     @Published var recording = false
     @Published var cameraAvailable = false
+    @Published var studioMode: String?
     @Published var wantsVoice = false
     @Published var cameraRequested = false
     @Published var message = "Conecte ao seu Jarvis."
@@ -17,14 +18,13 @@ import UIKit
     @Published var display: UIImage?
     private var imageID: String?
     private var receivedImage = Data()
-    private let origin="https://jarvis-remoto.minatinint.workers.dev"
+    let origin="https://jarvis-remoto.minatinint.workers.dev"
     private let session: URLSession = { let c=URLSessionConfiguration.ephemeral; c.httpShouldSetCookies=false; c.timeoutIntervalForRequest=20; return URLSession(configuration:c) }()
     private var ws:URLSessionWebSocketTask?, reader:Task<Void,Never>?, watchdog:Task<Void,Never>?, micJob:Task<Void,Never>?
     private let sound=HandsetAudio()
     private var pcm=Data(), active=true
     func pair(_ code:String) async {
-        let trimmed=code.trimmingCharacters(in:.whitespacesAndNewlines)
-        guard trimmed.range(of:"^[A-Za-z0-9_-]{32,128}$",options:.regularExpression) != nil else { message="Cole o código do painel Jarvis Remoto do PC."; return }
+        guard !paired, let trimmed=PhoneMedia.pairingCode(code) else {message="Use o QR ou o código do painel do seu PC.";return}
         do {
             var r=URLRequest(url:URL(string:origin+"/api/login")!); r.httpMethod="POST"
             r.setValue(origin,forHTTPHeaderField:"Origin"); r.setValue("application/json",forHTTPHeaderField:"Content-Type")
@@ -64,7 +64,7 @@ import UIKit
         case "pc-status": if o["online"] as? Bool==false {ready=false; finishWait();abortMic();message="O PC está offline."}
         case "status": ready=o["connected"] as? Bool==true; cameraAvailable=o["phoneCamera"] as? Bool==true;message=o["message"] as? String ?? ""; if ready && wantsVoice && active {wantsVoice=false;startListening()}
         case "transcript": if let t=o["text"] as? String { add(o["role"] as? String=="user",t) }
-        case "tool-status","input-status": if let t=o["message"] as? String { message=t }; if o["phase"] as? String=="retry" {finishWait()}; if o["phase"] as? String=="open-phone-camera" && active { finishWait();cameraRequested=true }
+        case "tool-status","input-status": if let t=o["message"] as? String { message=t }; if o["phase"] as? String=="retry" {finishWait()}; if o["phase"] as? String=="open-studio",let mod=o["mode"] as? String,["sketch","music","libras"].contains(mod),active {finishWait();studioMode=mod}; if o["phase"] as? String=="open-phone-camera" && active { finishWait();cameraRequested=true }
         case "display":
             if o["kind"] as? String == "image-part" {
                 guard let id=o["id"] as? String, let offset=o["offset"] as? Int, let total=o["total"] as? Int,
@@ -124,5 +124,5 @@ import UIKit
     private func lost(_ sock:URLSessionWebSocketTask){guard ws===sock else{return};drop();message="A conexão caiu. Não repeti o pedido."}
     func drop(){let old=ws;ws=nil;imageID=nil;receivedImage.removeAll();reader?.cancel();reader=nil;old?.cancel(with:.goingAway,reason:nil);finishWait();abortMic();pcm.removeAll();ready=false;cameraAvailable=false}
     func foreground(_ yes:Bool){ active=yes;if yes {connect();if ready && wantsVoice {activate()}}else{drop()} }
-    func logout(){drop();PairingStore.remove();paired=false;wantsVoice=false;lines=[];artwork=nil;display=nil;message="Desconectado."}
+    func logout(){studioMode=nil;drop();PairingStore.remove();paired=false;wantsVoice=false;lines=[];artwork=nil;display=nil;message="Desconectado."}
 }
