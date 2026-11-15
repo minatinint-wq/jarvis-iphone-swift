@@ -255,7 +255,8 @@ import AVFoundation
             if o["phase"] as? String == "handset-command", let text = o["text"] as? String,
                text.count <= 2000, active, ready, handsetActions, awaitingHandsetCommand, let sock = ws {
                 awaitingHandsetCommand = false
-                let reply = await PhoneLocalKit.resolve(text) ?? "Não reconheci esse comando do iPhone."
+                let readOnly = !UIApplication.shared.isProtectedDataAvailable || UIApplication.shared.applicationState != .active
+                let reply = await PhoneLocalKit.resolve(text, readOnly: readOnly) ?? "Não reconheci esse comando do iPhone."
                 guard ws === sock, active else { return }
                 add(false, reply)
                 if playBundledReply(reply) { finishWait() } else { await sendHandsetReply(reply, sock) }
