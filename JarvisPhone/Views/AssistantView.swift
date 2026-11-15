@@ -3,7 +3,11 @@ import AVFoundation
 
 struct AssistantView: View {
     @ObservedObject var model: RemoteAssistant
-    @State private var code="", draft="", camera=false, preview:UIImage?, expanded:UIImage?
+    @State private var code = ""
+    @State private var draft = ""
+    @State private var camera = false
+    @State private var preview: UIImage?
+    @State private var expanded: UIImage?
     var body: some View {
         NavigationStack {
             ScrollView {
