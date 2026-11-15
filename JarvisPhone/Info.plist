@@ -14,7 +14,8 @@
         <key>CFBundleURLSchemes</key><array><string>jarvisiphone</string></array>
     </dict></array>
     <key>LSApplicationQueriesSchemes</key><array><string>whatsapp</string><string>instagram</string><string>shortcuts</string></array>
-    <key>NSCameraUsageDescription</key><string>O JARVIS usa a câmera quando você abre o visor de captura ou liga a lanterna.</string>
+    <key>NSMicrophoneUsageDescription</key><string>Ouvir seu pedido enquanto você conversa e enviá-lo ao seu Jarvis no PC.</string>
+    <key>NSCameraUsageDescription</key><string>Tirar uma foto para análise pela NVIDIA no seu Jarvis, capturar uma foto ou usar a lanterna.</string>
     <key>NSPhotoLibraryAddUsageDescription</key><string>Salvar em Fotos as imagens que você capturar pelo JARVIS.</string>
     <key>NSLocationWhenInUseUsageDescription</key><string>Mostrar sua localização atual no Mapas quando você pedir.</string>
     <key>NSRemindersFullAccessUsageDescription</key><string>Salvar os lembretes que você criar pelo JARVIS no app Lembretes.</string>

@@ -1,0 +1,8 @@
+version: 1
+bundleID: com.jarvisxlv.iphone
+product: JarvisPhone
+infoPath: Support/Phone.plist
+iconPath: JarvisPhone/Assets.xcassets/AppIcon.appiconset/icon-1024.png
+resources:
+- JarvisPhone/Resources/JARVIS Sistema.shortcut
+- JarvisPhone/Resources/PrivacyInfo.xcprivacy
