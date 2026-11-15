@@ -1,6 +1,10 @@
 # JARVIS XLV — iPhone em Swift
 
-Projeto nativo SwiftUI para iPhone com iOS 17 ou posterior. Possui painel com 19 ações, 19 ações individuais no app Atalhos e duas ações parametrizadas adicionais. Não há frases de Siri, AppShortcutsProvider, assistente de voz ou conexão ativa com o backend Jarvis.
+Assistente nativo em SwiftUI para iPhone com iOS 17 ou posterior. O app funciona com ações locais e pode ser pareado pelo QR do seu Jarvis no PC. No modo de conversa a voz da resposta sai no iPhone. Com a escuta ativada, “Jarvis, muta” interrompe o turno; “Oi, Jarvis” abre o próximo.
+
+**Spotify:** em “Spotify deste iPhone”, toque em “Vincular este iPhone”. Use a mesma conta Spotify vinculada no seu Jarvis. Se o celular estiver ausente da lista, abra o Spotify no aparelho e volte. “Aparelho salvo” identifica o destino; a disponibilidade para tocar depende do Spotify Connect. Vincular não inicia reprodução.
+
+**Hora e clima:** “Que horas são?” e “Qual a data de hoje?” usam o relógio e o fuso do aparelho. Para a previsão local, permita a localização quando o app perguntar ou diga uma cidade (“Vai chover amanhã em Curitiba?”). A previsão precisa de internet e utiliza a [API Open-Meteo](https://open-meteo.com/en/docs).
 
 ## Como instalar no iPhone
 
@@ -64,7 +68,7 @@ jarvisiphone://command?action=brilho&value=40
 jarvisiphone://command?action=reuniao
 ```
 
-Esses links precisam ser abertos no iPhone. Nenhum servidor foi iniciado ou conectado ao Jarvis. A ponte futura deverá respeitar autenticação, confirmação das ações e as restrições de segundo plano do iOS.
+Esses links precisam ser abertos no iPhone. Para conversar com o Jarvis do PC, pareie o app pelo QR ou código do painel. O código deve ser gerado na instalação que você deseja conectar.
 
 ## Validação
 
