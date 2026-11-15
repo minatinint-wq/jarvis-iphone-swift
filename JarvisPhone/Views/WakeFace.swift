@@ -4,7 +4,7 @@ import SceneKit
 final class HelmetRig {
     let scene = SCNScene(), head = SCNNode(), lens = SCNMaterial()
     init() {
-        let colors:[UIColor] = [UIColor(red:0.52,green:0.035,blue:0.09,alpha:1),UIColor(red:0.94,green:0.65,blue:0.27,alpha:1),.cyan,UIColor(white:0.10,alpha:1)]
+        let colors:[UIColor] = [UIColor(red:0.61,green:0.063,blue:0.15,alpha:1),UIColor(red:0.84,green:0.69,blue:0.41,alpha:1),.cyan,UIColor(white:0.10,alpha:1)]
         let mats = colors.enumerated().map { i,color -> SCNMaterial in
             let m = i == 2 ? lens : SCNMaterial()
             m.diffuse.contents = color; m.lightingModel = .physicallyBased
@@ -47,7 +47,7 @@ struct HelmetViewport: UIViewRepresentable {
     func makeCoordinator() -> HelmetRig { HelmetRig() }
     func makeUIView(context:Context) -> SCNView {
         let v=SCNView();v.scene=context.coordinator.scene;v.backgroundColor = .clear
-        v.isOpaque=false;v.antialiasingMode = .multisampling2X;v.preferredFramesPerSecond=30;return v
+        v.isOpaque=false;v.antialiasingMode = .multisampling4X;v.preferredFramesPerSecond=30;return v
     }
     func updateUIView(_ view:SCNView,context:Context) {
         let r=context.coordinator;r.head.eulerAngles=SCNVector3(Float(pitch),Float(yaw),0)
@@ -60,7 +60,8 @@ struct HelmetViewport: UIViewRepresentable {
     @ObservedObject var model:RemoteAssistant
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var phase
-    @State private var yaw = -0.18, pitch = 0.0
+    @State private var yaw = -0.38
+    @State private var pitch = 0.0
     @GestureState private var drag:CGSize = .zero
     var body:some View {
         ZStack {
