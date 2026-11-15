@@ -6,3 +6,6 @@ iconPath: JarvisPhone/Assets.xcassets/AppIcon.appiconset/icon-1024.png
 resources:
 - JarvisPhone/Resources/JARVIS Sistema.shortcut
 - JarvisPhone/Resources/PrivacyInfo.xcprivacy
+- JarvisPhone/Resources/AssistantMask.png
+- JarvisPhone/Assets.xcassets/AppIcon.appiconset/AppIcon60x60@2x.png
+- JarvisPhone/Assets.xcassets/AppIcon.appiconset/AppIcon60x60@3x.png

@@ -4,7 +4,9 @@ with zipfile.ZipFile(sys.argv[1]) as z:
  info=plistlib.loads(z.read(p)); root=p.rsplit("/",1)[0]+"/"; binary=z.read(root+info["CFBundleExecutable"])
  assert binary[:4]==bytes.fromhex("cffaedfe") and struct.unpack_from("<I",binary,4)[0]==0x0100000c, "esperado Mach-O arm64"
  assert info["CFBundleIdentifier"]=="com.jarvisxlv.iphone"
- assert info["NSCameraUsageDescription"] and info["NSMicrophoneUsageDescription"]
+ assert all(info.get(key) for key in ["NSCameraUsageDescription","NSMicrophoneUsageDescription","NSSpeechRecognitionUsageDescription"])
  assert any("jarvisiphone" in x["CFBundleURLSchemes"] for x in info["CFBundleURLTypes"])
  assert root+"PrivacyInfo.xcprivacy" in z.namelist()
- print("IPA verificado: arm64, identificador, câmera, microfone, URL de ativação e manifesto de privacidade.")
+ mask = z.read(root+"AssistantMask.png")
+ assert mask[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack_from(">II",mask,16) == (480,512), "máscara do assistente ausente ou inválida"
+ print("IPA verificado: arm64, identificador, permissões de voz/câmera, URL de ativação, máscara e manifesto de privacidade.")

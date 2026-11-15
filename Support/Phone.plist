@@ -15,7 +15,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.1.0</string>
+	<string>1.2.0</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -28,7 +28,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>2</string>
+	<string>3</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSApplicationQueriesSchemes</key>
@@ -41,8 +41,10 @@
 	<string>Tirar uma foto para análise pela NVIDIA no seu Jarvis, capturar uma foto ou usar a lanterna.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Mostrar sua localização atual no Mapas quando você pedir.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Ouvir seu pedido enquanto você conversa e enviá-lo ao seu Jarvis no PC.</string>
+	<key>NSSpeechRecognitionUsageDescription</key><string>Reconhecer “Oi Jarvis” e o pedido seguinte no próprio iPhone quando você ativa a escuta.</string>
+    <key>UIBackgroundModes</key><array><string>audio</string></array>
+    <key>NSMicrophoneUsageDescription</key>
+	<string>Reconhecer “Oi Jarvis” durante a escuta opcional e transmitir sua fala ao Jarvis no PC quando você usa o botão de conversa.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Salvar em Fotos as imagens que você capturar pelo JARVIS.</string>
 	<key>NSRemindersFullAccessUsageDescription</key>
@@ -62,5 +64,15 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
+	<key>CFBundleIcons</key>
+	<dict>
+		<key>CFBundlePrimaryIcon</key>
+		<dict>
+			<key>CFBundleIconFiles</key>
+			<array>
+				<string>AppIcon60x60</string>
+			</array>
+		</dict>
+	</dict>
 </dict>
 </plist>

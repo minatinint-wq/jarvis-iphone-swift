@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="256" viewBox="0 0 240 256">
+  <defs>
+    <linearGradient id="red" x1="0%" y1="15%" x2="100%" y2="80%">
+      <stop stop-color="#520f1c"/><stop offset=".21" stop-color="#d3443c"/><stop offset=".36" stop-color="#93202a"/><stop offset=".61" stop-color="#470e19"/><stop offset=".82" stop-color="#a3282f"/><stop offset="1" stop-color="#320c18"/>
+    </linearGradient>
+    <linearGradient id="crown" x1="0%" y1="0%" x2="80%" y2="100%">
+      <stop stop-color="#f38d72"/><stop offset=".26" stop-color="#c23b3b"/><stop offset=".66" stop-color="#790f20"/><stop offset="1" stop-color="#360d17"/>
+    </linearGradient>
+    <linearGradient id="brow" x1="0%" y1="10%" x2="92%" y2="90%">
+      <stop stop-color="#fff3c7"/><stop offset=".25" stop-color="#e7ba73"/><stop offset=".46" stop-color="#c99550"/><stop offset=".67" stop-color="#ad7539"/><stop offset="1" stop-color="#f0cf92"/>
+    </linearGradient>
+    <linearGradient id="cheek" x1="0%" y1="3%" x2="100%" y2="86%">
+      <stop stop-color="#f7dca2"/><stop offset=".23" stop-color="#cea25e"/><stop offset=".45" stop-color="#866032"/><stop offset=".65" stop-color="#d3a865"/><stop offset="1" stop-color="#795328"/>
+    </linearGradient>
+    <linearGradient id="chin" x1="0%" y1="0%" x2="78%" y2="100%">
+      <stop stop-color="#dfb67a"/><stop offset=".46" stop-color="#946b44"/><stop offset="1" stop-color="#4e3428"/>
+    </linearGradient>
+  </defs>
+  <!-- Lacquered shell, recessed temples and inset crown. -->
+  <path d="M120 9 C89 8 66 17 53 32 L37 62 32 108 33 149 44 187 69 219 98 239 109 247 132 247 145 239 171 219 196 187 207 149 208 108 203 62 187 32 C173 17 148 8 120 9Z" fill="url(#red)" stroke="#240e15" stroke-width="2"/>
+  <path d="M50 52 62 32 Q84 13 110 13 L93 24 73 56 59 90 49 109 44 100Z" fill="url(#crown)"/>
+  <path d="M190 52 178 32 Q156 13 131 13 L148 24 167 56 181 90 191 109 196 100Z" fill="#4b1020"/>
+  <path d="M86 27 Q120 10 154 27 L147 54 138 78 102 78 93 54Z" fill="url(#crown)" stroke="#66202b" stroke-width="1.2"/>
+  <path d="M48 109 56 117 53 155 65 184 61 195 46 174 39 146 39 118Z M192 109 184 117 187 155 175 184 179 195 194 174 201 146 201 118Z" fill="#2e1b20"/>
+  <path d="M35 116 42 108 42 147 48 169 41 161 36 145Z" fill="#b74142"/>
+  <path d="M205 116 198 108 198 147 192 169 199 161 204 145Z" fill="#79212b"/>
+  <!-- Face plate and angled polished edges. -->
+  <path d="M70 50 83 42 96 66 104 75 136 75 144 66 157 42 170 50 178 72 184 101 179 118 159 134 132 137 120 132 108 137 81 134 61 118 56 101 62 72Z" fill="url(#brow)" stroke="#543526" stroke-width="1.7"/>
+  <path d="M63 71 71 51 82 44 95 67 103 77 136 77 146 66 158 45 168 51" fill="none" stroke="#fce8ac" stroke-width="1.4"/>
+  <path d="M57 101 68 84 75 68 69 99 74 108 62 116Z" fill="#e7be7b"/>
+  <path d="M183 101 172 84 165 68 171 99 166 108 178 116Z" fill="#8c642f"/>
+  <path d="M65 111 84 116 109 125 120 123 131 125 156 116 175 111 171 128 152 142 133 141 120 136 107 141 88 142 69 128Z" fill="#221e23"/>
+  <path d="M69 117 84 121 107 128 104 133 83 130 72 126Z M171 117 156 121 133 128 136 133 157 130 168 126Z" fill="#6ce0e5"/>
+  <path d="M73 119 85 122 104 128 102 130 84 127 75 125Z M167 119 155 122 136 128 138 130 156 127 165 125Z" fill="#ebffff"/>
+  <path d="M63 124 77 137 101 140 113 135 120 130 127 135 139 140 163 137 177 124 175 146 161 168 151 191 140 205 100 205 89 191 79 168 65 146Z" fill="url(#cheek)" stroke="#795735" stroke-width="1.4"/>
+  <path d="M66 136 82 146 89 164 102 181 96 187 80 164 69 150Z" fill="#a17543"/>
+  <path d="M174 136 158 146 151 164 138 181 144 187 160 164 171 150Z" fill="#65462f"/>
+  <path d="M65 128 78 139 99 142 110 138 M131 138 141 142 162 139 175 128" fill="none" stroke="#f0d598" stroke-width="1.3"/>
+  <path d="M111 143 120 135 129 143 134 163 126 170 114 170 106 163Z" fill="#c39458"/>
+  <path d="M98 188 107 184 133 184 142 188 148 183 141 195 132 192 108 192 99 195 92 183Z" fill="#3e302a"/>
+  <path d="M98 197 108 194 132 194 142 197 136 208 128 214 112 214 104 208Z" fill="url(#chin)"/>
+  <!-- Jaw armor and segmented chin. -->
+  <path d="M55 152 71 176 81 197 102 212 111 222 108 236 96 229 72 211 58 189 48 164Z" fill="url(#red)" stroke="#401822" stroke-width="1.5"/>
+  <path d="M185 152 169 176 159 197 138 212 129 222 132 236 144 229 168 211 182 189 192 164Z" fill="url(#red)" stroke="#401822" stroke-width="1.5"/>
+  <path d="M103 212 113 217 127 217 137 212 134 231 128 241 112 241 106 231Z" fill="url(#crown)"/>
+  <path d="M49 164 59 188 74 208 95 224 M61 37 Q75 22 96 18" fill="none" stroke="#ed8774" stroke-width="1.3"/>
+</svg>

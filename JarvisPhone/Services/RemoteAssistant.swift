@@ -1,12 +1,15 @@
 import Foundation
 import SwiftUI
 import UIKit
+import AVFoundation
 
 @MainActor final class RemoteAssistant: ObservableObject {
     struct Line: Identifiable { let id=UUID(); let user:Bool; let text:String }
     @Published var paired = PairingStore.read() != nil
     @Published var ready = false
     @Published var busy = false
+    @Published private(set) var isSpeaking = false
+    @Published private(set) var wakeEnabled = false
     @Published var recording = false
     @Published var cameraAvailable = false
     @Published var studioMode: String?
@@ -20,9 +23,143 @@ import UIKit
     private var receivedImage = Data()
     let origin="https://jarvis-remoto.minatinint.workers.dev"
     private let session: URLSession = { let c=URLSessionConfiguration.ephemeral; c.httpShouldSetCookies=false; c.timeoutIntervalForRequest=20; return URLSession(configuration:c) }()
-    private var ws:URLSessionWebSocketTask?, reader:Task<Void,Never>?, watchdog:Task<Void,Never>?, micJob:Task<Void,Never>?
-    private let sound=HandsetAudio()
-    private var pcm=Data(), active=true
+    private var ws: URLSessionWebSocketTask?
+    private var reader: Task<Void, Never>?
+    private var watchdog: Task<Void, Never>?
+    private var retryJob: Task<Void, Never>?
+    private var handshakeTimer: Task<Void, Never>?
+    private var micJob: Task<Void, Never>?
+    private var micID: UUID?
+    private var localRequest: UUID?
+    private var retryCount = 0
+    private var active = true
+    private var suppressAudio = false
+    private var handsetActions = false
+    private var awaitingHandsetCommand = false
+    private let sound = HandsetAudio()
+    private let wake = PhoneWakeListener()
+    private var wakePermission: Task<Void, Never>?
+    private var wakeResume: Task<Void, Never>?
+    private var wakeAuthorized = false
+    private var systemInterrupted = false
+    private var interruptionObserver: NSObjectProtocol?
+    private var wakeHandling = false
+
+    init() {
+        sound.sharesWakeSession = { [weak self] in self?.wake.running == true }
+        wake.onPrompt = { [weak self] in self?.message = "Ouvindo seu pedido…" }
+        wake.onCommand = { [weak self] text in
+            guard let self else { return }
+            self.wakeHandling = true
+            Task { await self.handleWakeCommand(text) }
+        }
+        wake.onFailure = { [weak self] text in self?.setWakeEnabled(false); self?.message = text }
+        interruptionObserver = NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance(), queue: .main) { [weak self] note in
+            guard let value = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  let kind = AVAudioSession.InterruptionType(rawValue: value) else { return }
+            let flags = (note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt) ?? 0
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                if kind == .began {
+                    self.systemInterrupted = true
+                    self.wakeResume?.cancel()
+                    self.wake.stop(releaseSession: false)
+                } else if kind == .ended {
+                    self.systemInterrupted = false
+                    if AVAudioSession.InterruptionOptions(rawValue: flags).contains(.shouldResume) && self.active { self.updateWake() }
+                    else if self.wakeEnabled { self.setWakeEnabled(false); self.message = "Escuta interrompida. Ative Oi Jarvis para continuar." }
+                }
+            }
+        }
+        sound.onSpeakingChanged = { [weak self] speaking in
+            guard let self else { return }
+            self.isSpeaking = speaking
+            self.updateWake()
+            if speaking { self.message = "Jarvis está falando." }
+            else if !self.busy && self.message == "Jarvis está falando." { self.message = "Resposta no iPhone." }
+        }
+        sound.onInterrupted = { [weak self] in
+            guard let self else { return }
+            self.suppressAudio = true
+            if self.micID != nil { self.drop(); self.scheduleReconnect() }
+            self.message = "Áudio interrompido pelo iPhone."
+        }
+    }
+
+    deinit {
+        if let interruptionObserver { NotificationCenter.default.removeObserver(interruptionObserver) }
+    }
+
+    func setWakeEnabled(_ enabled: Bool) {
+        wakePermission?.cancel()
+        wakeResume?.cancel()
+        wakeEnabled = enabled
+        wakeAuthorized = false
+        if !enabled {
+            wake.stop(releaseSession: !isSpeaking)
+            return
+        }
+        guard active, UIApplication.shared.isProtectedDataAvailable else {
+            wakeEnabled = false
+            message = "Abra o Jarvis no iPhone desbloqueado para iniciar a escuta."
+            return
+        }
+        wakePermission = Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await wake.authorize()
+                guard !Task.isCancelled, wakeEnabled, active else { return }
+                wakeAuthorized = true
+                updateWake()
+            } catch {
+                guard !Task.isCancelled else { return }
+                setWakeEnabled(false)
+                message = error.localizedDescription
+            }
+        }
+    }
+
+    private func updateWake() {
+        wakeResume?.cancel()
+        guard wakeEnabled, wakeAuthorized, !systemInterrupted else { return }
+        guard !busy, !recording, !isSpeaking, !wakeHandling, localRequest == nil else {
+            wake.setPaused(true)
+            return
+        }
+        // Starting a microphone session is a foreground operation. Only a live session
+        // explicitly started by the user may continue when the screen is locked.
+        guard active || wake.running else { return }
+        // Leave time for the output route to drain before accepting a new wake phrase.
+        wakeResume = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            guard !Task.isCancelled, let self else { return }
+            do {
+                if self.wake.running { self.wake.setPaused(false) }
+                else if self.active && UIApplication.shared.isProtectedDataAvailable { try self.wake.start() }
+            } catch { self.setWakeEnabled(false); self.message = error.localizedDescription }
+        }
+    }
+
+    private func handleWakeCommand(_ text: String) async {
+        defer { wakeHandling = false; updateWake() }
+        guard wakeEnabled, !systemInterrupted, !busy, !recording, !isSpeaking else { return }
+        if active && UIApplication.shared.isProtectedDataAvailable && UIApplication.shared.applicationState == .active {
+            await say(text)
+            return
+        }
+        guard wake.running else { return }
+        let originalSocket = ws
+        let reply = await PhoneLocalKit.resolve(text, readOnly: true)
+            ?? "Abra o Jarvis no iPhone desbloqueado para este pedido."
+        guard wakeEnabled, !systemInterrupted else { return }
+        add(true, text)
+        add(false, reply)
+        message = reply
+        if ready, handsetActions, let sock = ws, sock === originalSocket {
+            await sendHandsetReply(reply, sock)
+        }
+    }
     func pair(_ code:String) async {
         guard !paired, let trimmed=PhoneMedia.pairingCode(code) else {message="Use o QR ou o código do painel do seu PC.";return}
         do {
@@ -37,34 +174,92 @@ import UIKit
     }
     func connect() {
         guard paired,active,ws==nil,let cookie=PairingStore.read() else { return }
+        retryJob?.cancel()
+        retryJob = nil
         var r=URLRequest(url:URL(string:origin.replacingOccurrences(of:"https:",with:"wss:")+"/socket")!)
         r.setValue("__Host-jarvis="+cookie,forHTTPHeaderField:"Cookie");r.setValue(origin,forHTTPHeaderField:"Origin")
         let sock=session.webSocketTask(with:r); sock.maximumMessageSize=600_000;ws=sock; sock.resume(); message="Conectando ao PC…"
+        watchHandshake(sock)
         reader=Task { [weak self] in
             do { while !Task.isCancelled {
                 let event=try await sock.receive(); guard let self,self.ws===sock else {return}
                 switch event {
-                case .data(let chunk): if self.pcm.count+chunk.count <= 24*1024*1024 { self.pcm.append(chunk) }
+                case .data(let chunk):
+                    guard self.ready, self.busy, !self.suppressAudio, !self.recording else { continue }
+                    do { try self.sound.enqueue(chunk) }
+                    catch {
+                        self.suppressAudio = true
+                        self.sound.stopPlayback()
+                        self.message = error.localizedDescription
+                    }
                 case .string(let txt):
                     guard let o=(try? JSONSerialization.jsonObject(with:Data(txt.utf8))) as? [String:Any] else { continue }
-                    if o["type"] as? String=="pc-status",o["online"] as? Bool==true { try await self.send(["type":"connect","nativeAssistant":true],sock);continue }
-                    self.event(o)
+                    if o["type"] as? String == "pc-status", o["online"] as? Bool == true {
+                        self.watchHandshake(sock)
+                        try await self.send(["type":"connect", "nativeAssistant":true, "handsetActions":true], sock)
+                        continue
+                    }
+                    await self.event(o)
                 @unknown default: break
                 }
-            }} catch {guard let self,self.ws===sock else{return}
-                let expired = sock.closeCode.rawValue == 4003 || sock.response.flatMap { ($0 as? HTTPURLResponse)?.statusCode } == 401
-                self.drop()
-                if expired { PairingStore.remove(); self.paired=false; self.message="Sessão expirada. Conecte novamente pelo código do PC." }
-                else {self.message="Conexão encerrada. Toque em Reconectar. Nenhum comando foi repetido."}
+            }} catch {
+                guard let self, self.ws === sock else { return }
+                self.lost(sock)
             }
         }
     }
-    private func event(_ o:[String:Any]) {
+
+    private func watchHandshake(_ sock: URLSessionWebSocketTask) {
+        handshakeTimer?.cancel()
+        handshakeTimer = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 25_000_000_000)
+            guard !Task.isCancelled, let self, self.ws === sock, !self.ready else { return }
+            self.lost(sock)
+        }
+    }
+
+    private func event(_ o:[String:Any]) async {
         switch o["type"] as? String {
-        case "pc-status": if o["online"] as? Bool==false {ready=false; finishWait();abortMic();message="O PC está offline."}
-        case "status": ready=o["connected"] as? Bool==true; cameraAvailable=o["phoneCamera"] as? Bool==true;message=o["message"] as? String ?? ""; if ready && wantsVoice && active {wantsVoice=false;startListening()}
-        case "transcript": if let t=o["text"] as? String { add(o["role"] as? String=="user",t) }
-        case "tool-status","input-status": if let t=o["message"] as? String { message=t }; if o["phase"] as? String=="retry" {finishWait()}; if o["phase"] as? String=="open-studio",let mod=o["mode"] as? String,["sketch","music","libras"].contains(mod),active {finishWait();studioMode=mod}; if o["phase"] as? String=="open-phone-camera" && active { finishWait();cameraRequested=true }
+        case "pc-status":
+            if o["online"] as? Bool == false {
+                handshakeTimer?.cancel()
+                ready = false
+                handsetActions = false
+                cameraAvailable = false
+                finishWait()
+                abortMic()
+                message = "O PC está offline."
+            }
+        case "status":
+            handshakeTimer?.cancel()
+            ready = o["connected"] as? Bool == true
+            if let enabled = o["handsetActions"] as? Bool { handsetActions = ready && enabled }
+            cameraAvailable = ready && o["phoneCamera"] as? Bool == true
+            if !busy && !recording { message = o["message"] as? String ?? "" }
+            if ready {
+                retryCount = 0
+                if wantsVoice && active { wantsVoice = false; startListening() }
+            } else {
+                drop()
+                message = o["message"] as? String ?? "O Jarvis está offline."
+                scheduleReconnect()
+            }
+        case "transcript":
+            if let t = o["text"] as? String { add(o["role"] as? String == "user", t) }
+        case "tool-status","input-status":
+            if let t = o["message"] as? String, !recording || o["phase"] as? String != "receiving" { message = t }
+            if o["phase"] as? String == "handset-command", let text = o["text"] as? String,
+               text.count <= 2000, active, ready, handsetActions, awaitingHandsetCommand, let sock = ws {
+                awaitingHandsetCommand = false
+                let reply = await PhoneLocalKit.resolve(text) ?? "Não reconheci esse comando do iPhone."
+                guard ws === sock, active else { return }
+                add(false, reply)
+                await sendHandsetReply(reply, sock)
+            }
+            if o["phase"] as? String == "retry" { finishWait() }
+            if o["phase"] as? String == "open-studio", let mod = o["mode"] as? String,
+               ["sketch","music","libras"].contains(mod), active { finishWait(); studioMode = mod }
+            if o["phase"] as? String == "open-phone-camera", active { finishWait(); cameraRequested = true }
         case "display":
             if o["kind"] as? String == "image-part" {
                 guard let id=o["id"] as? String, let offset=o["offset"] as? Int, let total=o["total"] as? Int,
@@ -80,32 +275,117 @@ import UIKit
                 if o["kind"] as? String=="generated" {artwork=image} else {display=image}
             }
         case "voice-error": message=o["text"] as? String ?? "O pedido falhou.";finishWait()
-        case "interrupted": pcm.removeAll()
-        case "turn-complete": finishWait(); if !pcm.isEmpty { do {try sound.speak(pcm);message="Resposta no iPhone."} catch {message=error.localizedDescription} }; pcm.removeAll()
+        case "interrupted":
+            sound.stopPlayback()
+        case "turn-complete":
+            finishWait()
+            sound.finishPlayback()
+            if !isSpeaking && ["Jarvis está falando.", "Aguardando o Jarvis…"].contains(message) {
+                message = "Resposta no iPhone."
+            }
         default: break
         }
     }
     func add(_ user:Bool,_ text:String) { lines.append(Line(user:user,text:text));if lines.count>60 {lines.removeFirst()} }
     private func send(_ o:[String:Any],_ sock:URLSessionWebSocketTask) async throws {try await sock.send(.string(String(decoding:try JSONSerialization.data(withJSONObject:o),as:UTF8.self)))}
     func say(_ text:String) async {
-        let value=text.trimmingCharacters(in:.whitespacesAndNewlines);guard !value.isEmpty,value.count<=2000,ready,!busy,!recording,let sock=ws else{return}
-        beginWait();add(true,value);do {try await send(["type":"text","text":value],sock)} catch {lost(sock)}
+        let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard active, !value.isEmpty, value.count <= 2000, !busy, !recording, localRequest == nil else { return }
+        let request = UUID()
+        localRequest = request
+        wake.setPaused(true)
+        defer { updateWake() }
+        let originalSocket = ws
+        let reply = await PhoneLocalKit.resolve(value)
+        guard localRequest == request else { return }
+        localRequest = nil
+        if let reply {
+            add(true, value)
+            add(false, reply)
+            message = reply
+            guard ready, handsetActions, let sock = ws, sock === originalSocket else { return }
+            await sendHandsetReply(reply, sock)
+            return
+        }
+        guard ready, let sock = ws, sock === originalSocket else {
+            message = "Conecte ao PC para este pedido."
+            return
+        }
+        beginWait()
+        add(true, value)
+        do { try await send(["type":"text", "text":value], sock) } catch { lost(sock) }
     }
-    func activate() {wantsVoice=true;guard active else{return}; if ready {wantsVoice=false;startListening()} else {connect()} }
+
+    private func sendHandsetReply(_ reply: String, _ sock: URLSessionWebSocketTask) async {
+        beginWait()
+        do { try await send(["type":"text", "handsetResult":true, "text":reply], sock) } catch { lost(sock) }
+    }
+
+    func activate() {
+        wantsVoice = true
+        guard active else { return }
+        if ready { wantsVoice = false; startListening() } else { connect() }
+    }
+
     func startListening() {
-        guard ready,!busy,!recording,active else{return}
-        recording=true;message="Ouvindo…";micJob=Task { do {try await sound.start { [weak self] in Task { await self?.sendRecording() } }} catch {if !Task.isCancelled {recording=false;message=error.localizedDescription}} }
+        guard ready, !busy, !recording, localRequest == nil, active, let sock = ws else { return }
+        wakeResume?.cancel()
+        wake.stop(releaseSession: !isSpeaking)
+        sound.stopPlayback()
+        let id = UUID()
+        micID = id
+        awaitingHandsetCommand = true
+        recording = true
+        message = "Abrindo o microfone…"
+        micJob = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let frames = try await sound.startCapture()
+                guard micID == id, ws === sock else { return }
+                message = "Ouvindo…"
+                var sentAudio = false
+                for try await frame in frames {
+                    guard micID == id, ws === sock, !Task.isCancelled else { return }
+                    // A single sender preserves frame order through manual and automatic endpointing.
+                    try await sock.send(.data(frame))
+                    sentAudio = true
+                }
+                guard micID == id, ws === sock, !Task.isCancelled else { return }
+                sound.endCapture()
+                recording = false
+                guard sentAudio else {
+                    micID = nil
+                    micJob = nil
+                    finishWait()
+                    message = "Não recebi áudio. Tente outra vez."
+                    return
+                }
+                if !busy { beginWait() }
+                try await send(["type":"audio-end"], sock)
+                if micID == id { micID = nil; micJob = nil }
+            } catch {
+                guard micID == id, ws === sock, !Task.isCancelled else { return }
+                let hadFrames = sound.endCapture() || busy
+                abortMic()
+                if hadFrames { lost(sock) }
+                message = error.localizedDescription
+            }
+        }
     }
+
     func sendRecording() async {
-        guard recording else{return};recording=false
-        guard let data=sound.take(),let sock=ws,ready else {message="Não recebi áudio. Tente outra vez.";return}
-        beginWait();do {
-            for i in stride(from:0,to:data.count,by:3200) {guard ws===sock,busy else{return};try await sock.send(.data(data.subdata(in:i..<min(i+3200,data.count))))}
-            try await send(["type":"audio-end"],sock)
-        } catch {lost(sock)}
+        guard recording else { return }
+        recording = false
+        if sound.endCapture() {
+            // The sender drains all frames already captured before it sends audio-end.
+            beginWait()
+        } else {
+            abortMic()
+            message = "Gravação cancelada."
+        }
     }
     func analyze(_ photo:UIImage) async {
-        guard let sock=ws,ready,!busy,cameraAvailable,!recording else {message="A análise por câmera ainda não está disponível nesta conexão.";return}
+        guard let sock=ws,ready,!busy,cameraAvailable,!recording,localRequest == nil else {message="A análise por câmera ainda não está disponível nesta conexão.";return}
         let length=max(photo.size.width,photo.size.height)
         guard length>0 else {return}
         let ratio=min(1,640/length),size=CGSize(width:max(1,photo.size.width*ratio),height:max(1,photo.size.height*ratio))
@@ -116,13 +396,112 @@ import UIKit
             beginWait();add(true,"Analise esta foto da câmera.");do{try await sock.send(.data(packet))}catch{lost(sock)};return
         };message="A imagem excedeu o tamanho para análise."
     }
-    private func beginWait() { sound.stop();pcm.removeAll();busy=true;message="Aguardando o Jarvis…";watchdog?.cancel()
-        watchdog=Task {try? await Task.sleep(nanoseconds:245_000_000_000);if !Task.isCancelled && busy {drop();message="O pedido demorou. Confira no PC; não foi reenviado."}}
+    private func beginWait() {
+        wakeResume?.cancel()
+        wake.setPaused(true)
+        sound.stopPlayback()
+        suppressAudio = false
+        busy = true
+        message = "Aguardando o Jarvis…"
+        watchdog?.cancel()
+        watchdog = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 245_000_000_000)
+            guard !Task.isCancelled, let self, self.busy else { return }
+            self.drop()
+            self.message = "O pedido demorou. Confira no PC. Nenhum pedido foi repetido."
+            self.scheduleReconnect()
+        }
     }
-    private func finishWait(){watchdog?.cancel();watchdog=nil;busy=false}
-    private func abortMic(){micJob?.cancel();micJob=nil;recording=false;sound.stop()}
-    private func lost(_ sock:URLSessionWebSocketTask){guard ws===sock else{return};drop();message="A conexão caiu. Não repeti o pedido."}
-    func drop(){let old=ws;ws=nil;imageID=nil;receivedImage.removeAll();reader?.cancel();reader=nil;old?.cancel(with:.goingAway,reason:nil);finishWait();abortMic();pcm.removeAll();ready=false;cameraAvailable=false}
-    func foreground(_ yes:Bool){ active=yes;if yes {connect();if ready && wantsVoice {activate()}}else{drop()} }
-    func logout(){studioMode=nil;drop();PairingStore.remove();paired=false;wantsVoice=false;lines=[];artwork=nil;display=nil;message="Desconectado."}
+
+    private func finishWait() { watchdog?.cancel(); watchdog = nil; busy = false; awaitingHandsetCommand = false; updateWake() }
+
+    private func abortMic() {
+        micID = nil
+        awaitingHandsetCommand = false
+        micJob?.cancel()
+        micJob = nil
+        recording = false
+        sound.stop()
+        updateWake()
+    }
+
+    private func lost(_ sock: URLSessionWebSocketTask) {
+        guard ws === sock else { return }
+        let closeCode = sock.closeCode.rawValue
+        let expired = closeCode == 4003 || (sock.response as? HTTPURLResponse)?.statusCode == 401
+        drop()
+        if expired {
+            PairingStore.remove()
+            paired = false
+            wantsVoice = false
+            message = "Sessão expirada. Conecte novamente pelo código do PC."
+        } else if closeCode == 4001 {
+            wantsVoice = false
+            message = "A conexão foi aberta em outro dispositivo. Toque em Reconectar para usar este iPhone."
+        } else {
+            message = "Recuperando a conexão. Nenhum pedido foi repetido."
+            scheduleReconnect()
+        }
+    }
+
+    private func scheduleReconnect() {
+        guard paired, active, ws == nil, retryJob == nil else { return }
+        let delay = UInt64(1 << min(4, retryCount))
+        retryCount = min(4, retryCount + 1)
+        retryJob = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: delay * 1_000_000_000)
+            guard !Task.isCancelled, let self else { return }
+            self.retryJob = nil
+            self.connect()
+        }
+    }
+
+    func drop() {
+        let old = ws
+        ws = nil
+        retryJob?.cancel()
+        retryJob = nil
+        handshakeTimer?.cancel()
+        handshakeTimer = nil
+        reader?.cancel()
+        reader = nil
+        old?.cancel(with: .goingAway, reason: nil)
+        imageID = nil
+        receivedImage.removeAll()
+        finishWait()
+        abortMic()
+        ready = false
+        handsetActions = false
+        cameraAvailable = false
+    }
+
+    func foreground(_ yes: Bool) {
+        active = yes
+        if yes {
+            connect()
+            if ready && wantsVoice { activate() }
+            updateWake()
+        } else {
+            wantsVoice = false
+            localRequest = nil
+            if wakeEnabled && !wakeAuthorized { setWakeEnabled(false) }
+            if !(wakeEnabled && wake.running && !recording && !busy && !isSpeaking) { drop() }
+            updateWake()
+        }
+    }
+
+    func logout() {
+        setWakeEnabled(false)
+        studioMode = nil
+        cameraRequested = false
+        localRequest = nil
+        drop()
+        PairingStore.remove()
+        paired = false
+        wantsVoice = false
+        lines = []
+        artwork = nil
+        display = nil
+        message = "Desconectado."
+    }
 }
