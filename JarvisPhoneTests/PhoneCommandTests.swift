@@ -3,6 +3,22 @@ import AVFoundation
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    @MainActor func testSpotifyPersistsOnlyAcknowledgedDevice() {
+        let defaults = UserDefaults.standard
+        let keys = ["jarvis.spotify.phone","jarvis.spotify.name"]
+        let original = keys.map { defaults.string(forKey:$0) }
+        defer { for (key, old) in zip(keys, original) { defaults.set(old, forKey:key) } }
+        let phone = RemoteAssistant()
+        phone.acceptSpotifyStatus(["state":"bound","confirmed":true,"deviceId":"test-confirmed","deviceName":"iPhone de teste"])
+        phone.acceptSpotifyStatus(["state":"choose","phones":[["id":"test-other","name":"Telefone","active":true]]])
+        phone.selectSpotifyPhone("test-other") // No bridge acknowledgement.
+        phone.acceptSpotifyStatus(["state":"bound","confirmed":false,"deviceId":"test-other","deviceName":"Outro"])
+        XCTAssertEqual(phone.spotifyID, "test-confirmed")
+        XCTAssertEqual(phone.spotifyPhones.first?["id"], "test-other")
+        XCTAssertEqual(RemoteAssistant().spotifyName, "iPhone de teste")
+        XCTAssertTrue(RemoteAssistant.isSpotifyBindingCommand("Oi Jarvis, vincula o Spotify neste iPhone!"))
+        XCTAssertFalse(RemoteAssistant.isSpotifyBindingCommand("Toque rock no Spotify"))
+    }
     @MainActor func testMuteEndsCurrentTurnAndIgnoresSpeechUntilFreshWake() async {
         let phone = RemoteAssistant()
         phone.heardCall()
@@ -84,6 +100,42 @@ final class PhoneCommandTests: XCTestCase {
     func testLocalTimeDoesNotConsumeCalendarRequest() async {
         let result = await PhoneLocalKit.resolve("Que horas são as reuniões da minha agenda?")
         XCTAssertNil(result)
+    }
+
+    func testAlmanacUnderstandsWeatherWithoutTakingAgendaOrTimers() {
+        XCTAssertEqual(PhoneAlmanac.request("vai chover amanha em recife"), .weather(.tomorrow, "recife"))
+        XCTAssertEqual(PhoneAlmanac.request("previsao do tempo em recife para amanha"), .weather(.tomorrow, "recife"))
+        XCTAssertEqual(PhoneAlmanac.request("qual a previsao do tempo para a semana"), .weather(.week, nil))
+        XCTAssertEqual(PhoneAlmanac.request("como ta o tempo aqui"), .weather(.now, nil))
+        XCTAssertEqual(PhoneAlmanac.request("qual a data de hoje"), .date(0))
+        XCTAssertNil(PhoneAlmanac.request("que horas sao as reunioes da minha agenda"))
+        XCTAssertNil(PhoneAlmanac.request("qual o tempo de viagem em curitiba"))
+        XCTAssertNil(PhoneAlmanac.request("qual a temperatura do meu iphone"))
+        XCTAssertNil(PhoneAlmanac.request("coloque musica para chover"))
+    }
+
+    func testPhoneCalendarUsesDeviceZoneAcrossMidnight() throws {
+        let instant = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-01-02T01:05:00Z"))
+        let zone = try XCTUnwrap(TimeZone(identifier: "America/Sao_Paulo"))
+        XCTAssertEqual(PhoneAlmanac.calendarReply(.time, date: instant, zone: zone), "Agora são 22:05.")
+        XCTAssertEqual(PhoneAlmanac.calendarReply(.weekday(1), date: instant, zone: zone), "Amanhã é sexta-feira.")
+        XCTAssertEqual(PhoneAlmanac.calendarReply(.date(0), date: instant, zone: zone), "Hoje é quinta-feira, 1 de janeiro de 2026.")
+    }
+
+    @MainActor func testAlmanacDashboardButtonsUseTheLocalRoutes() async {
+        let reply = await PhoneLocalKit.resolve("Qual a data e a hora de hoje?")
+        XCTAssertNotNil(reply?.range(of: #"Hoje é .+ [0-9]{4}, [0-9]{2}:[0-9]{2}\."#, options: .regularExpression))
+        XCTAssertEqual(PhoneAlmanac.request("como esta o tempo hoje"), .weather(.today, nil))
+    }
+
+    func testWeatherSelectsTomorrowByLocalDayAndDoesNotInventMissingData() throws {
+        let fixture = #"{"current":{"temperature_2m":19.7,"weather_code":2},"daily":{"time":["2026-01-01","2026-01-02"],"weather_code":[0,61],"temperature_2m_min":[18,17],"temperature_2m_max":[30,25],"precipitation_probability_max":[0,80]}}"#
+        let forecast = try JSONDecoder().decode(PhoneAlmanac.Forecast.self, from: Data(fixture.utf8))
+        XCTAssertTrue(PhoneAlmanac.forecastReply(forecast, period: .now, place: "Em Recife").contains("20 °C"))
+        let nextDay = PhoneAlmanac.forecastReply(forecast, period: .tomorrow, place: "Em Recife")
+        XCTAssertTrue(nextDay.contains("17 e máxima de 25"))
+        XCTAssertTrue(nextDay.contains("80%"))
+        XCTAssertTrue(PhoneAlmanac.forecastReply(forecast, period: .afterTomorrow, place: "Em Recife").contains("indisponível"))
     }
 
     func testAllNineteenActionsHaveUniqueIDs() {

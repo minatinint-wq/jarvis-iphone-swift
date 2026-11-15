@@ -281,12 +281,22 @@ private enum VoiceState {
         .accessibilityHint("Mantém a escuta com a tela bloqueada enquanto a sessão de áudio está ativa.")
         if model.followUp { Label("Ouvindo seu próximo pedido", systemImage:"ear").foregroundStyle(ConsoleColor.cyan) }
         DisclosureGroup("Spotify deste iPhone") {
-            Text("Abra o Spotify neste iPhone e selecione seu aparelho uma vez. Os pedidos do celular só tocam nele.").font(.footnote)
-            HStack { Button("Abrir Spotify") { model.showSpotify() }; Button("Buscar aparelhos") { Task { await model.listSpotifyPhones() } }.disabled(!model.ready || model.busy) }
+            if !model.spotifyName.isEmpty {
+                Label("Aparelho salvo: " + model.spotifyName, systemImage:"iphone")
+            }
+            Text(model.spotifyNotice.isEmpty ? "Os pedidos deste iPhone usam o Spotify deste aparelho." : model.spotifyNotice)
+                .font(.footnote).foregroundStyle(ConsoleColor.muted)
+            Button { model.bindSpotifyPhone() } label: {
+                Label(model.spotifyBinding ? "Procurando…" : (model.spotifyID.isEmpty ? "Vincular este iPhone" : "Verificar vínculo"), systemImage:"link")
+            }.disabled(!model.ready || model.spotifyBinding)
+            HStack {
+                Button("Abrir Spotify") { model.showSpotify() }
+                Button("Ver aparelhos") { model.listSpotifyPhones() }.disabled(!model.ready || model.spotifyBinding)
+            }
             ForEach(model.spotifyPhones, id: \.self) { row in
                 Button { model.selectSpotifyPhone(row["id"] ?? "") } label: {
                     Label(row["name"] ?? "Telefone",systemImage:row["id"] == model.spotifyID ? "checkmark.circle.fill" : "iphone")
-                }
+                }.disabled(model.spotifyBinding)
             }
         }
         if model.wakeEnabled {
@@ -386,6 +396,10 @@ private enum VoiceState {
         VStack(alignment: .leading, spacing: 10) {
             sectionTitle("Atalhos")
             VStack(spacing: 0) {
+                shortcut("Tempo de hoje", symbol: "cloud.sun", needsPC: false) { Task { await model.say("Como está o tempo hoje?") } }
+                Divider().overlay(ConsoleColor.border)
+                shortcut("Data e hora", symbol: "clock", needsPC: false) { Task { await model.say("Qual a data e a hora de hoje?") } }
+                Divider().overlay(ConsoleColor.border)
                 shortcut("Gerar imagem", symbol: "photo") { draft = "Gere uma imagem de "; field = .command }
                 Divider().overlay(ConsoleColor.border)
                 shortcut("Último e-mail", symbol: "envelope") { Task { await model.say("Leia meu último e-mail") } }
@@ -394,20 +408,20 @@ private enum VoiceState {
             }
             .padding(.horizontal, 14)
             .background(ConsoleColor.panel, in: RoundedRectangle(cornerRadius: 14))
-            .disabled(!remoteAvailable)
         }
     }
 
-    private func shortcut(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+    private func shortcut(_ title: String, symbol: String, needsPC: Bool = true, action: @escaping () -> Void) -> some View {
+        let available = canCompose && (!needsPC || model.ready)
+        return Button(action: action) {
             HStack(spacing: 12) {
                 Image(systemName: symbol).frame(width: 22).foregroundStyle(ConsoleColor.gold)
                 Text(title).foregroundStyle(.white)
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(ConsoleColor.muted)
             }
-            .frame(minHeight: 46).contentShape(Rectangle()).opacity(remoteAvailable ? 1 : 0.65)
-        }.buttonStyle(.plain)
+            .frame(minHeight: 46).contentShape(Rectangle()).opacity(available ? 1 : 0.65)
+        }.buttonStyle(.plain).disabled(!available)
     }
 
     private func latestMessage(_ line: RemoteAssistant.Line) -> some View {

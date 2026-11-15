@@ -39,12 +39,7 @@ import UIKit
         func matches(_ pattern: String) -> Bool { text.range(of: "^(?:" + pattern + ")$", options: .regularExpression) != nil }
 
         if matches(#"(?:oi|ola|bom dia|boa tarde|boa noite)(?: jarvis)?|jarvis"#) { return greeting }
-        if matches(#"que horas? (?:sao|e)(?: agora)?|(?:qual (?:e )?a |me (?:diga|fala|fale) a |ve(?:ja|r) a )?hora(?: (?:agora|atual|local))?|horario (?:local|atual)"# + device) {
-            let formatter = DateFormatter()
-            formatter.locale = Locale(identifier: "pt_BR")
-            formatter.dateFormat = "HH:mm"
-            return "Agora são " + formatter.string(from: Date()) + "."
-        }
+        if let reply = await PhoneAlmanac.reply(text, locked: readOnly) { return reply }
         var action: PhoneAction
         var percentage: Double?
         if matches(#"(?:(?:qual (?:e )?(?:o |a )?|quanto (?:tem |resta |falta )?(?:de )?|como (?:esta|ta) (?:a )?|quant[ao] (?:de )?)?(?:(?:o |a )?(?:percentual|porcentagem|nivel|carga|estado|status) (?:de |da )?)?(?:a |de )?bateria)"# + device + #"(?: (?:resta|tenho|eu tenho|disponivel))?"#) {

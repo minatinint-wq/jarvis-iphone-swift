@@ -91,16 +91,90 @@ import ActivityKit
     @Published private(set) var followUp = false
     @Published private(set) var spotifyPhones: [[String: String]] = []
     @Published private(set) var spotifyID = UserDefaults.standard.string(forKey: "jarvis.spotify.phone") ?? ""
-    func selectSpotifyPhone(_ id: String) {
-        guard id.isEmpty || spotifyPhones.contains(where: { $0["id"] == id }) else { return }
-        spotifyID = id; UserDefaults.standard.set(id, forKey:"jarvis.spotify.phone")
-        if let sock = ws { Task { try? await send(["type":"connect","nativeAssistant":true,"handsetActions":true,"spotifyPhone":id],sock) } }
+    @Published private(set) var spotifyName = UserDefaults.standard.string(forKey: "jarvis.spotify.name") ?? ""
+    @Published private(set) var spotifyNotice = ""
+    @Published private(set) var spotifyBinding = false
+    private var spotifyTimeout: Task<Void, Never>?
+    private var allowSpotifyOpen = false
+    private var verifyAfterSpotify = false
+    private var spotifyInstallation: String {
+        if let saved = UserDefaults.standard.string(forKey: "jarvis.spotify.installation"), UUID(uuidString: saved) != nil { return saved }
+        // An installer may enroll this individual handset before its first launch.
+        // Public builds do not contain an enrollment file.
+        let enrolled = Bundle.main.url(forResource:"SpotifyEnrollment",withExtension:"txt")
+            .flatMap { try? String(contentsOf:$0, encoding:.utf8) }
+            .flatMap { UUID(uuidString:$0.trimmingCharacters(in:.whitespacesAndNewlines)) }
+        let id = (enrolled ?? UUID()).uuidString.lowercased()
+        UserDefaults.standard.set(id, forKey: "jarvis.spotify.installation")
+        return id
     }
-    func listSpotifyPhones() async { await say("Configurar Spotify deste iPhone") }
+    private func connectPacket() -> [String:Any] {
+        ["type":"connect","nativeAssistant":true,"handsetActions":true,"spotifyPhone":spotifyID,
+         "spotifyName":spotifyName,"installationId":spotifyInstallation]
+    }
+    func selectSpotifyPhone(_ id: String) {
+        guard !id.isEmpty, spotifyPhones.contains(where: { $0["id"] == id }) else { return }
+        requestSpotify("select", id: id)
+    }
+    func bindSpotifyPhone() { requestSpotify("bind", mayOpen: true) }
+    func listSpotifyPhones() { requestSpotify("list") }
+    private func requestSpotify(_ action: String, id: String = "", mayOpen: Bool = false) {
+        guard ready, let sock = ws, !spotifyBinding else { return }
+        spotifyBinding = true; allowSpotifyOpen = mayOpen
+        spotifyNotice = "Procurando este iPhone no Spotify…"
+        var packet = connectPacket()
+        packet["spotifyBinding"] = ["action":action, "deviceId":id,
+                                    "preferredName":spotifyName.isEmpty ? UIDevice.current.name : spotifyName]
+        spotifyTimeout?.cancel()
+        spotifyTimeout = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(20))
+            guard !Task.isCancelled, let self, self.ws === sock, self.spotifyBinding else { return }
+            self.spotifyBinding = false; self.allowSpotifyOpen = false
+            self.spotifyNotice = "A ponte não confirmou o vínculo. Toque em verificar para consultar novamente."
+        }
+        Task { [weak self] in
+            guard let self, self.ws === sock else { return }
+            do { try await self.send(packet, sock) }
+            catch { guard self.ws === sock else { return }; self.spotifyTimeout?.cancel(); self.spotifyBinding = false
+                self.allowSpotifyOpen = false; self.spotifyNotice = "A conexão com o PC caiu antes de confirmar o vínculo." }
+        }
+    }
+    func acceptSpotifyStatus(_ o: [String:Any]) {
+        let state = o["state"] as? String
+        if let rows = o["phones"] as? [[String:Any]] {
+            spotifyPhones = rows.compactMap { row in
+                guard let id = row["id"] as? String, !id.isEmpty, let name = row["name"] as? String else { return nil }
+                return ["id":id, "name":name]
+            }
+        }
+        if let msg = o["message"] as? String { spotifyNotice = msg }
+        let verified = state == "bound" && o["confirmed"] as? Bool == true
+        let previouslyLinked = state == "unavailable" && o["saved"] as? Bool == true
+        if verified || previouslyLinked, let id = o["deviceId"] as? String, !id.isEmpty,
+           let name = o["deviceName"] as? String, !name.isEmpty {
+            spotifyID = id; spotifyName = name
+            UserDefaults.standard.set(id, forKey:"jarvis.spotify.phone"); UserDefaults.standard.set(name, forKey:"jarvis.spotify.name")
+            if verified { verifyAfterSpotify = false }
+        }
+        if state != nil {
+            spotifyTimeout?.cancel(); spotifyBinding = false
+        }
+        if o["openSpotify"] as? Bool == true && (allowSpotifyOpen || state == nil) && !quietUntilCalled {
+            allowSpotifyOpen = false
+            showSpotify()
+        }
+        if state != nil { allowSpotifyOpen = false }
+    }
+    private func continueSpotifyBinding() {
+        guard verifyAfterSpotify, active, ready, !spotifyBinding, !quietUntilCalled else { return }
+        verifyAfterSpotify = false
+        requestSpotify("bind")
+    }
     func showSpotify() {
         guard active, UIApplication.shared.applicationState == .active, let url = URL(string:"spotify:") else { return }
+        verifyAfterSpotify = true
         UIApplication.shared.open(url, options: [:]) { ok in
-            if !ok { Task { @MainActor in self.message = "O iPhone não abriu o Spotify. Confira se ele está instalado." } }
+            if !ok { Task { @MainActor in self.verifyAfterSpotify = false; self.spotifyNotice = "Instale o Spotify neste iPhone e entre na mesma conta vinculada ao Jarvis."; self.message = self.spotifyNotice } }
         }
     }
     @Published var recording = false
@@ -347,7 +421,7 @@ import ActivityKit
                     guard let o=(try? JSONSerialization.jsonObject(with:Data(txt.utf8))) as? [String:Any] else { continue }
                     if o["type"] as? String == "pc-status", o["online"] as? Bool == true {
                         self.watchHandshake(sock)
-                        try await self.send(["type":"connect", "nativeAssistant":true, "handsetActions":true, "spotifyPhone": self.spotifyID], sock)
+                        try await self.send(self.connectPacket(), sock)
                         continue
                     }
                     await self.event(o)
@@ -370,7 +444,10 @@ import ActivityKit
     }
 
     private func event(_ o:[String:Any]) async {
-        if quietUntilCalled, let type = o["type"] as? String, !["pc-status","status"].contains(type) { return }
+        if quietUntilCalled, let type = o["type"] as? String, !["pc-status","status"].contains(type) {
+            if ["tool-status","input-status"].contains(type), o["phase"] as? String == "spotify-phone" { acceptSpotifyStatus(o) }
+            return
+        }
         switch o["type"] as? String {
         case "pc-status":
             if o["online"] as? Bool == false {
@@ -392,6 +469,7 @@ import ActivityKit
             if !busy && !recording { message = quietUntilCalled ? "Em silêncio. Diga “Oi, Jarvis” para voltar." : o["message"] as? String ?? "" }
             if ready {
                 retryCount = 0
+                continueSpotifyBinding()
                 if wantsVoice && active { wantsVoice = false; startListening() }
             } else {
                 drop()
@@ -402,8 +480,7 @@ import ActivityKit
             if let t = o["text"] as? String { add(o["role"] as? String == "user", t) }
         case "tool-status","input-status":
             if o["phase"] as? String == "spotify-phone" {
-                if let rows = o["phones"] as? [[String:String]] { spotifyPhones = rows }
-                if o["openSpotify"] as? Bool == true { showSpotify() }
+                acceptSpotifyStatus(o)
             }
             if let t = o["message"] as? String, !recording || o["phase"] as? String != "receiving" { message = t }
             if o["phase"] as? String == "handset-command", let text = o["text"] as? String,
@@ -455,6 +532,12 @@ import ActivityKit
         if PhoneVoiceControl.isMute(value) { muteUntilCalled(); return }
         guard !quietUntilCalled else { message = "Em silêncio. Diga “Oi, Jarvis”."; return }
         guard active, !value.isEmpty, value.count <= 2000, !busy, !recording, localRequest == nil else { return }
+        if Self.isSpotifyBindingCommand(value) {
+            add(true, value)
+            guard ready else { message = "Conecte o iPhone ao Jarvis do PC para vincular o Spotify."; add(false, message); return }
+            bindSpotifyPhone()
+            return
+        }
         let request = UUID()
         localRequest = request
         wake.setPaused(true)
@@ -489,6 +572,11 @@ import ActivityKit
         beginWait()
         add(true, value)
         do { try await send(["type":"text", "text":value], sock) } catch { lost(sock) }
+    }
+
+    static func isSpotifyBindingCommand(_ value: String) -> Bool {
+        let s = PhoneVoiceControl.words(value)
+        return s.range(of:#"^(?:(?:oi )?jarvis )?(?:vincula|vincule|vincular|conecta|conecte|conectar|configurar|configura|configure|parear) (?:(?:o |meu )?spotify(?: (?:aqui|(?:a|ao|do|no|neste|nesse|com|com o) (?:meu |este |esse )?(?:iphone|celular|telefone|dispositivo)))?|(?:o |meu |este |esse )?(?:iphone|dispositivo|celular)(?: direto)? (?:ao|no|com o) spotify)$"#, options:.regularExpression) != nil
     }
 
     @discardableResult func openStudio(_ mode: String) -> Bool {
@@ -655,6 +743,7 @@ import ActivityKit
     }
 
     func drop() {
+        spotifyTimeout?.cancel(); spotifyBinding = false; allowSpotifyOpen = false
         let old = ws
         ws = nil
         retryJob?.cancel()
@@ -681,6 +770,7 @@ import ActivityKit
             if !wakeEnabled && UserDefaults.standard.bool(forKey:"jarvis.wakeOptIn") { setWakeEnabled(true) }
             if wakeEnabled, wake.conversationOpen { showingFace = true }
             connect()
+            continueSpotifyBinding()
             if ready && wantsVoice { activate() }
             updateWake()
         } else {
@@ -693,7 +783,8 @@ import ActivityKit
     }
 
     func logout() {
-        spotifyID = ""; spotifyPhones = []; UserDefaults.standard.removeObject(forKey:"jarvis.spotify.phone")
+        spotifyID = ""; spotifyName = ""; spotifyNotice = ""; spotifyPhones = []; verifyAfterSpotify = false
+        for key in ["jarvis.spotify.phone", "jarvis.spotify.name", "jarvis.spotify.installation"] { UserDefaults.standard.removeObject(forKey:key) }
         setWakeEnabled(false)
         studioMode = nil
         cameraRequested = false
