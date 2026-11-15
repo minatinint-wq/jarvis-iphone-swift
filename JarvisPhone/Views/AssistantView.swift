@@ -64,7 +64,7 @@ private enum VoiceState {
     private enum Input: Hashable { case command, code }
 
     private var voiceState: VoiceState {
-        if model.recording { return .listening }
+        if model.followUp && !model.busy && !model.isSpeaking { return .listening }
         if model.isSpeaking { return .speaking }
         if model.busy { return .processing }
         return model.ready ? .ready : .waiting
@@ -251,7 +251,7 @@ private enum VoiceState {
                 field = nil
                 switch voiceState {
                 case .waiting: reconnect()
-                case .listening: Task { await model.sendRecording() }
+                case .listening: model.endConversation()
                 case .ready, .speaking:
                     if model.ready { model.startListening() } else { reconnect() }
                 case .processing: break
@@ -274,11 +274,21 @@ private enum VoiceState {
             VStack(alignment: .leading, spacing: 3) {
                 Label("Ativar com “Oi, Jarvis”", systemImage: "waveform")
                     .font(.subheadline.weight(.medium))
-                Text("Ative antes de bloquear. O Jarvis pode conversar e ler seu e-mail em voz alta.").font(.footnote).foregroundStyle(ConsoleColor.muted)
+                Text("Ative antes de bloquear. Depois de “Oi, Jarvis”, continue falando normalmente. Após um minuto de silêncio, chame de novo.").font(.footnote).foregroundStyle(ConsoleColor.muted)
             }
         }
         .tint(ConsoleColor.cyan).frame(minHeight: 44)
         .accessibilityHint("Mantém a escuta com a tela bloqueada enquanto a sessão de áudio está ativa.")
+        if model.followUp { Label("Ouvindo seu próximo pedido", systemImage:"ear").foregroundStyle(ConsoleColor.cyan) }
+        DisclosureGroup("Spotify deste iPhone") {
+            Text("Abra o Spotify neste iPhone e selecione seu aparelho uma vez. Os pedidos do celular só tocam nele.").font(.footnote)
+            HStack { Button("Abrir Spotify") { model.showSpotify() }; Button("Buscar aparelhos") { Task { await model.listSpotifyPhones() } }.disabled(!model.ready || model.busy) }
+            ForEach(model.spotifyPhones, id: \.self) { row in
+                Button { model.selectSpotifyPhone(row["id"] ?? "") } label: {
+                    Label(row["name"] ?? "Telefone",systemImage:row["id"] == model.spotifyID ? "checkmark.circle.fill" : "iphone")
+                }
+            }
+        }
         if model.wakeEnabled {
             Toggle(isOn:Binding(get:{ model.autonomous },set:{ model.setAutonomous($0) })) {
                 VStack(alignment:.leading,spacing:4) {
@@ -296,7 +306,7 @@ private enum VoiceState {
     private var voiceButtonTitle: String {
         switch voiceState {
         case .ready: return "Falar com o Jarvis"
-        case .listening: return "Terminar e enviar"
+        case .listening: return "Encerrar conversa"
         case .processing: return "Aguardando resposta"
         case .speaking:
             if model.busy { return "Reproduzindo resposta" }

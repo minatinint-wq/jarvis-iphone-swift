@@ -131,6 +131,9 @@ final class PhoneController: ObservableObject {
     }
 
     private func setTorch(_ enabled: Bool) async throws {
+        if enabled && UIApplication.shared.applicationState != .active && AVCaptureDevice.authorizationStatus(for:.video) != .authorized {
+            throw PhoneCommandError.permission("Permita a câmera uma vez com o Jarvis aberto para poder usar a lanterna.")
+        }
         if enabled { try await authorizeCamera() }
         guard let device = AVCaptureDevice.default(for: .video), device.hasTorch else {
             throw PhoneCommandError.unavailable("Este dispositivo não tem lanterna disponível.")
@@ -139,10 +142,14 @@ final class PhoneController: ObservableObject {
             throw PhoneCommandError.unavailable("A lanterna está ocupada ou temporariamente indisponível.")
         }
         try device.lockForConfiguration()
-        defer { device.unlockForConfiguration() }
-        if enabled { try device.setTorchModeOn(level: AVCaptureDevice.maxAvailableTorchLevel) }
-        else { device.torchMode = .off }
+        do {
+            defer { device.unlockForConfiguration() }
+            if enabled { try device.setTorchModeOn(level: AVCaptureDevice.maxAvailableTorchLevel) }
+            else { device.torchMode = .off }
+        }
+        for _ in 0..<8 where device.isTorchActive != enabled { try await Task.sleep(for:.milliseconds(65)) }
         torchOn = device.isTorchActive
+        guard torchOn == enabled else { throw PhoneCommandError.unavailable("O iPhone não confirmou a mudança da lanterna.") }
     }
 
     private func openExternalApp(_ rawURL: String, name: String) async throws -> String {

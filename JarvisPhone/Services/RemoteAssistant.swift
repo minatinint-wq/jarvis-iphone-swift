@@ -83,6 +83,21 @@ import ActivityKit
     @Published var busy = false
     @Published private(set) var isSpeaking = false
     @Published private(set) var wakeEnabled = false
+    @Published private(set) var followUp = false
+    @Published private(set) var spotifyPhones: [[String: String]] = []
+    @Published private(set) var spotifyID = UserDefaults.standard.string(forKey: "jarvis.spotify.phone") ?? ""
+    func selectSpotifyPhone(_ id: String) {
+        guard id.isEmpty || spotifyPhones.contains(where: { $0["id"] == id }) else { return }
+        spotifyID = id; UserDefaults.standard.set(id, forKey:"jarvis.spotify.phone")
+        if let sock = ws { Task { try? await send(["type":"connect","nativeAssistant":true,"handsetActions":true,"spotifyPhone":id],sock) } }
+    }
+    func listSpotifyPhones() async { await say("Configurar Spotify deste iPhone") }
+    func showSpotify() {
+        guard active, UIApplication.shared.applicationState == .active, let url = URL(string:"spotify:") else { return }
+        UIApplication.shared.open(url, options: [:]) { ok in
+            if !ok { Task { @MainActor in self.message = "O iPhone não abriu o Spotify. Confira se ele está instalado." } }
+        }
+    }
     @Published var recording = false
     @Published var cameraAvailable = false
     @Published var studioMode: String? { didSet { updateWake() } }
@@ -112,6 +127,7 @@ import ActivityKit
     private var awaitingHandsetCommand = false
     private let sound = HandsetAudio()
     private let wake = PhoneWakeListener()
+    private var openWhenArmed = false
     private var wakePermission: Task<Void, Never>?
     private var wakeResume: Task<Void, Never>?
     @Published private(set) var wakeAuthorized = false
@@ -125,6 +141,14 @@ import ActivityKit
     init() {
         sound.sharesWakeSession = { [weak self] in self?.wake.running == true }
         wake.onPrompt = { [weak self] in self?.heardCall() }
+        wake.onWindowChanged = { [weak self] open in
+            guard let self else { return }
+            self.followUp = open
+            if !self.busy && !self.isSpeaking {
+                self.setPhase(open ? "Ouvindo seu próximo pedido" : "Aguardando “Oi, Jarvis”")
+                if self.wake.running { self.message = open ? "Pode continuar falando." : "Aguardando “Oi, Jarvis”." }
+            }
+        }
         wake.onCommand = { [weak self] text in
             guard let self else { return }
             self.wakeHandling = true
@@ -152,7 +176,7 @@ import ActivityKit
         sound.onSpeakingChanged = { [weak self] speaking in
             guard let self else { return }
             self.isSpeaking = speaking
-            self.setPhase(speaking ? "Jarvis está falando" : (self.busy ? "Processando" : "Aguardando “Oi, Jarvis”"))
+            self.setPhase(speaking ? "Jarvis está falando" : (self.busy ? "Processando" : (self.wake.conversationOpen ? "Ouvindo seu próximo pedido" : "Aguardando “Oi, Jarvis”")))
             self.updateWake()
             if speaking { self.message = "Jarvis está falando." }
             else if !self.busy && self.message == "Jarvis está falando." { self.message = "Resposta no iPhone." }
@@ -176,6 +200,9 @@ import ActivityKit
         wakeAuthorized = false
         wakeSessionCookie = nil
         if !enabled {
+            openWhenArmed = false
+            UserDefaults.standard.removeObject(forKey:"jarvis.wakeOptIn")
+            followUp = false
             setAutonomous(false); stopBadge()
             wake.stop(releaseSession: !isSpeaking)
             if !active { drop() }
@@ -192,6 +219,7 @@ import ActivityKit
                 try await wake.authorize()
                 guard !Task.isCancelled, wakeEnabled, active else { return }
                 wakeAuthorized = true
+                UserDefaults.standard.set(true,forKey:"jarvis.wakeOptIn")
                 wakeSessionCookie = PairingStore.read()
                 startBadge()
                 updateWake()
@@ -221,6 +249,7 @@ import ActivityKit
             do {
                 if self.wake.running { self.wake.setPaused(false) }
                 else if self.active && UIApplication.shared.isProtectedDataAvailable { try self.wake.start() }
+                if self.openWhenArmed && self.wake.running { self.openWhenArmed = false; self.wake.openConversation() }
             } catch { self.setWakeEnabled(false); self.message = error.localizedDescription }
         }
     }
@@ -303,7 +332,7 @@ import ActivityKit
                     guard let o=(try? JSONSerialization.jsonObject(with:Data(txt.utf8))) as? [String:Any] else { continue }
                     if o["type"] as? String == "pc-status", o["online"] as? Bool == true {
                         self.watchHandshake(sock)
-                        try await self.send(["type":"connect", "nativeAssistant":true, "handsetActions":true], sock)
+                        try await self.send(["type":"connect", "nativeAssistant":true, "handsetActions":true, "spotifyPhone": self.spotifyID], sock)
                         continue
                     }
                     await self.event(o)
@@ -356,6 +385,10 @@ import ActivityKit
         case "transcript":
             if let t = o["text"] as? String { add(o["role"] as? String == "user", t) }
         case "tool-status","input-status":
+            if o["phase"] as? String == "spotify-phone" {
+                if let rows = o["phones"] as? [[String:String]] { spotifyPhones = rows }
+                if o["openSpotify"] as? Bool == true { showSpotify() }
+            }
             if let t = o["message"] as? String, !recording || o["phase"] as? String != "receiving" { message = t }
             if o["phase"] as? String == "handset-command", let text = o["text"] as? String,
                text.count <= 2000, active, ready, handsetActions, awaitingHandsetCommand, let sock = ws {
@@ -496,63 +529,14 @@ import ActivityKit
         if ready { wantsVoice = false; startListening() } else { connect() }
     }
 
+    func endConversation() { openWhenArmed = false; wake.endConversation() }
+
     func startListening() {
-        guard ready, !busy, !recording, localRequest == nil, active, let sock = ws else { return }
-        wakeResume?.cancel()
-        wake.stop(releaseSession: !isSpeaking)
-        sound.stopPlayback()
-        let id = UUID()
-        micID = id
-        awaitingHandsetCommand = true
-        recording = true
-        message = "Abrindo o microfone…"
-        micJob = Task { [weak self] in
-            guard let self else { return }
-            do {
-                let frames = try await sound.startCapture()
-                guard micID == id, ws === sock else { return }
-                message = "Ouvindo…"
-                var sentAudio = false
-                for try await frame in frames {
-                    guard micID == id, ws === sock, !Task.isCancelled else { return }
-                    // A single sender preserves frame order through manual and automatic endpointing.
-                    try await sock.send(.data(frame))
-                    sentAudio = true
-                }
-                guard micID == id, ws === sock, !Task.isCancelled else { return }
-                sound.endCapture()
-                recording = false
-                guard sentAudio else {
-                    micID = nil
-                    micJob = nil
-                    finishWait()
-                    message = "Não recebi áudio. Tente outra vez."
-                    return
-                }
-                if !busy { beginWait() }
-                try await send(["type":"audio-end"], sock)
-                if micID == id { micID = nil; micJob = nil }
-            } catch {
-                guard micID == id, ws === sock, !Task.isCancelled else { return }
-                let hadFrames = sound.endCapture() || busy
-                abortMic()
-                if hadFrames { lost(sock) }
-                message = error.localizedDescription
-            }
-        }
+        guard active, !busy, localRequest == nil else { return }
+        openWhenArmed = true
+        if !wakeEnabled { setWakeEnabled(true) } else { updateWake() }
     }
 
-    func sendRecording() async {
-        guard recording else { return }
-        recording = false
-        if sound.endCapture() {
-            // The sender drains all frames already captured before it sends audio-end.
-            beginWait()
-        } else {
-            abortMic()
-            message = "Gravação cancelada."
-        }
-    }
     func analyze(_ photo:UIImage) async {
         guard let sock=ws,ready,!busy,cameraAvailable,!recording,localRequest == nil else {message="A análise por câmera ainda não está disponível nesta conexão.";return}
         let length=max(photo.size.width,photo.size.height)
@@ -583,7 +567,7 @@ import ActivityKit
         }
     }
 
-    private func finishWait() { watchdog?.cancel(); watchdog = nil; busy = false; awaitingHandsetCommand = false; if !isSpeaking { setPhase("Aguardando “Oi, Jarvis”") }; updateWake() }
+    private func finishWait() { watchdog?.cancel(); watchdog = nil; busy = false; awaitingHandsetCommand = false; if !isSpeaking { setPhase(wake.conversationOpen ? "Ouvindo seu próximo pedido" : "Aguardando “Oi, Jarvis”") }; updateWake() }
 
     private func abortMic() {
         micID = nil
@@ -651,7 +635,8 @@ import ActivityKit
     func foreground(_ yes: Bool) {
         active = yes
         if yes {
-            if wakeEnabled, Date().timeIntervalSince(lastCall) < 30 { showingFace = true }
+            if !wakeEnabled && UserDefaults.standard.bool(forKey:"jarvis.wakeOptIn") { setWakeEnabled(true) }
+            if wakeEnabled, wake.conversationOpen { showingFace = true }
             connect()
             if ready && wantsVoice { activate() }
             updateWake()
@@ -665,6 +650,7 @@ import ActivityKit
     }
 
     func logout() {
+        spotifyID = ""; spotifyPhones = []; UserDefaults.standard.removeObject(forKey:"jarvis.spotify.phone")
         setWakeEnabled(false)
         studioMode = nil
         cameraRequested = false

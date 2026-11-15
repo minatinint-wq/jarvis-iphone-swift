@@ -83,13 +83,13 @@ struct HelmetViewport: UIViewRepresentable {
                 }.aspectRatio(0.95,contentMode:.fit)
                  .gesture(DragGesture().updating($drag){ v,d,_ in d=v.translation }.onEnded { v in yaw += v.translation.width*0.009;pitch=max(-0.55,min(0.55,pitch+v.translation.height*0.004)) })
                  .accessibilityLabel("Máscara tridimensional do Jarvis")
-                let status = model.isSpeaking ? "Falando" : model.busy ? "Pensando" : model.recording || model.message == "Ouvindo seu pedido…" ? "Ouvindo" : "Às suas ordens"
+                let status = model.isSpeaking ? "Falando" : model.busy ? "Pensando" : model.followUp || model.message == "Ouvindo seu pedido…" ? "Ouvindo" : "Às suas ordens"
                 Text(status).font(.title.bold()).foregroundStyle(.white)
                 ScrollView { Text(model.lines.last?.text ?? "Diga “Oi, Jarvis” e faça seu pedido.").font(.body).foregroundStyle(.white.opacity(0.85)).multilineTextAlignment(.center) }.frame(maxHeight:105)
                 Spacer(minLength:0)
-                Button { if model.recording { Task { await model.sendRecording() } } else { model.startListening() } } label:{
-                    Label(model.recording ? "Enviar pedido" : "Falar agora",systemImage:model.recording ? "stop.fill" : "mic.fill")
-                }.buttonStyle(.borderedProminent).disabled(!model.ready || model.busy).tint(.cyan)
+                Button { if model.followUp { model.endConversation() } else { model.startListening() } } label:{
+                    Label(model.followUp ? "Encerrar conversa" : "Conversar",systemImage:model.followUp ? "stop.fill" : "mic.fill")
+                }.buttonStyle(.borderedProminent).disabled(model.busy || model.isSpeaking).tint(.cyan)
             }.padding(24)
         }.preferredColorScheme(.dark)
     }

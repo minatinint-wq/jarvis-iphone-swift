@@ -2,6 +2,13 @@ import XCTest
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    @MainActor func testConversationRoutesTorchToPhoneButNotBedroomLight() {
+        for s in ["Oi Jarvis, você pode acender a lanterna do meu celular?", "Liga o flash pra mim", "Acende minha lanterna"] {
+            XCTAssertEqual(PhoneLocalKit.torchAction(s), .torchOn, s)
+        }
+        XCTAssertEqual(PhoneLocalKit.torchAction("Pode desligar a lanterna agora?"), .torchOff)
+        for s in ["acenda a luz do quarto","não ligue a lanterna","ligue a lanterna e a cafeteira"] { XCTAssertNil(PhoneLocalKit.torchAction(s),s) }
+    }
     func testNotificationQueueIsLiteralFreshAndOrdered() {
         var q = VoiceInbox(); let t=Date()
         XCTAssertTrue(q.insert("  Oi   Ana  ",now:t))

@@ -1,5 +1,21 @@
 import Foundation
 
+// Monotonic time. A turn owns the microphone window; rotating a Speech request does not.
+struct WakeConversationWindow {
+    enum Phase: Equatable { case standby, listening(until: TimeInterval), answering }
+    private(set) var phase = Phase.standby
+    static let silence: TimeInterval = 60
+    mutating func listen(at now: TimeInterval) { phase = .listening(until: now + Self.silence) }
+    mutating func expire(at now: TimeInterval) {
+        if case let .listening(until) = phase, now >= until { phase = .standby }
+    }
+    mutating func pause(at now: TimeInterval) {
+        expire(at: now)
+        if case .listening = phase { phase = .answering }
+    }
+    mutating func resume(at now: TimeInterval) { if phase == .answering { listen(at: now) } }
+}
+
 enum PhoneMedia {
     static func pairingCode(_ input:String)->String? {
         var value=input.trimmingCharacters(in:.whitespacesAndNewlines)

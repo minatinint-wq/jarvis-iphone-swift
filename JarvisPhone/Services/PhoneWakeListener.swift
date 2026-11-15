@@ -36,7 +36,11 @@ private final class WakeAudioInput: @unchecked Sendable {
     private var pendingText = ""
     private var needsNewPhrase = false
     private var greetIfSilent = false
-    private var continueAfterGreeting = false
+    private var window = WakeConversationWindow()
+    private var idleTimer: Task<Void, Never>?
+    var onWindowChanged: ((Bool) -> Void)?
+    var conversationOpen: Bool { window.phase != .standby }
+    private var now: TimeInterval { ProcessInfo.processInfo.systemUptime }
     private var lastFailure = Date.distantPast
     private var rapidFailures = 0
     private(set) var paused = false
@@ -87,15 +91,18 @@ private final class WakeAudioInput: @unchecked Sendable {
         guard running, paused != value else { return }
         paused = value
         clearRecognition()
-        waiting = !value && continueAfterGreeting
+        idleTimer?.cancel()
+        if value { window.pause(at: now) } else { window.resume(at: now) }
+        waiting = !value && conversationOpen
         needsNewPhrase = waiting
-        continueAfterGreeting = false
         greetIfSilent = false
         pendingText = ""
-        if !value { listen() }
+        if !value { armIdleTimer(); listen(); onWindowChanged?(waiting) }
     }
 
     func stop(releaseSession: Bool = true) {
+        idleTimer?.cancel()
+        window = WakeConversationWindow()
         clearRecognition()
         guard let engine else { return }
         engine.stop()
@@ -105,7 +112,6 @@ private final class WakeAudioInput: @unchecked Sendable {
         waiting = false
         needsNewPhrase = false
         greetIfSilent = false
-        continueAfterGreeting = false
         pendingText = ""
         if releaseSession { try? session.setActive(false, options: .notifyOthersOnDeactivation) }
     }
@@ -126,17 +132,19 @@ private final class WakeAudioInput: @unchecked Sendable {
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.requiresOnDeviceRecognition = true
         request.shouldReportPartialResults = true
-        request.contextualStrings = ["Oi Jarvis", "Jarvis"]
+        request.contextualStrings = ["Oi Jarvis", "Jarvis", "Spotify", "lanterna", "luz do quarto"]
         input.replace(request)
         recognition = recognizer.recognitionTask(with: request) { @Sendable [weak self] result, error in
             let text = result?.bestTranscription.formattedString
             let final = result?.isFinal == true
-            let failed = error != nil
+            let ns = error as NSError?
+            let silence = ns?.domain == "kAFAssistantErrorDomain" && ns?.code == 1110
+            let failed = error != nil && !silence
             Task { @MainActor in
                 guard let self, self.generation == id else { return }
                 if let text { self.receive(text, final: final) }
                 guard self.generation == id else { return }
-                if final || failed { self.restart(afterFailure: failed) }
+                if final || failed || silence { self.restart(afterFailure: failed) }
             }
         }
         // Speech may end an individual request even while the audio session remains active.
@@ -145,7 +153,36 @@ private final class WakeAudioInput: @unchecked Sendable {
             guard !Task.isCancelled, let self, self.generation == id else { return }
             self.restart(afterFailure: false)
         }
-        if waiting { scheduleCommand(after: pendingText.isEmpty ? (greetIfSilent ? 1.4 : 7.0) : 0.9) }
+        if waiting && (greetIfSilent || !pendingText.isEmpty) { scheduleCommand(after: pendingText.isEmpty ? 0.75 : 0.9) }
+    }
+
+    private func armIdleTimer() {
+        idleTimer?.cancel()
+        guard case let .listening(until) = window.phase else { return }
+        idleTimer = Task { [weak self] in
+            let remaining = max(0, until - ProcessInfo.processInfo.systemUptime)
+            try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
+            guard !Task.isCancelled, let self else { return }
+            self.window.expire(at: self.now)
+            guard !self.conversationOpen else { self.armIdleTimer(); return }
+            self.waiting = false; self.needsNewPhrase = false; self.greetIfSilent = false; self.pendingText = ""
+            self.onWindowChanged?(false)
+            self.listen() // Dispose of the previous turn's cumulative transcript.
+        }
+    }
+
+    func openConversation() {
+        guard running, !paused else { return }
+        clearRecognition()
+        window.listen(at: now); waiting = true; needsNewPhrase = true; greetIfSilent = false; pendingText = ""
+        armIdleTimer(); listen(); onPrompt?(); onWindowChanged?(true)
+    }
+
+    func endConversation() {
+        idleTimer?.cancel(); window = WakeConversationWindow()
+        waiting = false; needsNewPhrase = false; greetIfSilent = false; pendingText = ""
+        if running && !paused { listen() }
+        onWindowChanged?(false)
     }
 
     private func restart(afterFailure: Bool) {
@@ -171,12 +208,16 @@ private final class WakeAudioInput: @unchecked Sendable {
     }
 
     private func receive(_ text: String, final: Bool) {
+        if case let .listening(until) = window.phase, now >= until {
+            window.expire(at: now); waiting = false; needsNewPhrase = false; pendingText = ""; greetIfSilent = false
+            onWindowChanged?(false); listen(); return
+        }
         let wake = text.range(of: #"\boi[\s,.!?:–—-]+jarvis\b"#,
                               options: [.regularExpression, .caseInsensitive, .diacriticInsensitive, .backwards])
         var next: String
         if let wake {
             next = String(text[wake.upperBound...])
-            if !waiting { waiting = true; greetIfSilent = true; onPrompt?(); scheduleCommand(after: 1.4) }
+            if !waiting { waiting = true; greetIfSilent = true; window.listen(at: now); armIdleTimer(); onPrompt?(); scheduleCommand(after: 0.75) }
             needsNewPhrase = false
         } else if waiting && needsNewPhrase {
             next = text
@@ -185,6 +226,7 @@ private final class WakeAudioInput: @unchecked Sendable {
         guard !next.isEmpty else { return }
         greetIfSilent = false
         if next != pendingText {
+            window.listen(at: now); armIdleTimer()
             pendingText = next
             scheduleCommand(after: 0.9)
         }
@@ -199,7 +241,6 @@ private final class WakeAudioInput: @unchecked Sendable {
             if self.pendingText.isEmpty {
                 if self.greetIfSilent {
                     self.setPaused(true)
-                    self.continueAfterGreeting = true
                     self.onCommand?("Oi Jarvis")
                     return
                 }
