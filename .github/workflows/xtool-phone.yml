@@ -21,6 +21,8 @@ jobs:
           echo "$RUNNER_TEMP/xtool-bin/xtool.app/Contents/Resources/bin" >> "$GITHUB_PATH"
       - name: Testar áudio e protocolo da câmera
         run: swiftc JarvisPhone/Core/PhoneMedia.swift scripts/test-phone-media.swift -o "$RUNNER_TEMP/media-test" && "$RUNNER_TEMP/media-test"
+      - name: Medir sa�da do sampler da Apple por instrumento
+        run: swift scripts/probe-bank.swift JarvisPhone/Resources/JarvisInstruments.sf2
       - name: Compilar IPA arm64 com xtool
         run: |
           set -eo pipefail
@@ -50,7 +52,7 @@ jobs:
           runtime=$(xcrun simctl list runtimes -j | python3 -c 'import sys,json;print(next(x["identifier"] for x in json.load(sys.stdin)["runtimes"] if x["isAvailable"] and "SimRuntime.iOS-" in x["identifier"]))')
           id=$(xcrun simctl create 'Jarvis iPhone 13 Pro Max' com.apple.CoreSimulator.SimDeviceType.iPhone-13-Pro-Max "$runtime")
           xcrun simctl boot "$id"
-          xcodebuild -quiet -project JarvisPhone.xcodeproj -scheme JarvisPhone -destination "id=$id" -derivedDataPath "$RUNNER_TEMP/jarvis-derived" CODE_SIGNING_ALLOWED=NO test
+          xcodebuild -parallel-testing-enabled NO -project JarvisPhone.xcodeproj -scheme JarvisPhone -destination "id=$id" -derivedDataPath "$RUNNER_TEMP/jarvis-derived" CODE_SIGNING_ALLOWED=NO test
           xcrun simctl install "$id" "$RUNNER_TEMP/jarvis-derived/Build/Products/Debug-iphonesimulator/JarvisPhone.app"
           xcrun simctl launch "$id" com.jarvisxlv.iphone
           xcrun simctl openurl "$id" jarvisiphone://rosto
