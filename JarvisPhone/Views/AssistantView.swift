@@ -203,7 +203,7 @@ private enum VoiceState {
 
     private var pairingPanel: some View {
         VStack(alignment: .leading, spacing: 16) {
-            MaskDisplay(accent: ConsoleColor.gold, active: false)
+            MaskDisplay()
             Text("Conectar ao PC").font(.title.bold()).accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("pairingTitle")
             Text("Abra o painel Jarvis Remoto no computador e leia o QR code com o iPhone.")
@@ -238,7 +238,7 @@ private enum VoiceState {
 
     private var voicePanel: some View {
         VStack(spacing: 10) {
-            MaskDisplay(accent: voiceState.accent, active: model.recording || model.busy || model.isSpeaking)
+            MaskDisplay()
             VStack(spacing: 5) {
                 Text(voiceState.title)
                     .font(.title2.bold()).multilineTextAlignment(.center)
@@ -564,15 +564,6 @@ private struct ConsoleAction: ButtonStyle {
 }
 
 private struct MaskDisplay: View {
-    let accent: Color
-    let active: Bool
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    init(accent: Color, active: Bool) {
-        self.accent = accent
-        self.active = active
-    }
-
     var body: some View {
         ZStack {
             ConsoleColor.inset

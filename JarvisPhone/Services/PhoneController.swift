@@ -144,13 +144,13 @@ final class PhoneController: ObservableObject {
         guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back), device.hasTorch else {
             throw PhoneCommandError.unavailable("Este dispositivo não tem lanterna disponível.")
         }
-        guard !enabled || device.isTorchAvailable else {
+        guard device.isTorchModeSupported(enabled ? .on : .off), !enabled || device.isTorchAvailable else {
             throw PhoneCommandError.unavailable("A lanterna está ocupada ou temporariamente indisponível.")
         }
         try device.lockForConfiguration()
         do {
             defer { device.unlockForConfiguration() }
-            if enabled { try device.setTorchModeOn(level: min(0.5, AVCaptureDevice.maxAvailableTorchLevel)) }
+            if enabled { try device.setTorchModeOn(level: 0.5) }
             else { device.torchMode = .off }
         }
         for _ in 0..<8 where device.isTorchActive != enabled { try await Task.sleep(for:.milliseconds(65)) }

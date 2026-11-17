@@ -158,7 +158,7 @@ private final class WakeAudioInput: @unchecked Sendable {
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.requiresOnDeviceRecognition = true
         request.shouldReportPartialResults = true
-        request.contextualStrings = ["Oi Jarvis", "Jarvis muta", "Jarvis", "Spotify", "lanterna", "luz do quarto"]
+        request.contextualStrings = ["Oi Jarvis", "Ei Jarvis", "Jarvis muta", "Jarvis", "Spotify", "lanterna", "luz do quarto"]
         input.replace(request)
         recognition = recognizer.recognitionTask(with: request) { @Sendable [weak self] result, error in
             let text = result?.bestTranscription.formattedString
@@ -267,7 +267,7 @@ private final class WakeAudioInput: @unchecked Sendable {
             window.expire(at: now); waiting = false; needsNewPhrase = false; pendingText = ""; greetIfSilent = false
             onWindowChanged?(false); listen(); return
         }
-        let wake = text.range(of: #"\boi[\s,.!?:–—-]+(?:jarvis|jarves|jarvbis)\b"#,
+        let wake = text.range(of: #"\b(?:oi|ei)[\s,.!?:–—-]+(?:jarvis|jarves|jarvbis)\b"#,
                               options: [.regularExpression, .caseInsensitive, .diacriticInsensitive, .backwards])
         var next: String
         if let wake {

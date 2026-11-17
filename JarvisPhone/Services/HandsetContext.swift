@@ -61,13 +61,15 @@ struct PhonePreview: Codable, Equatable {
         return true
     }
     func clearPreview() {
+        UserDefaults.standard.set(Date(), forKey: "jarvis.previewCleared")
         preview = nil
         try? FileManager.default.removeItem(at: Self.previewFile)
         onChange?()
     }
     func refreshDelivered() async {
         let delivered = await UNUserNotificationCenter.current().deliveredNotifications()
-        if let n = delivered.max(by: { $0.date < $1.date }), n.date > (preview?.date ?? .distantPast) {
+        let cleared = UserDefaults.standard.object(forKey: "jarvis.previewCleared") as? Date ?? .distantPast
+        if let n = delivered.filter({ $0.date > cleared }).max(by: { $0.date < $1.date }), n.date > (preview?.date ?? .distantPast) {
             let c = n.request.content
             _ = remember([c.title,c.body].filter { !$0.isEmpty }.joined(separator: ". "), date: n.date)
         }
@@ -228,4 +230,3 @@ struct PhonePreview: Codable, Equatable {
     }
 }
 private struct HandsetIssue: Error { let message: String; init(_ message: String) { self.message = message } }
-
