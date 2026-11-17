@@ -360,6 +360,9 @@ private enum VoiceState {
             sectionTitle("Ferramentas")
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 9), count: typeSize.isAccessibilitySize ? 1 : 2), spacing: 9) {
                 if model.paired {
+                    tool(model.liveVision ? "Parar visão" : "Visão ao vivo", symbol: "eye", color: ConsoleColor.cyan, enabled: model.cameraAvailable) {
+                        if model.liveVision { model.stopVision() } else { Task { await model.describeView(continuous: true) } }
+                    }
                     tool("Câmera", symbol: "camera.viewfinder", color: ConsoleColor.cyan, enabled: model.cameraAvailable) {
                         Task { await openCamera() }
                     }

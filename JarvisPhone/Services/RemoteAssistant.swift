@@ -12,6 +12,91 @@ import ActivityKit
     private var nextRemark = Date.distantFuture
     private var remarkIndex = 0
     private var previews = VoiceInbox()
+    private var latestPreview: (String, Date)?
+    private var pendingVisionUntil: Date?
+    private var frameRequest: RearFrame?
+    private var liveVisionJob: Task<Void, Never>?
+    @Published private(set) var liveVision = false
+    private let localSpeech = AVSpeechSynthesizer()
+    private var localSpeechJob: Task<Void, Never>?
+
+    enum VisionCommand { case once, start, stop }
+    static func visionCommand(_ text: String) -> VisionCommand? {
+        let words = PhoneVoiceControl.words(text)
+            .replacingOccurrences(of: #"^(oi )?(jarvis|jarves|jarvbis) "#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: " por favor$", with: "", options: .regularExpression)
+        switch words {
+        case "o que estou vendo", "oque estou vendo", "o que eu estou vendo", "o que eu to vendo", "o que to vendo", "o que voce ve", "o que voce esta vendo", "descreva o que estou vendo": return .once
+        case "visao ao vivo", "ativar visao ao vivo", "ative a visao ao vivo", "ligar visao ao vivo", "descreva em tempo real": return .start
+        case "parar visao", "pare a visao", "parar visao ao vivo", "desligar visao ao vivo", "fechar camera": return .stop
+        default: return nil
+        }
+    }
+    private func tellLocally(_ text: String) {
+        message = text
+        add(false, text)
+        let line = AVSpeechUtterance(string: text)
+        line.voice = AVSpeechSynthesisVoice(language: "pt-BR")
+        wakeResume?.cancel()
+        wake.setPaused(true)
+        localSpeech.speak(line)
+        localSpeechJob?.cancel()
+        localSpeechJob = Task { [weak self] in
+            repeat { try? await Task.sleep(for: .milliseconds(150)) }
+            while !Task.isCancelled && self?.localSpeech.isSpeaking == true
+            guard !Task.isCancelled else { return }
+            self?.updateWake()
+        }
+    }
+    func stopVision() {
+        pendingVisionUntil = nil
+        liveVisionJob?.cancel()
+        liveVisionJob = nil
+        liveVision = false
+        frameRequest?.cancel()
+        frameRequest = nil
+    }
+    func describeView(continuous: Bool = false) async {
+        guard !quietUntilCalled, frameRequest == nil else { return }
+        guard active, UIApplication.shared.applicationState == .active else {
+            pendingVisionUntil = Date().addingTimeInterval(45)
+            tellLocally("Abra o Jarvis para eu usar a câmera traseira.")
+            return
+        }
+        guard ready, cameraAvailable else { tellLocally("A visão está indisponível. Confira a conexão com a ponte do PC."); return }
+        guard !busy, !recording, studioMode == nil else { return }
+        let request = RearFrame()
+        frameRequest = request
+        defer { if frameRequest === request { frameRequest = nil }; updateWake() }
+        wake.setPaused(true)
+        let allowed = await AVCaptureDevice.requestAccess(for: .video)
+        guard frameRequest === request, active, !quietUntilCalled else { return }
+        guard allowed else { stopVision(); tellLocally("Permita a câmera para o Jarvis nos Ajustes do iPhone."); return }
+        guard UIApplication.shared.applicationState == .active else { return }
+        message = "Olhando pela câmera traseira…"
+        let photo = await request.capture()
+        guard frameRequest === request, active, !quietUntilCalled, UIApplication.shared.applicationState == .active else { return }
+        guard let photo else { stopVision(); tellLocally("A câmera traseira não entregou uma imagem. Tente novamente."); return }
+        await analyze(photo)
+        if continuous && !liveVision && busy {
+            liveVision = true
+            liveVisionJob = Task { [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(5))
+                    guard !Task.isCancelled, let self, self.active, self.liveVision else { return }
+                    if self.ready && self.cameraAvailable && !self.busy && !self.isSpeaking && !self.wake.receivingCommand && !self.localSpeech.isSpeaking {
+                        await self.describeView()
+                    }
+                }
+            }
+        }
+    }
+    private func resumePendingVision() {
+        guard let deadline = pendingVisionUntil, active, ready, UIApplication.shared.applicationState == .active else { return }
+        pendingVisionUntil = nil
+        guard Date() <= deadline else { return }
+        Task { await describeView() }
+    }
     private var activity: Activity<WakeActivityAttributes>?
     private var lastPhase = ""
     private var lastCall = Date.distantPast
@@ -62,8 +147,11 @@ import ActivityKit
         }
     }
     @discardableResult func receivePreview(_ text: String) -> Bool {
-        guard autonomous, !quietUntilCalled, listeningInBackground else { return false }
-        return previews.insert(text, now:Date())
+        guard !quietUntilCalled else { return false }
+        let now = Date()
+        guard previews.insert(text, now:now) else { return false }
+        latestPreview = (String(text.prefix(700)), now)
+        return true
     }
     private func autonomousTick() async {
         let now = Date()
@@ -324,7 +412,7 @@ import ActivityKit
         wakeResume?.cancel()
         guard wakeEnabled, wakeAuthorized, !systemInterrupted else { return }
         if studioMode != nil { wake.stop(releaseSession: !isSpeaking); return }
-        guard !busy, !recording, !isSpeaking, !wakeHandling, localRequest == nil else {
+        guard !busy, !recording, !isSpeaking, !wakeHandling, !localSpeech.isSpeaking, frameRequest == nil, localRequest == nil else {
             wake.setPaused(true)
             return
         }
@@ -336,6 +424,7 @@ import ActivityKit
             try? await Task.sleep(nanoseconds: 350_000_000)
             guard !Task.isCancelled, let self else { return }
             do {
+                guard self.frameRequest == nil, !self.localSpeech.isSpeaking, !self.busy else { return }
                 if self.wake.running { self.wake.setPaused(false) }
                 else if self.active && UIApplication.shared.isProtectedDataAvailable { try self.wake.start() }
                 if self.openWhenArmed && self.wake.running { self.openWhenArmed = false; self.wake.openConversation() }
@@ -351,6 +440,10 @@ import ActivityKit
             return
         }
         guard !Task.isCancelled, !quietUntilCalled, listeningInBackground else { return }
+        if let command = Self.visionCommand(text) {
+            if command == .stop { stopVision() } else { await describeView() }
+            return
+        }
         let reply = await PhoneLocalKit.resolve(text, readOnly: true)
         guard !Task.isCancelled, !quietUntilCalled, listeningInBackground else { return }
         add(true, text)
@@ -468,6 +561,7 @@ import ActivityKit
             cameraAvailable = ready && o["phoneCamera"] as? Bool == true
             if !busy && !recording { message = quietUntilCalled ? "Em silêncio. Diga “Oi, Jarvis” para voltar." : o["message"] as? String ?? "" }
             if ready {
+                resumePendingVision()
                 retryCount = 0
                 continueSpotifyBinding()
                 if wantsVoice && active { wantsVoice = false; startListening() }
@@ -495,7 +589,7 @@ import ActivityKit
             if o["phase"] as? String == "retry" { finishWait() }
             if o["phase"] as? String == "open-studio", let mod = o["mode"] as? String,
                ["sketch","music","libras"].contains(mod), active { finishWait(); openStudio(mod) }
-            if o["phase"] as? String == "open-phone-camera", active { finishWait(); cameraRequested = true }
+            if o["phase"] as? String == "open-phone-camera", active { finishWait(); Task { await describeView() } }
         case "display":
             if o["kind"] as? String == "image-part" {
                 guard let id=o["id"] as? String, let offset=o["offset"] as? Int, let total=o["total"] as? Int,
@@ -532,6 +626,21 @@ import ActivityKit
         if PhoneVoiceControl.isMute(value) { muteUntilCalled(); return }
         guard !quietUntilCalled else { message = "Em silêncio. Diga “Oi, Jarvis”."; return }
         guard active, !value.isEmpty, value.count <= 2000, !busy, !recording, localRequest == nil else { return }
+        if let command = Self.visionCommand(value) {
+            switch command {
+            case .stop: stopVision(); message = "Visão encerrada."
+            case .start: await describeView(continuous: true)
+            case .once: await describeView()
+            }
+            return
+        }
+        let words = PhoneVoiceControl.words(value)
+        if words.range(of: #"^(?:oi )?(?:jarvis )?(?:leia|ler|qual foi|qual e) (?:a )?(?:minha )?ultima notificacao$"#, options: .regularExpression) != nil {
+            if let (preview, date) = latestPreview, Date().timeIntervalSince(date) < 300 {
+                tellLocally(preview)
+            } else { tellLocally("Nenhuma prévia foi encaminhada ao Jarvis nos últimos cinco minutos.") }
+            return
+        }
         if Self.isSpotifyBindingCommand(value) {
             add(true, value)
             guard ready else { message = "Conecte o iPhone ao Jarvis do PC para vincular o Spotify."; add(false, message); return }
@@ -644,6 +753,8 @@ import ActivityKit
     func endConversation() { openWhenArmed = false; wake.endConversation() }
 
     private func muteUntilCalled() {
+        stopVision()
+        localSpeech.stopSpeaking(at: .immediate)
         let hadRemoteTurn = busy
         quietUntilCalled = true
         openWhenArmed = false; wantsVoice = false
@@ -743,6 +854,7 @@ import ActivityKit
     }
 
     func drop() {
+        stopVision()
         spotifyTimeout?.cancel(); spotifyBinding = false; allowSpotifyOpen = false
         let old = ws
         ws = nil
@@ -771,9 +883,11 @@ import ActivityKit
             if wakeEnabled, wake.conversationOpen { showingFace = true }
             connect()
             continueSpotifyBinding()
+            resumePendingVision()
             if ready && wantsVoice { activate() }
             updateWake()
         } else {
+            stopVision()
             wantsVoice = false
             localRequest = nil
             if wakeEnabled && !wakeAuthorized { setWakeEnabled(false) }
@@ -783,6 +897,7 @@ import ActivityKit
     }
 
     func logout() {
+        latestPreview = nil
         spotifyID = ""; spotifyName = ""; spotifyNotice = ""; spotifyPhones = []; verifyAfterSpotify = false
         for key in ["jarvis.spotify.phone", "jarvis.spotify.name", "jarvis.spotify.installation"] { UserDefaults.standard.removeObject(forKey:key) }
         setWakeEnabled(false)

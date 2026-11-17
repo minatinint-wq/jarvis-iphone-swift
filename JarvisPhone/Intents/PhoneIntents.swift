@@ -1,6 +1,22 @@
 import AppIntents
 import UIKit
 
+struct JarvisDescribeView: AppIntent {
+    static var title: LocalizedStringResource = "O que estou vendo?"
+    static var description = IntentDescription("Abre o Jarvis e descreve uma imagem da câmera traseira.")
+    static var openAppWhenRun: Bool = true
+    @MainActor func perform() async throws -> some IntentResult {
+        let assistant = RemoteAssistant.shared
+        assistant.connect()
+        let deadline = ContinuousClock.now.advanced(by: .seconds(6))
+        while (!assistant.ready || UIApplication.shared.applicationState != .active), ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        await assistant.describeView()
+        return .result()
+    }
+}
+
 struct JarvisAnnounceNotification: AppIntent {
     static var title: LocalizedStringResource = "Anunciar notificação no Jarvis"
     static var description = IntentDescription("Lê a prévia no iPhone se o modo autônomo já estiver ativo. Não abre o app nem executa o texto como comando.")
