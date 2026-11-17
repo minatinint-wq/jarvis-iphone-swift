@@ -76,8 +76,8 @@ final class PhoneController: ObservableObject {
         case .brightness:
             if let value = command.percentage {
                 UIScreen.main.brightness = CGFloat(value / 100)
-                brightness = value
-                return "Brilho ajustado para \(Int(value))%."
+                brightness = Double(UIScreen.main.brightness) * 100
+                return "Brilho da tela em \(Int(brightness.rounded()))%."
             }
             brightness = Double(UIScreen.main.brightness) * 100
             sheet = .brightness
@@ -135,7 +135,7 @@ final class PhoneController: ObservableObject {
             throw PhoneCommandError.permission("Permita a câmera uma vez com o Jarvis aberto para poder usar a lanterna.")
         }
         if enabled { try await authorizeCamera() }
-        guard let device = AVCaptureDevice.default(for: .video), device.hasTorch else {
+        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back), device.hasTorch else {
             throw PhoneCommandError.unavailable("Este dispositivo não tem lanterna disponível.")
         }
         guard !enabled || device.isTorchAvailable else {

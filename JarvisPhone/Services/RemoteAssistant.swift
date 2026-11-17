@@ -32,9 +32,9 @@ import ActivityKit
         default: return nil
         }
     }
-    private func tellLocally(_ text: String) {
+    private func tellLocally(_ text: String, append: Bool = true) {
         message = text
-        add(false, text)
+        if append { add(false, text) }
         let line = AVSpeechUtterance(string: text)
         line.voice = AVSpeechSynthesisVoice(language: "pt-BR")
         wakeResume?.cancel()
@@ -273,7 +273,10 @@ import ActivityKit
     @Published var cameraRequested = false
     @Published var message = "Conecte ao seu Jarvis."
     @Published var lines: [Line] = []
-    @Published var artwork: UIImage?
+    @Published var presentedArtwork: UIImage?
+    @Published var artwork: UIImage? {
+        didSet { presentedArtwork = artwork }
+    }
     @Published var display: UIImage?
     private var imageID: String?
     private var receivedImage = Data()
@@ -670,7 +673,7 @@ import ActivityKit
             add(false, reply)
             message = reply
             if playBundledReply(reply) { return }
-            guard ready, handsetActions, let sock = ws, sock === originalSocket else { return }
+            guard ready, handsetActions, let sock = ws, sock === originalSocket else { tellLocally(reply, append: false); return }
             await sendHandsetReply(reply, sock)
             return
         }

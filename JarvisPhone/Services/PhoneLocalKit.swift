@@ -34,7 +34,20 @@ import UIKit
 
     // Match the entire request so PC commands mentioning a light, time or battery stay with the assistant.
     static func resolve(_ input: String, readOnly: Bool = false) async -> String? {
-        let text = normalize(input)
+        var text = normalize(input)
+        if text.contains("brilho") || text.contains("volume") {
+            text = text.replacingOccurrences(of: #"^(?:voce )?(?:pode |consegue )"#, with: "", options: .regularExpression)
+            text = text.replacingOccurrences(of: " pra ", with: " para ")
+            text = text.replacingOccurrences(of: #"(?<=\d)\s+%"#, with: "%", options: .regularExpression)
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .spellOut
+            formatter.locale = Locale(identifier: "pt_BR")
+            if let suffix = text.range(of: #"(?<= )(?:[a-z]+(?: e [a-z]+)?)(?: por cento)?$"#, options: .regularExpression) {
+                let words = String(text[suffix]).replacingOccurrences(of: " por cento", with: "")
+                if let number = formatter.number(from: words), let canonical = formatter.string(from: number),
+                   normalize(canonical) == words { text.replaceSubrange(suffix, with: number.stringValue + "%") }
+            }
+        }
         let device = #"(?:(?: (?:do|no|da|na|de|em)(?: meu| minha)? (?:iphone|celular|telefone|tela|aparelho))|(?: (?:do|no) dispositivo))?"#
         func matches(_ pattern: String) -> Bool { text.range(of: "^(?:" + pattern + ")$", options: .regularExpression) != nil }
 
@@ -51,9 +64,13 @@ import UIKit
         } else if matches(#"(?:(?:qual (?:e )?(?:o )?)?brilho)"# + device) {
             if readOnly { return "Abra o Jarvis no iPhone desbloqueado para consultar o brilho." }
             return "O brilho da tela está em \(Int((UIScreen.main.brightness * 100).rounded()))%."
-        } else if matches(#"(?:(?:ajuste|ajusta|ajustar|defina|definir|coloque|colocar|mude|mudar|ponha) (?:o )?)?brilho"# + device + #"(?: para| em| a)? [0-9]{1,3}(?:%| por cento)?"#),
+        } else if matches(#"(?:(?:ajuste|ajusta|ajustar|defina|definir|coloque|coloca|colocar|mude|muda|mudar|ponha|aumente|aumenta|diminua|abaixa) (?:o )?)?brilho"# + device + #"(?: para| em| a)? [0-9]{1,3}(?:%| por cento)?"#),
                   let range = text.range(of: #"[0-9]{1,3}"#, options: .regularExpression) {
             action = .brightness
+            percentage = Double(text[range])
+        } else if matches(#"(?:(?:ajuste|ajusta|defina|coloca|coloque|mude|aumente|abaixe) (?:o )?)?volume"# + device + #"(?: para| em| a)? [0-9]{1,3}(?:%| por cento)?"#),
+                  let range = text.range(of: #"[0-9]{1,3}"#, options: .regularExpression) {
+            action = .volume
             percentage = Double(text[range])
         } else { return nil }
         if readOnly && action != .battery && action != .torchOn && action != .torchOff { return "Abra o Jarvis no iPhone desbloqueado para executar essa ação." }

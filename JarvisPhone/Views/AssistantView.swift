@@ -614,7 +614,7 @@ private struct MaskDisplay: View {
             }
             HelmetViewport(yaw:-0.22,pitch:0,energy:active ? 0.55 : 0.08)
         }
-        .frame(height: 167)
+        .frame(height: 202)
         .clipShape(RoundedRectangle(cornerRadius: 13))
         .accessibilityHidden(true)
     }

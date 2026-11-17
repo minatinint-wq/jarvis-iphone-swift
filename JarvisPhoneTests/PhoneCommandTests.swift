@@ -3,6 +3,18 @@ import AVFoundation
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    @MainActor func testVoiceVisionModes() {
+        XCTAssertEqual(RemoteAssistant.visionCommand("Jarvis, o que estou vendo?"), .once)
+        XCTAssertEqual(RemoteAssistant.visionCommand("visão ao vivo"), .start)
+        XCTAssertEqual(RemoteAssistant.visionCommand("parar visão"), .stop)
+        XCTAssertNil(RemoteAssistant.visionCommand("não abra a câmera"))
+    }
+    @MainActor func testBrightnessPhrasesResolveOnPhone() async {
+        for phrase in ["Jarvis, ajusta o brilho pra 40 %", "Coloca o brilho em quarenta por cento"] {
+            let reply = await PhoneLocalKit.resolve(phrase, readOnly: true)
+            XCTAssertEqual(reply, "Abra o Jarvis no iPhone desbloqueado para executar essa ação.", phrase)
+        }
+    }
     @MainActor func testSpotifyPersistsOnlyAcknowledgedDevice() {
         let defaults = UserDefaults.standard
         let keys = ["jarvis.spotify.phone","jarvis.spotify.name"]
