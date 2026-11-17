@@ -1,5 +1,32 @@
 import SwiftUI
 
+@MainActor struct ImageRequestButton: View {
+    @ObservedObject var model: RemoteAssistant
+    @State private var editing = false
+    @State private var prompt = ""
+    var body: some View {
+        Button {
+            editing = true
+        } label: {
+            Label("Gerar imagem", systemImage: "photo.badge.plus")
+                .frame(maxWidth: .infinity, minHeight: 36)
+        }.buttonStyle(.bordered).tint(.cyan)
+        .alert("Gerar imagem", isPresented: $editing) {
+            if model.ready {
+                TextField("Descreva a imagem", text: $prompt)
+                Button("Gerar") {
+                    let request = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+                    prompt = ""
+                    Task { await model.say("Gere uma imagem de " + request) }
+                }.disabled(prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || model.busy || model.isSpeaking)
+            }
+            Button("Fechar", role: .cancel) {}
+        } message: {
+            if !model.ready { Text("Conecte este iPhone à ponte do Jarvis no PC para gerar imagens.") }
+        }
+    }
+}
+
 @MainActor struct ArtworkOverlay: View {
     @ObservedObject var model: RemoteAssistant
     @State private var enlarged = false

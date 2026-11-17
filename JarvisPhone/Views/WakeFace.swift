@@ -127,6 +127,7 @@ struct HelmetViewport: UIViewRepresentable {
                 Text(status).font(.title.bold()).foregroundStyle(.white)
                 ScrollView { Text(model.lines.last?.text ?? "Diga “Oi, Jarvis” e faça seu pedido.").font(.body).foregroundStyle(.white.opacity(0.85)).multilineTextAlignment(.center) }.frame(maxHeight:105)
                 Spacer(minLength:0)
+                ImageRequestButton(model: model)
                 HStack {
                     Button { Task { await model.describeView() } } label: { Label("Descrever", systemImage: "camera") }
                         .disabled(!model.cameraAvailable || model.busy)

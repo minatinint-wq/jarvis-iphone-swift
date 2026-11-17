@@ -82,6 +82,7 @@ private enum VoiceState {
                         header
                         if model.paired {
                             voicePanel
+                            ImageRequestButton(model: model)
                             composer.id("composer")
                             if let photo = preview { photoConfirmation(photo) }
                             if let art = model.artwork { generatedImage(art) }
@@ -98,6 +99,7 @@ private enum VoiceState {
                             }
                         } else {
                             pairingPanel
+                            ImageRequestButton(model: model)
                             DisclosureGroup("Usar neste iPhone", isExpanded: $localExpanded) {
                                 VStack(alignment: .leading, spacing: 12) {
                                     wakeControl
@@ -402,8 +404,6 @@ private enum VoiceState {
                 shortcut("Tempo de hoje", symbol: "cloud.sun", needsPC: false) { Task { await model.say("Como está o tempo hoje?") } }
                 Divider().overlay(ConsoleColor.border)
                 shortcut("Data e hora", symbol: "clock", needsPC: false) { Task { await model.say("Qual a data e a hora de hoje?") } }
-                Divider().overlay(ConsoleColor.border)
-                shortcut("Gerar imagem", symbol: "photo") { draft = "Gere uma imagem de "; field = .command }
                 Divider().overlay(ConsoleColor.border)
                 shortcut("Último e-mail", symbol: "envelope") { Task { await model.say("Leia meu último e-mail") } }
                 Divider().overlay(ConsoleColor.border)
