@@ -28,8 +28,11 @@
 			</array>
 		</dict>
 	</array>
-	<key>CFBundleVersion</key>
-	<string>12</string>
+	<key>NSMotionUsageDescription</key><string>O Jarvis consulta os passos registrados hoje pelo iPhone.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key><string>O Jarvis lê o próximo compromisso para avisar quando ele estiver perto.</string>
+    <key>NSContactsUsageDescription</key><string>O Jarvis encontra o telefone do contato que você pedir para ligar ou enviar SMS.</string>
+    <key>CFBundleVersion</key>
+	<string>13</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSApplicationQueriesSchemes</key>

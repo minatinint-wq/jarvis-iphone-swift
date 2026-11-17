@@ -75,8 +75,14 @@ final class PhoneController: ObservableObject {
             return enabled ? "Lanterna ligada." : "Lanterna desligada."
         case .brightness:
             if let value = command.percentage {
+                guard UIApplication.shared.applicationState == .active else {
+                    throw PhoneCommandError.unavailable("Desbloqueie o iPhone e abra o Jarvis para ajustar o brilho.")
+                }
                 UIScreen.main.brightness = CGFloat(value / 100)
                 brightness = Double(UIScreen.main.brightness) * 100
+                guard abs(brightness - value) <= 2 else {
+                    throw PhoneCommandError.unavailable("O iPhone não confirmou o brilho solicitado.")
+                }
                 return "Brilho da tela em \(Int(brightness.rounded()))%."
             }
             brightness = Double(UIScreen.main.brightness) * 100
@@ -144,7 +150,7 @@ final class PhoneController: ObservableObject {
         try device.lockForConfiguration()
         do {
             defer { device.unlockForConfiguration() }
-            if enabled { try device.setTorchModeOn(level: AVCaptureDevice.maxAvailableTorchLevel) }
+            if enabled { try device.setTorchModeOn(level: min(0.5, AVCaptureDevice.maxAvailableTorchLevel)) }
             else { device.torchMode = .off }
         }
         for _ in 0..<8 where device.isTorchActive != enabled { try await Task.sleep(for:.milliseconds(65)) }

@@ -7,7 +7,7 @@ import UIKit
         let folded = input.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "pt_BR"))
         var text = folded.replacingOccurrences(of: #"[^a-z0-9% ]+"#, with: " ", options: .regularExpression)
         text = text.split(separator: " ").joined(separator: " ")
-        text = text.replacingOccurrences(of: #"^(?:(?:oi )?jarvis |por favor )+"#, with: "", options: .regularExpression)
+        text = text.replacingOccurrences(of: #"^(?:(?:(?:oi|ei|hey) )?(?:jarvis|jarves|jarvbis) |por favor )+"#, with: "", options: .regularExpression)
         text = text.replacingOccurrences(of: #" por favor$"#, with: "", options: .regularExpression)
         return text
     }
@@ -24,7 +24,7 @@ import UIKit
     static func torchAction(_ input: String) -> PhoneAction? {
         var s = normalize(input)
         s = s.replacingOccurrences(of: #"^(?:(?:voce |vc )?(?:pode|consegue|poderia) |(?:eu )?(?:queria|quero) (?:que (?:voce )?)?|por gentileza |por favor )+"#, with:"", options:.regularExpression)
-        s = s.replacingOccurrences(of: #"(?:(?: (?:por favor|agora|ai|aqui|pra mim|para mim|por gentileza)))+$"#, with:"", options:.regularExpression)
+        s = s.replacingOccurrences(of: #"(?:(?: (?:por favor|agora|ai|aqui|pra mim|para mim|por gentileza|de novo|novamente)))+$"#, with:"", options:.regularExpression)
         let target = #" (?:a |o |minha |meu |essa |esse )?(?:lanterna|flash|luz (?:do|no) (?:meu )?(?:celular|telefone|iphone))(?: (?:do|no|desse|neste|deste) (?:meu |seu )?(?:iphone|celular|telefone|aparelho|dispositivo))?"#
         for (pattern, a): (String,PhoneAction) in [(#"(?:lig[ae]|ligar|ligue|acend[ae]|acender|ativ[ae]|ativar|ative)"#, .torchOn), (#"(?:deslig[ae]|desligar|desligue|apag[ae]|apague|apagar|desativ[ae]|desativar|desative)"#, .torchOff)] {
             if s.range(of:"^"+pattern+target+"$",options:.regularExpression) != nil { return a }
@@ -48,6 +48,7 @@ import UIKit
                    normalize(canonical) == words { text.replaceSubrange(suffix, with: number.stringValue + "%") }
             }
         }
+        text = text.replacingOccurrences(of: #" (?:de novo|novamente|por favor)$"#, with: "", options: .regularExpression)
         let device = #"(?:(?: (?:do|no|da|na|de|em)(?: meu| minha)? (?:iphone|celular|telefone|tela|aparelho))|(?: (?:do|no) dispositivo))?"#
         func matches(_ pattern: String) -> Bool { text.range(of: "^(?:" + pattern + ")$", options: .regularExpression) != nil }
 
@@ -64,7 +65,11 @@ import UIKit
         } else if matches(#"(?:(?:qual (?:e )?(?:o )?)?brilho)"# + device) {
             if readOnly { return "Abra o Jarvis no iPhone desbloqueado para consultar o brilho." }
             return "O brilho da tela está em \(Int((UIScreen.main.brightness * 100).rounded()))%."
-        } else if matches(#"(?:(?:ajuste|ajusta|ajustar|defina|definir|coloque|coloca|colocar|mude|muda|mudar|ponha|aumente|aumenta|diminua|abaixa) (?:o )?)?brilho"# + device + #"(?: para| em| a)? [0-9]{1,3}(?:%| por cento)?"#),
+        } else if matches(#"(?:aumenta|aumente|sobe|suba|diminui|diminua|abaixa|abaixe|reduz|reduza|baixe) (?:o )?brilho"# + device) {
+            let lower = ["dimin", "abaix", "redu", "baix"].contains(where: { text.hasPrefix($0) })
+            action = .brightness
+            percentage = min(100, max(0, (Double(UIScreen.main.brightness) * 100).rounded() + (lower ? -10 : 10)))
+        } else if matches(#"(?:(?:ajuste|ajusta|ajustar|altera|altere|alterar|bota|coloque|defina|definir|coloque|coloca|colocar|mude|muda|mudar|ponha|aumente|aumenta|diminua|abaixa) (?:o )?)?brilho"# + device + #"(?: para| em| a)? [0-9]{1,3}(?:%| por cento)?"#),
                   let range = text.range(of: #"[0-9]{1,3}"#, options: .regularExpression) {
             action = .brightness
             percentage = Double(text[range])

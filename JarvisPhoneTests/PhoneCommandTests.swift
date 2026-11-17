@@ -3,6 +3,18 @@ import AVFoundation
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    @MainActor func testPhoneContextCommands() {
+        XCTAssertEqual(HandsetContext.parse("Oi, Jarvis, quantos passos hj?"), .steps)
+        XCTAssertEqual(HandsetContext.parse("qual foi a última notificação?"), .notification)
+        XCTAssertEqual(HandsetContext.parse("ligue pra Ana"), .call("Ana"))
+        XCTAssertEqual(HandsetContext.parse("mande um SMS para Ana dizendo Olá!"), .sms("Ana", "Olá!"))
+        XCTAssertNil(HandsetContext.parse("ligue para Ana no WhatsApp"))
+        XCTAssertEqual(PhoneLocalKit.torchAction("Ei Jarvis, liga a lanterna de novo"), .torchOn)
+    }
+    @MainActor func testRelativeBrightnessWhenLocked() async {
+        let result = await PhoneLocalKit.resolve("diminui o brilho", readOnly: true)
+        XCTAssertEqual(result, "Abra o Jarvis no iPhone desbloqueado para executar essa ação.")
+    }
     @MainActor func testVoiceVisionModes() {
         XCTAssertEqual(RemoteAssistant.visionCommand("Jarvis, o que estou vendo?"), .once)
         XCTAssertEqual(RemoteAssistant.visionCommand("visão ao vivo"), .start)

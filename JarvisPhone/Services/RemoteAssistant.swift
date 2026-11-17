@@ -10,9 +10,8 @@ import ActivityKit
     @Published private(set) var autonomous = false
     private var idleJob: Task<Void, Never>?
     private var nextRemark = Date.distantFuture
-    private var remarkIndex = 0
     private var previews = VoiceInbox()
-    private var latestPreview: (String, Date)?
+    private var lastBadge: WakeActivityAttributes.ContentState?
     private var pendingVisionUntil: Date?
     private var frameRequest: RearFrame?
     private var liveVisionJob: Task<Void, Never>?
@@ -112,31 +111,39 @@ import ActivityKit
         message = "Ouvindo seu pedido…"
         setPhase("Ouvindo seu pedido")
     }
+    private func badgeState(_ phase: String) -> WakeActivityAttributes.ContentState {
+        let phone = HandsetContext.shared
+        let show = UserDefaults.standard.bool(forKey: "jarvis.showLockPreview")
+        return .init(phase: phase, steps: phone.steps, stepsDate: phone.stepsDate, battery: phone.battery,
+                     preview: show ? phone.preview.map { String($0.text.prefix(100)) } : nil, received: phone.preview?.date)
+    }
+    func refreshBadge() { setPhase(lastPhase) }
     private func startBadge() {
         guard active, UIApplication.shared.applicationState == .active, activity == nil,
               ActivityAuthorizationInfo().areActivitiesEnabled else { return }
-        let content = ActivityContent(state: WakeActivityAttributes.ContentState(phase:"Aguardando “Oi, Jarvis”"), staleDate:nil)
+        let content = ActivityContent(state: badgeState("Aguardando “Oi, Jarvis”"), staleDate:nil)
         activity = try? Activity.request(attributes: WakeActivityAttributes(), content: content, pushType:nil)
         for old in Activity<WakeActivityAttributes>.activities where old.id != activity?.id {
             Task { await old.end(nil, dismissalPolicy:.immediate) }
         }
-        lastPhase = content.state.phase
+        lastPhase = content.state.phase; lastBadge = content.state
     }
     private func setPhase(_ phase: String) {
-        guard let activity, lastPhase != phase else { return }
+        let state = badgeState(phase)
+        guard let activity, state != lastBadge else { return }
+        lastBadge = state
         lastPhase = phase
-        Task { await activity.update(ActivityContent(state:.init(phase:phase), staleDate:nil)) }
+        Task { await activity.update(ActivityContent(state:state, staleDate:nil)) }
     }
     private func stopBadge() {
         guard let old = activity else { return }
-        activity = nil; lastPhase = ""
+        activity = nil; lastPhase = ""; lastBadge = nil
         Task { await old.end(nil, dismissalPolicy:.immediate) }
     }
     func setAutonomous(_ enabled: Bool) {
         idleJob?.cancel(); idleJob = nil
         previews = VoiceInbox(); autonomous = enabled && wakeAuthorized && wakeEnabled
         guard autonomous else { return }
-        remarkIndex = Int.random(in: 0..<3)
         nextRemark = Date().addingTimeInterval(30)
         idleJob = Task { [weak self] in
             while !Task.isCancelled {
@@ -147,28 +154,23 @@ import ActivityKit
         }
     }
     @discardableResult func receivePreview(_ text: String) -> Bool {
-        guard !quietUntilCalled else { return false }
-        let now = Date()
-        guard previews.insert(text, now:now) else { return false }
-        latestPreview = (String(text.prefix(700)), now)
+        guard HandsetContext.shared.remember(text) else { return false }
+        if autonomous && !quietUntilCalled { _ = previews.insert(text, now: Date()) }
         return true
+    }
+    private var canAnnounce: Bool {
+        autonomous && !quietUntilCalled && listeningInBackground && !busy && !isSpeaking &&
+        !localSpeech.isSpeaking && !recording && !wakeHandling && !wake.receivingCommand &&
+        localRequest == nil && studioMode == nil && Date().timeIntervalSince(lastCall) > 7 &&
+        AVAudioSession.sharedInstance().outputVolume > 0
     }
     private func autonomousTick() async {
         let now = Date()
-        guard autonomous, !quietUntilCalled, listeningInBackground, ready, handsetActions, let sock = ws,
-              !busy, !isSpeaking, !recording, !wakeHandling, !wake.receivingCommand,
-              localRequest == nil, studioMode == nil, now.timeIntervalSince(lastCall) > 7,
-              AVAudioSession.sharedInstance().outputVolume > 0 else { return }
-        if let preview = previews.next(now:now) {
-            await sendHandsetReply("Nova notificação. " + preview, sock)
-            return
-        }
-        let hour = Calendar.current.component(.hour, from:now)
-        guard (8..<22).contains(hour), now >= nextRemark else { return }
-        nextRemark = now.addingTimeInterval(Double.random(in:1200...2100))
-        let remarks = ["Estou por aqui, magnata. Quer conversar?", "Se quiser saber o que chegou no seu e-mail, é só me chamar.", "Que tal uma pausa para esticar as pernas, magnata?"]
-        let line = remarks[remarkIndex]; remarkIndex = (remarkIndex + 1) % remarks.count
-        await sendHandsetReply(line, sock)
+        guard canAnnounce, (8..<22).contains(Calendar.current.component(.hour, from: now)) else { return }
+        if let preview = previews.next(now: now) { tellLocally("Nova notificação. " + preview); return }
+        guard now >= nextRemark else { return }
+        nextRemark = now.addingTimeInterval(60)
+        if let line = await HandsetContext.shared.proactiveNotice(), canAnnounce { tellLocally(line) }
     }
     struct Line: Identifiable { let id=UUID(); let user:Bool; let text:String }
     @Published var paired = PairingStore.read() != nil
@@ -184,6 +186,7 @@ import ActivityKit
     @Published private(set) var spotifyBinding = false
     private var spotifyTimeout: Task<Void, Never>?
     private var allowSpotifyOpen = false
+    private var spotifyHandoff: UIBackgroundTaskIdentifier = .invalid
     private var verifyAfterSpotify = false
     private var spotifyInstallation: String {
         if let saved = UserDefaults.standard.string(forKey: "jarvis.spotify.installation"), UUID(uuidString: saved) != nil { return saved }
@@ -249,7 +252,7 @@ import ActivityKit
         }
         if o["openSpotify"] as? Bool == true && (allowSpotifyOpen || state == nil) && !quietUntilCalled {
             allowSpotifyOpen = false
-            showSpotify()
+            showSpotify(forPlayback: (o["completingPlayback"] as? Bool) ?? (state == nil && busy))
         }
         if state != nil { allowSpotifyOpen = false }
     }
@@ -258,11 +261,24 @@ import ActivityKit
         verifyAfterSpotify = false
         requestSpotify("bind")
     }
-    func showSpotify() {
+    private func endSpotifyHandoff() {
+        guard spotifyHandoff != .invalid else { return }
+        let id = spotifyHandoff
+        spotifyHandoff = .invalid
+        UIApplication.shared.endBackgroundTask(id)
+        if !active && !listeningInBackground && !busy && ws != nil { drop() }
+    }
+    func showSpotify(forPlayback: Bool = false) {
         guard active, UIApplication.shared.applicationState == .active, let url = URL(string:"spotify:") else { return }
-        verifyAfterSpotify = true
+        verifyAfterSpotify = !forPlayback
+        if forPlayback && spotifyHandoff == .invalid {
+            spotifyNotice = "Abrindo o Spotify para tocar neste iPhone…"
+            spotifyHandoff = UIApplication.shared.beginBackgroundTask(withName: "Spotify no iPhone") { [weak self] in
+                Task { @MainActor in self?.endSpotifyHandoff() }
+            }
+        }
         UIApplication.shared.open(url, options: [:]) { ok in
-            if !ok { Task { @MainActor in self.verifyAfterSpotify = false; self.spotifyNotice = "Instale o Spotify neste iPhone e entre na mesma conta vinculada ao Jarvis."; self.message = self.spotifyNotice } }
+            if !ok { Task { @MainActor in self.endSpotifyHandoff(); self.verifyAfterSpotify = false; self.spotifyNotice = "Instale o Spotify neste iPhone e entre na mesma conta vinculada ao Jarvis."; self.message = self.spotifyNotice } }
         }
     }
     @Published var recording = false
@@ -309,6 +325,7 @@ import ActivityKit
     private var listeningInBackground: Bool { wakeEnabled && wakeAuthorized && wake.running && !systemInterrupted }
 
     init() {
+        HandsetContext.shared.onChange = { [weak self] in self?.refreshBadge() }
         sound.sharesWakeSession = { [weak self] in self?.wake.running == true }
         wake.onPrompt = { [weak self] in self?.heardCall() }
         wake.onMute = { [weak self] in self?.muteUntilCalled() }
@@ -446,6 +463,10 @@ import ActivityKit
         if let command = Self.visionCommand(text) {
             if command == .stop { stopVision() } else { await describeView() }
             return
+        }
+        if let reply = await HandsetContext.shared.respond(text, locked: true) {
+            guard !Task.isCancelled, !quietUntilCalled, listeningInBackground else { return }
+            add(true, text); tellLocally(reply); return
         }
         let reply = await PhoneLocalKit.resolve(text, readOnly: true)
         guard !Task.isCancelled, !quietUntilCalled, listeningInBackground else { return }
@@ -637,13 +658,6 @@ import ActivityKit
             }
             return
         }
-        let words = PhoneVoiceControl.words(value)
-        if words.range(of: #"^(?:oi )?(?:jarvis )?(?:leia|ler|qual foi|qual e) (?:a )?(?:minha )?ultima notificacao$"#, options: .regularExpression) != nil {
-            if let (preview, date) = latestPreview, Date().timeIntervalSince(date) < 300 {
-                tellLocally(preview)
-            } else { tellLocally("Nenhuma prévia foi encaminhada ao Jarvis nos últimos cinco minutos.") }
-            return
-        }
         if Self.isSpotifyBindingCommand(value) {
             add(true, value)
             guard ready else { message = "Conecte o iPhone ao Jarvis do PC para vincular o Spotify."; add(false, message); return }
@@ -665,6 +679,12 @@ import ActivityKit
             return
         }
         let originalSocket = ws
+        if PhoneLocalKit.torchAction(value) != nil { stopVision() }
+        if let reply = await HandsetContext.shared.respond(value, locked: !UIApplication.shared.isProtectedDataAvailable) {
+            guard localRequest == request else { return }
+            localRequest = nil
+            add(true, value); tellLocally(reply); return
+        }
         let reply = await PhoneLocalKit.resolve(value)
         guard localRequest == request else { return }
         localRequest = nil
@@ -756,6 +776,7 @@ import ActivityKit
     func endConversation() { openWhenArmed = false; wake.endConversation() }
 
     private func muteUntilCalled() {
+        HandsetContext.shared.cancelPending()
         stopVision()
         localSpeech.stopSpeaking(at: .immediate)
         let hadRemoteTurn = busy
@@ -812,7 +833,7 @@ import ActivityKit
         }
     }
 
-    private func finishWait() { watchdog?.cancel(); watchdog = nil; busy = false; awaitingHandsetCommand = false; if !isSpeaking { setPhase(wake.conversationOpen ? "Ouvindo seu próximo pedido" : "Aguardando “Oi, Jarvis”") }; updateWake() }
+    private func finishWait() { defer { endSpotifyHandoff() }; watchdog?.cancel(); watchdog = nil; busy = false; awaitingHandsetCommand = false; if !isSpeaking { setPhase(wake.conversationOpen ? "Ouvindo seu próximo pedido" : "Aguardando “Oi, Jarvis”") }; updateWake() }
 
     private func abortMic() {
         micID = nil
@@ -892,15 +913,16 @@ import ActivityKit
         } else {
             stopVision()
             wantsVoice = false
+            HandsetContext.shared.cancelPending()
             localRequest = nil
             if wakeEnabled && !wakeAuthorized { setWakeEnabled(false) }
-            if !listeningInBackground || recording { drop() }
+            if (!listeningInBackground && spotifyHandoff == .invalid) || recording { drop() }
             updateWake()
         }
     }
 
     func logout() {
-        latestPreview = nil
+        HandsetContext.shared.cancelPending(); HandsetContext.shared.clearPreview()
         spotifyID = ""; spotifyName = ""; spotifyNotice = ""; spotifyPhones = []; verifyAfterSpotify = false
         for key in ["jarvis.spotify.phone", "jarvis.spotify.name", "jarvis.spotify.installation"] { UserDefaults.standard.removeObject(forKey:key) }
         setWakeEnabled(false)

@@ -80,6 +80,7 @@ private enum VoiceState {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
                         header
+                        HandsetPanel(model: model)
                         if model.paired {
                             voicePanel
                             ImageRequestButton(model: model)
@@ -309,7 +310,7 @@ private enum VoiceState {
                 }
             }.disabled(!model.wakeAuthorized).tint(ConsoleColor.cyan)
             if model.autonomous {
-                Text("Para ouvir notificações: no Atalhos, use o gatilho Notificação recebida e a ação Anunciar notificação no Jarvis. Passe a entrada da automação como prévia. A voz é gerada pelo serviço configurado no PC.").font(.footnote).foregroundStyle(ConsoleColor.muted)
+                Text("Configure o encaminhamento em Meu iPhone. As prévias são lidas pela voz do próprio aparelho.").font(.footnote).foregroundStyle(ConsoleColor.muted)
             }
         }
         }
@@ -574,45 +575,9 @@ private struct MaskDisplay: View {
 
     var body: some View {
         ZStack {
-            RadialGradient(colors: [accent.opacity(0.16), ConsoleColor.inset], center: .center, startRadius: 12, endRadius: 120)
-            TimelineView(.animation(minimumInterval: 1.0 / 18, paused: !active || reduceMotion)) { moment in
-                Canvas { context, size in
-                    let center = CGPoint(x: size.width / 2, y: size.height / 2)
-                    let r = min(size.height * 0.43, size.width * 0.35)
-                    let bounds = CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)
-                    let pulse = active && !reduceMotion ? (sin(moment.date.timeIntervalSinceReferenceDate * 4) + 1) / 2 : 0.4
-                    context.stroke(Path(ellipseIn: bounds), with: .color(accent.opacity(0.2)), lineWidth: 0.75)
-                    context.stroke(Path(ellipseIn: bounds.insetBy(dx: 7, dy: 7)), with: .color(accent.opacity(0.13)), lineWidth: 0.5)
-                    for start in [-72.0, 18.0, 108.0, 198.0] {
-                        var arc = Path()
-                        arc.addArc(center: center, radius: r + 3, startAngle: .degrees(start),
-                                   endAngle: .degrees(start + 32), clockwise: false)
-                        context.stroke(arc, with: .color(accent.opacity(0.44 + pulse * 0.4)), lineWidth: 1.5)
-                    }
-                    var marks = Path()
-                    for index in 0..<48 {
-                        let angle = CGFloat(index) * .pi / 24
-                        let dx = cos(angle), dy = sin(angle)
-                        let inner = r + 6, outer = inner + (index.isMultiple(of: 4) ? 4 : 1.5)
-                        marks.move(to: CGPoint(x: center.x + dx * inner, y: center.y + dy * inner))
-                        marks.addLine(to: CGPoint(x: center.x + dx * outer, y: center.y + dy * outer))
-                    }
-                    context.stroke(marks, with: .color(accent.opacity(0.30)), lineWidth: 0.7)
-                    var rails = Path()
-                    for direction: CGFloat in [-1, 1] {
-                        let edge = direction < 0 ? CGFloat(10) : size.width - 10
-                        rails.move(to: CGPoint(x: edge, y: center.y))
-                        rails.addLine(to: CGPoint(x: center.x + direction * (r + 14), y: center.y))
-                        for index in 0..<3 {
-                            let x = edge - direction * CGFloat(index * 5)
-                            rails.move(to: CGPoint(x: x, y: center.y - 3))
-                            rails.addLine(to: CGPoint(x: x, y: center.y + 3))
-                        }
-                    }
-                    context.stroke(rails, with: .color(accent.opacity(0.33)), lineWidth: 0.75)
-                }
-            }
-            HelmetViewport(yaw:-0.22,pitch:0,energy:active ? 0.55 : 0.08)
+            ConsoleColor.inset
+            HelmetPortrait().padding(8)
+
         }
         .frame(height: 202)
         .clipShape(RoundedRectangle(cornerRadius: 13))
@@ -716,5 +681,64 @@ private struct StudioWeb:UIViewRepresentable {
         v.configuration.userContentController.removeScriptMessageHandler(forName:"jarvisSubmit")
         v.configuration.userContentController.removeScriptMessageHandler(forName:"jarvisInstrument",contentWorld:.page)
         v.stopLoading()
+    }
+}
+
+@MainActor private struct HandsetPanel: View {
+    @ObservedObject var model: RemoteAssistant
+    @ObservedObject private var phone = HandsetContext.shared
+    @AppStorage("jarvis.showLockPreview") private var showPreview = false
+    @Environment(\.scenePhase) private var phase
+    @State private var settings = false
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("Meu iPhone", systemImage: "iphone").font(.headline)
+                Spacer()
+                if let battery = phone.battery {
+                    Label("\(battery)%", systemImage: "battery.75percent").font(.caption.monospacedDigit())
+                }
+                Button { settings.toggle() } label: { Image(systemName: "slider.horizontal.3") }
+                    .accessibilityLabel("Configurar painel do iPhone")
+            }
+            Button {
+                Task { phone.notice = await phone.stepsReply(requestPermission: true) }
+            } label: {
+                HStack {
+                    Image(systemName: "figure.walk").foregroundStyle(ConsoleColor.gold)
+                    VStack(alignment: .leading) {
+                        Text(phone.steps.map { "\($0.formatted()) passos hoje" } ?? "Consultar passos de hoje")
+                            .font(.title3.weight(.semibold))
+                        if let date = phone.stepsDate { Text("Atualizado às \(date.formatted(date: .omitted, time: .shortened))").font(.caption) }
+                    }
+                }
+            }.buttonStyle(.plain)
+            Divider()
+            Label("Última notificação", systemImage: "bell").font(.caption).foregroundStyle(ConsoleColor.cyan)
+            if let latest = phone.preview {
+                Text(latest.text).lineLimit(3).privacySensitive()
+                Text(latest.date, style: .relative).font(.caption).foregroundStyle(.secondary)
+            } else { Text("Nenhuma prévia recebida").font(.subheadline).foregroundStyle(.secondary) }
+            if let upcoming = phone.upcoming { Label(upcoming, systemImage: "calendar").font(.caption) }
+            if settings {
+                Toggle("Mostrar texto na tela bloqueada", isOn: $showPreview)
+                    .onChange(of: showPreview) { _, _ in model.refreshBadge() }
+                Button("Conectar agenda do iPhone") { Task { await phone.enableCalendar() } }
+                Text("Para encaminhar um aviso, crie uma automação no Atalhos com um gatilho disponível, como Mensagem. Passe o texto recebido para a ação “Anunciar notificação no Jarvis”.")
+                    .font(.footnote).foregroundStyle(.secondary)
+                if phone.preview != nil { Button("Limpar última prévia") { phone.clearPreview() } }
+            }
+            if !phone.notice.isEmpty { Text(phone.notice).font(.footnote) }
+        }
+        .modifier(ConsoleCard())
+        .task(id: phase) {
+            guard phase == .active else { return }
+            await phone.refreshDelivered()
+            while !Task.isCancelled {
+                phone.refreshBattery()
+                _ = await phone.readSteps(requestPermission: false)
+                do { try await Task.sleep(for: .seconds(60)) } catch { return }
+            }
+        }
     }
 }
