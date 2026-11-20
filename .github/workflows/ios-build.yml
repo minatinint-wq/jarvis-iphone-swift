@@ -22,7 +22,7 @@ jobs:
         shell: bash
         run: |
           python3 scripts/build-system-shortcut.py
-          shortcuts sign --mode anyone --input "Shortcuts/JARVIS Sistema.plist" --output "JarvisPhone/Resources/JARVIS Sistema.shortcut"
+          shortcuts sign --mode anyone --input "Shortcuts/JARVIS Sistema.unsigned.shortcut" --output "JarvisPhone/Resources/JARVIS Sistema.shortcut"
       - name: Xcode and simulator
         id: simulator
         shell: bash

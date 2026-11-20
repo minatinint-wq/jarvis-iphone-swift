@@ -75,6 +75,7 @@ def build():
     a[0]['WFWorkflowActionParameters']['WFCommentActionText'] = 'JARVIS Sistema revisão 14. Controles locais. Wallet exige autenticação. Gerado por scripts/build-system-shortcut.py.'
     out = ROOT / 'Shortcuts/JARVIS Sistema.plist'
     out.write_bytes(plistlib.dumps(p, sort_keys=False))
+    (ROOT / 'Shortcuts/JARVIS Sistema.unsigned.shortcut').write_bytes(plistlib.dumps(p, fmt=plistlib.FMT_BINARY, sort_keys=False))
     print(f'{len(a)} ações; {len(EXTRA)} comandos adicionais; plist gerado.')
     return p
 

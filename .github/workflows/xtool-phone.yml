@@ -1,72 +1,139 @@
 name: JARVIS iPhone via xtool
+
 on:
+
   push:
+
     branches: ['build/xtool-iphone-20261115']
+
   workflow_dispatch:
+
 permissions:
+
   contents: read
+
 jobs:
+
   iphone:
+
     runs-on: macos-26
+
     timeout-minutes: 25
+
     steps:
+
       - uses: actions/checkout@v4
+
       - name: Prepare and sign local iPhone controls
         shell: bash
         run: |
           python3 scripts/build-system-shortcut.py
-          shortcuts sign --mode anyone --input "Shortcuts/JARVIS Sistema.plist" --output "JarvisPhone/Resources/JARVIS Sistema.shortcut"
+          shortcuts sign --mode anyone --input "Shortcuts/JARVIS Sistema.unsigned.shortcut" --output "JarvisPhone/Resources/JARVIS Sistema.shortcut"
       - name: SDK e xtool oficial
+
         run: |
+
           set -eu
+
           xcodebuild -version
+
           xcrun --sdk iphoneos --show-sdk-version
+
           curl -fLsS --retry 2 https://github.com/xtool-org/xtool/releases/download/1.24.0/xtool.app.zip -o "$RUNNER_TEMP/xtool.zip"
+
           ditto -xk "$RUNNER_TEMP/xtool.zip" "$RUNNER_TEMP/xtool-bin"
+
           echo "$RUNNER_TEMP/xtool-bin/xtool.app/Contents/Resources/bin" >> "$GITHUB_PATH"
-      - name: Testar Ã¡udio e protocolo da cÃ¢mera
+
+      - name: Testar áudio e protocolo da câmera
+
         run: swiftc JarvisPhone/Core/PhoneMedia.swift scripts/test-phone-media.swift -o "$RUNNER_TEMP/media-test" && "$RUNNER_TEMP/media-test"
+
       - name: Medir saída do sampler da Apple por instrumento
+
         run: swift scripts/probe-bank.swift JarvisPhone/Resources/JarvisInstruments.sf2
+
       - name: Compilar IPA arm64 com xtool
+
         run: |
+
           set -eo pipefail
+
           xtool dev build --ipa 2>&1 | tee "$RUNNER_TEMP/xtool-build.log"
+
           mkdir -p entrega
+
           p=$(find . -name '*.ipa' -not -path './entrega/*' | head -1)
+
           test -f "$p"
+
           cp "$p" entrega/JarvisPhone.ipa
+
           python3 scripts/check-ipa.py entrega/JarvisPhone.ipa
-      - name: Empacotar aplicativo com a extensÃ£o da tela bloqueada e metadados do Atalhos
+
+      - name: Empacotar aplicativo com a extensão da tela bloqueada e metadados do Atalhos
+
         run: |
+
           set -eo pipefail
+
           xcodebuild -quiet -project JarvisPhone.xcodeproj -scheme JarvisPhone -configuration Release -destination "generic/platform=iOS" -derivedDataPath "$RUNNER_TEMP/phone-device" CODE_SIGNING_ALLOWED=NO build
+
           mkdir -p "$RUNNER_TEMP/full/Payload"
+
           ditto "$RUNNER_TEMP/phone-device/Build/Products/Release-iphoneos/JarvisPhone.app" "$RUNNER_TEMP/full/Payload/JarvisPhone.app"
+
           (cd "$RUNNER_TEMP/full" && ditto -c -k --keepParent Payload "$RUNNER_TEMP/full-iphone.ipa")
+
           cp "$RUNNER_TEMP/full-iphone.ipa" entrega/JarvisPhone.ipa
+
           python3 scripts/check-ipa.py entrega/JarvisPhone.ipa --with-extension
+
       - uses: actions/upload-artifact@v4
+
         with:
+
           name: JARVIS-iPhone-xtool
+
           path: entrega/JarvisPhone.ipa
+
           if-no-files-found: error
+
       - name: Abrir a tela inicial no simulador
+
         run: |
+
           set -e
+
           runtime=$(xcrun simctl list runtimes -j | python3 -c 'import sys,json;print(next(x["identifier"] for x in json.load(sys.stdin)["runtimes"] if x["isAvailable"] and "SimRuntime.iOS-" in x["identifier"]))')
+
           id=$(xcrun simctl create 'Jarvis iPhone 13 Pro Max' com.apple.CoreSimulator.SimDeviceType.iPhone-13-Pro-Max "$runtime")
+
           xcrun simctl boot "$id"
+
           xcodebuild -parallel-testing-enabled NO -project JarvisPhone.xcodeproj -scheme JarvisPhone -destination "id=$id" -derivedDataPath "$RUNNER_TEMP/jarvis-derived" CODE_SIGNING_ALLOWED=NO test
+
           xcrun simctl install "$id" "$RUNNER_TEMP/jarvis-derived/Build/Products/Debug-iphonesimulator/JarvisPhone.app"
+
           xcrun simctl launch "$id" com.jarvisxlv.iphone
+
           xcrun simctl openurl "$id" jarvisiphone://rosto
+
           sleep 3
+
           xcrun simctl io "$id" screenshot "$RUNNER_TEMP/assistant.png"
+
       - uses: actions/upload-artifact@v4
+
         if: always()
+
         with:
+
           name: JARVIS-xtool-evidencia
+
           path: |
+
             ${{ runner.temp }}/assistant.png
+
             ${{ runner.temp }}/xtool-build.log
+
