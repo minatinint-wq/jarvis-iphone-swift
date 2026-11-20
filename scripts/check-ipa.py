@@ -23,6 +23,7 @@ with zipfile.ZipFile(sys.argv[1]) as z:
  if "--with-extension" in sys.argv:
   ext=root+"PlugIns/JarvisWake.appex/"
   assert info.get("NSSupportsLiveActivities") and plistlib.loads(z.read(ext+"Info.plist"))["CFBundleIdentifier"]=="com.jarvisxlv.iphone.wake"
+  assert plistlib.loads(z.read(ext+"Info.plist"))["CFBundleVersion"] == info["CFBundleVersion"], "extension build differs from app"
   assert ext+"JarvisWake" in z.namelist() and ext+"WakePortrait.png" in z.namelist()
   assert any("Anunciar notifica".encode() in z.read(n) or b"JarvisAnnounceNotification" in z.read(n) for n in z.namelist() if n.startswith(root+"Metadata.appintents/")), "ação de notificação ausente"
  print("IPA verificado: arm64, permissões, máscara 3D, voz, instrumentos e recursos.")
