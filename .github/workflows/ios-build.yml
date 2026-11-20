@@ -53,6 +53,9 @@ jobs:
             -parallel-testing-enabled NO \
             -derivedDataPath .build -resultBundlePath TestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee xcodebuild.log
+      - name: Export test screenshots
+        if: always()
+        run: xcrun xcresulttool export attachments --path TestResults.xcresult --output-path TestAttachments
       - name: Launch app and capture screenshot
         shell: bash
         run: |
@@ -87,6 +90,7 @@ jobs:
             JarvisPhone/Resources/JARVIS Sistema.shortcut
             xcodebuild.log
             TestResults.xcresult
+            TestAttachments
             JARVIS-IPHONE-SIMULADOR.png
             JarvisPhone-Simulator.zip
             device-build.log

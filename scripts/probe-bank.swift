@@ -1,8 +1,9 @@
 import Foundation
 import AVFoundation
+var failures = 0
 
 let bank = URL(fileURLWithPath:CommandLine.arguments[1])
-for (name, program, bankMSB, note) in [("piano",0,121,60),("guitar",24,121,60),("bass",33,121,60),("strings",48,121,60),("flute",73,121,60),("drums",0,120,38)] {
+for (name, program, bankMSB, note) in [("harp",46,121,60),("piano",0,121,60),("guitar",24,121,60),("bass",33,121,60),("strings",48,121,60),("flute",73,121,60),("drums",0,120,38)] {
     do {
         let format = AVAudioFormat(standardFormatWithSampleRate:44100,channels:2)!
         let engine = AVAudioEngine(), sampler = AVAudioUnitSampler()
@@ -19,6 +20,9 @@ for (name, program, bankMSB, note) in [("piano",0,121,60),("guitar",24,121,60),(
             }
         }
         print("Sampler",name,"peak",peak)
+        if peak <= 0.0001 { failures += 1 }
         engine.stop()
-    } catch { print("Sampler",name,"ERROR",error) }
+    } catch { failures += 1; print("Sampler",name,"ERROR",error) }
 }
+
+if failures > 0 { exit(1) }

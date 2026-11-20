@@ -640,7 +640,7 @@ import ActivityKit
             }
             if o["phase"] as? String == "retry" { finishWait() }
             if o["phase"] as? String == "open-studio", let mod = o["mode"] as? String,
-               ["sketch","music","libras"].contains(mod), active { finishWait(); openStudio(mod) }
+               ["sketch","music","libras","translate"].contains(mod), active { finishWait(); openStudio(mod) }
             if o["phase"] as? String == "open-phone-camera", active { finishWait(); Task { await describeView() } }
         case "display":
             if o["kind"] as? String == "image-part" {

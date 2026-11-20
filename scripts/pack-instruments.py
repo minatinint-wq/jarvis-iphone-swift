@@ -1,4 +1,4 @@
-"""Pack the six iPhone presets from an original GeneralUser GS 2.0.3 SF2.
+"""Pack the seven iPhone presets from an original GeneralUser GS 2.0.3 SF2.
 
 Usage: python scripts/pack-instruments.py GeneralUser-GS.sf2 JarvisInstruments.sf2
 All velocity layers, note zones, modulators and linked samples of the selected
@@ -13,7 +13,7 @@ FORMATS = {
     b"inst": "<20sH", b"ibag": "<HH", b"imod": "<HHhHH", b"igen": "<HH",
     b"shdr": "<20sIIIIIBbHH",
 }
-PRESETS = {(0, i) for i in (0, 24, 33, 48, 73)} | {(128, 0)}
+PRESETS = {(0, i) for i in (0, 24, 33, 46, 48, 73)} | {(128, 0)}
 
 
 def chunks(raw):
