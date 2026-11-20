@@ -101,11 +101,12 @@ private struct DrawingSurface: UIViewRepresentable {
 }
 
 enum StudioInstrument: String, CaseIterable, Identifiable {
-    case piano = "Piano", guitar = "Violão", bass = "Baixo", strings = "Cordas", flute = "Flauta", drums = "Bateria"
+    case harp = "Harpa", piano = "Piano", guitar = "Violão", bass = "Baixo", strings = "Cordas", flute = "Flauta", drums = "Bateria"
     var id: Self { self }
     var program: UInt8 {
         switch self {
         case .piano, .drums: return 0
+        case .harp: return 46
         case .guitar: return 24
         case .bass: return 33
         case .strings: return 48

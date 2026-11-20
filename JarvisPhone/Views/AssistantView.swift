@@ -145,16 +145,19 @@ private enum VoiceState {
                 if let mode = model.studioMode {
                     VStack(spacing: 0) {
                         HStack {
-                            Text(["sketch": model.localStudio ? "Desenho na tela" : "Desenho no ar", "music": "Instrumentos", "libras": "Libras"][mode] ?? "Estúdio")
+                            Text(["sketch": model.localStudio ? "Desenho na tela" : "Desenho no ar", "music": "Harpa e instrumentos", "libras": "Libras", "translate": "Traduzir pela câmera"][mode] ?? "Estúdio")
                                 .font(.headline)
                             Spacer()
-                            if model.localStudio && model.ready { Button("Estúdio completo") { model.openStudio(mode) } }
+                            if mode == "sketch" && model.localStudio && model.ready { Button("Estúdio completo") { model.openStudio(mode) } }
                             Button("Fechar") { model.studioMode = nil }
                         }.padding()
-                        if model.localStudio && mode == "sketch" {
+                        if mode == "translate" {
+                            if #available(iOS 18.0, *) { CameraTranslation() }
+                            else { Text("A tradução pela câmera requer iOS 18 ou posterior.").padding() }
+                        } else if model.localStudio && mode == "sketch" {
                             OfflineSketch()
-                        } else if model.localStudio && mode == "music" {
-                            OfflineInstruments()
+                        } else if mode == "music" {
+                            AirStrings()
                         } else {
                             StudioWeb(mode: mode, origin: model.origin) { text in
                                 model.studioMode = nil
@@ -371,7 +374,8 @@ private enum VoiceState {
                     }
                 }
                 tool(model.ready ? "Desenho no ar" : "Desenho na tela", symbol: "pencil.tip", color: ConsoleColor.gold, requiresPC: false) { model.openStudio("sketch") }
-                tool("Instrumentos", symbol: "pianokeys", color: ConsoleColor.gold, requiresPC: false) { model.openStudio("music") }
+                tool("Traduzir pela câmera", symbol: "character.viewfinder", color: ConsoleColor.cyan, requiresPC: false) { model.openStudio("translate") }
+                tool("Harpa no ar", symbol: "pianokeys", color: ConsoleColor.gold, requiresPC: false) { model.openStudio("music") }
                 if model.paired {
                     tool("Libras", symbol: "hand.raised.fingers.spread", color: ConsoleColor.cyan) { model.openStudio("libras") }
                 }

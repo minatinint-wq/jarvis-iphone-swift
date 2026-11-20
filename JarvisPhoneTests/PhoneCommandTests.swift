@@ -1,4 +1,5 @@
 import XCTest
+import SwiftUI
 import AVFoundation
 @testable import JarvisPhone
 
@@ -135,6 +136,70 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertEqual(phone.lines.last?.text, PhoneLocalKit.greeting)
         await phone.say("Jarvis, muta")
     }
+    func testHarpPinchPullReleaseOnceAndCancelLostHand() {
+        var board=AirStringBoard(); board.preset()
+        let p=CGPoint(x:0.16,y:0.5)
+        XCTAssertTrue(board.consume(point:p,pinchRatio:0.8,time:1).isEmpty)
+        XCTAssertTrue(board.consume(point:p,pinchRatio:0.1,time:1.05).isEmpty)
+        XCTAssertTrue(board.consume(point:p,pinchRatio:0.1,time:1.15).isEmpty)
+        XCTAssertNotNil(board.held)
+        XCTAssertTrue(board.consume(point:CGPoint(x:0.28,y:0.5),pinchRatio:0.1,time:1.20).isEmpty)
+        XCTAssertGreaterThan(board.offset(index:0,position:0.5,time:1.20).x,0.02)
+        XCTAssertTrue(board.consume(point:CGPoint(x:0.28,y:0.5),pinchRatio:0.8,time:1.25).isEmpty)
+        let notes=board.consume(point:CGPoint(x:0.28,y:0.5),pinchRatio:0.8,time:1.34)
+        XCTAssertEqual(notes.map(\.note),[60]);XCTAssertGreaterThan(notes[0].velocity,70)
+        XCTAssertTrue(board.consume(point:CGPoint(x:0.28,y:0.5),pinchRatio:0.8,time:1.38).isEmpty)
+        board.beginPull(p);board.dragPull(CGPoint(x:0.30,y:0.5));board.resetGesture()
+        XCTAssertTrue(board.endPull(time:2).isEmpty)
+        board.beginPull(p)
+        XCTAssertTrue(board.consume(point:p,pinchRatio:0.8,time:5).isEmpty)
+        XCTAssertNil(board.held)
+    }
+    func testHarpCreationBoundsCrossingsAndFiniteIdleAnimation() {
+        var board=AirStringBoard();board.preset()
+        XCTAssertEqual(board.strings.count,8)
+        XCTAssertEqual(board.strings.map(\.note),[60,62,64,65,67,69,71,72])
+        for i in board.strings.indices {
+            XCTAssertEqual(board.offset(index:i,position:0.5,time:10),.zero)
+        }
+        board.beginPull(CGPoint(x:0.16,y:0.5));board.dragPull(CGPoint(x:0.26,y:0.5));_ = board.endPull(time:10)
+        XCTAssertEqual(board.offset(index:0,position:0,time:10.1),.zero)
+        XCTAssertEqual(board.offset(index:0,position:0.5,time:10.1,reducedMotion:true),.zero)
+        XCTAssertTrue(board.offset(index:0,position:0.5,time:10.1).x.isFinite)
+        XCTAssertFalse(board.add(from:CGPoint(x:Double.nan,y:0),to:.zero))
+        XCTAssertFalse(board.add(from:.zero,to:CGPoint(x:0.01,y:0.01)))
+        board.mode = .create
+        for (t,p,r) in [(1.0,CGPoint(x:0.1,y:0.2),0.8),(1.05,CGPoint(x:0.1,y:0.2),0.1),(1.15,CGPoint(x:0.1,y:0.2),0.1),(1.2,CGPoint(x:0.3,y:0.2),0.1),(1.25,CGPoint(x:0.5,y:0.2),0.8),(1.34,CGPoint(x:0.5,y:0.2),0.8)] {
+            XCTAssertTrue(board.consume(point:p,pinchRatio:r,time:t).isEmpty)
+        }
+        XCTAssertEqual(board.strings.count,9)
+        XCTAssertNil(AirStringBoard.crossing(CGPoint(x:0.5,y:0.5),CGPoint(x:0.6,y:0.5),CGPoint(x:0.5,y:0.1),CGPoint(x:0.5,y:0.9)))
+    }
+    @MainActor func testHarpAndTranslationVoiceEntryPoints() {
+        for text in ["Jarvis, abre a harpa", "modo harpa", "quero tocar harpa", "abre as cordas no ar", "abre os instrumentos"] {
+            XCTAssertEqual(PhoneLocalKit.studio(for:text),"music",text)
+        }
+        XCTAssertEqual(PhoneLocalKit.studio(for:"traduz o que estou vendo"),"translate")
+        XCTAssertEqual(PhoneLocalKit.studio(for:"abre o tradutor"),"translate")
+        XCTAssertEqual(PhoneLocalKit.studio(for:"abre o modo libras"),"libras")
+        XCTAssertNil(PhoneLocalKit.studio(for:"não abre a harpa"))
+        XCTAssertNil(PhoneLocalKit.studio(for:"toca harpa no spotify"))
+        XCTAssertEqual(StudioInstrument.harp.program,46)
+    }
+    @MainActor func testCameraOCRRecognizesPrintedTextAndHarpRenders() throws {
+        let format=UIGraphicsImageRendererFormat();format.scale=1
+        let image=UIGraphicsImageRenderer(size:CGSize(width:800,height:240),format:format).image { ctx in
+            UIColor.white.setFill();ctx.fill(CGRect(x:0,y:0,width:800,height:240))
+            ("HELLO WORLD" as NSString).draw(at:CGPoint(x:50,y:70),withAttributes:[.font:UIFont.systemFont(ofSize:72),.foregroundColor:UIColor.black])
+        }
+        let rows=try CameraTextReader.read(XCTUnwrap(image.cgImage))
+        XCTAssertTrue(rows.contains { $0.text.uppercased().contains("HELLO WORLD") })
+        let view=UIHostingController(rootView:AirStrings())
+        view.view.frame=CGRect(x:0,y:0,width:428,height:850);view.view.layoutIfNeeded()
+        let screenshot=UIGraphicsImageRenderer(size:view.view.bounds.size).image { ctx in view.view.layer.render(in:ctx.cgContext) }
+        let attachment=XCTAttachment(image:screenshot);attachment.name="Harpa-no-ar-rev16";attachment.lifetime = .keepAlways;add(attachment)
+    }
+
     func testBundledInstrumentsRenderAudibleSamples() throws {
         let bank = try XCTUnwrap(Bundle.main.url(forResource: "JarvisInstruments", withExtension: "sf2"))
         let format = try XCTUnwrap(AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 2))

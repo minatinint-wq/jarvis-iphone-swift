@@ -703,7 +703,7 @@ import ActivityKit
             localRequest = nil
             add(true, value)
             if openStudio(mode) {
-                let reply = mode == "music" ? "Instrumentos abertos." : "Caderno de desenho aberto."
+                let reply = ["music":"Harpa no ar aberta.","libras":"Libras aberto.","translate":"Tradutor pela câmera aberto."][mode] ?? "Caderno de desenho aberto."
                 add(false, reply)
                 message = reply
             }
@@ -743,8 +743,9 @@ import ActivityKit
 
     @discardableResult func openStudio(_ mode: String) -> Bool {
         guard active, UIApplication.shared.applicationState == .active, UIApplication.shared.isProtectedDataAvailable,
-              !busy, !recording, ["sketch","music","libras"].contains(mode) else { return false }
+              !busy, !recording, ["sketch","music","libras","translate"].contains(mode) else { return false }
         guard ready || mode != "libras" else { message = "Conecte ao PC para abrir Libras."; return false }
+        stopVision()
         showingFace = false; sound.stopPlayback()
         localStudio = !ready
         studioMode = mode
