@@ -305,6 +305,7 @@ import ActivityKit
     @Published var cameraAvailable = false
     @Published var studioMode: String? { didSet { updateWake() } }
     @Published private(set) var localStudio = false
+    @Published private(set) var studioInstrument = StudioInstrument.harp
     @Published var wantsVoice = false
     @Published var cameraRequested = false
     @Published var message = "Conecte ao seu Jarvis."
@@ -640,7 +641,7 @@ import ActivityKit
             }
             if o["phase"] as? String == "retry" { finishWait() }
             if o["phase"] as? String == "open-studio", let mod = o["mode"] as? String,
-               ["sketch","music","libras","translate"].contains(mod), active { finishWait(); openStudio(mod) }
+               ["sketch","music","libras","translate"].contains(mod), active { finishWait(); openStudio(mod, instrument: StudioInstrument(rawValue:o["instrument"] as? String ?? "") ?? .harp) }
             if o["phase"] as? String == "open-phone-camera", active { finishWait(); Task { await describeView() } }
         case "display":
             if o["kind"] as? String == "image-part" {
@@ -702,8 +703,8 @@ import ActivityKit
         if let mode = PhoneLocalKit.studio(for: value) {
             localRequest = nil
             add(true, value)
-            if openStudio(mode) {
-                let reply = ["music":"Harpa no ar aberta.","libras":"Libras aberto.","translate":"Tradutor pela câmera aberto."][mode] ?? "Caderno de desenho aberto."
+            if openStudio(mode, instrument: PhoneLocalKit.instrument(for:value)) {
+                let reply = ["music":"Cordas no ar abertas.","libras":"Libras aberto.","translate":"Tradutor pela câmera aberto."][mode] ?? "Caderno de desenho aberto."
                 add(false, reply)
                 message = reply
             }
@@ -741,13 +742,14 @@ import ActivityKit
         return s.range(of:#"^(?:(?:oi )?jarvis )?(?:vincula|vincule|vincular|conecta|conecte|conectar|configurar|configura|configure|parear) (?:(?:o |meu )?spotify(?: (?:aqui|(?:a|ao|do|no|neste|nesse|com|com o) (?:meu |este |esse )?(?:iphone|celular|telefone|dispositivo)))?|(?:o |meu |este |esse )?(?:iphone|dispositivo|celular)(?: direto)? (?:ao|no|com o) spotify)$"#, options:.regularExpression) != nil
     }
 
-    @discardableResult func openStudio(_ mode: String) -> Bool {
+    @discardableResult func openStudio(_ mode: String, instrument: StudioInstrument = .harp) -> Bool {
         guard active, UIApplication.shared.applicationState == .active, UIApplication.shared.isProtectedDataAvailable,
               !busy, !recording, ["sketch","music","libras","translate"].contains(mode) else { return false }
         guard ready || mode != "libras" else { message = "Conecte ao PC para abrir Libras."; return false }
         stopVision()
         showingFace = false; sound.stopPlayback()
         localStudio = !ready
+        studioInstrument = instrument
         studioMode = mode
         return true
     }

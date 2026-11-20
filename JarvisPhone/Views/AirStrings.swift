@@ -104,8 +104,9 @@ private struct AirPreview: UIViewRepresentable {
     let player = InstrumentPlayer()
     private var active = false
     private var lastSeen = -Double.infinity
-    init() {
-        board.preset()
+    init(instrument: StudioInstrument = .harp) {
+        self.instrument=instrument
+        board.preset(guitar:instrument == .guitar || instrument == .electricGuitar)
         camera.onHand = { [weak self] point, ratio, time in
             Task { @MainActor in self?.consume(point, ratio: ratio, time: time) }
         }
@@ -131,7 +132,9 @@ private struct AirPreview: UIViewRepresentable {
         board.mode = mode; player.silence()
         message = mode == .create ? "Abra os dedos, faça pinça, estique e solte para criar." : "Faça pinça sobre a corda, puxe para o lado e solte."
     }
+    func preset() { board.preset(guitar:instrument == .guitar || instrument == .electricGuitar);player.silence() }
     func setInstrument() {
+        preset()
         if !player.configure(instrument) { message = player.error ?? "O timbre não carregou." }
     }
     private func consume(_ point: CGPoint?, ratio: Double, time: Double) {
@@ -163,23 +166,24 @@ private struct AirPreview: UIViewRepresentable {
 }
 
 @MainActor struct AirStrings: View {
-    @StateObject private var model = AirInstrument()
+    @StateObject private var model: AirInstrument
+    init(instrument: StudioInstrument = .harp) { _model = StateObject(wrappedValue:AirInstrument(instrument:instrument)) }
     @Environment(\.scenePhase) private var phase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var touchStart: CGPoint?
     @State private var touchEnd: CGPoint?
     @State private var showKeys = false
     @State private var touching = false
-    private let tones: [StudioInstrument] = [.harp, .guitar, .piano, .bass, .strings, .flute]
+    private let tones: [StudioInstrument] = [.harp, .guitar, .electricGuitar, .piano, .bass, .strings, .flute]
     var body: some View {
         VStack(spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("HARPA NO AR").font(.caption.weight(.black)).tracking(3).foregroundStyle(.cyan)
+                    Text(model.instrument.rawValue.uppercased() + " NO AR").font(.caption.weight(.black)).tracking(3).foregroundStyle(.cyan)
                     Text(model.board.held != nil ? "Puxe. Solte. Sinta o som." : "O instrumento acompanha sua mão.").font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("Harpa pronta") { model.board.preset(); model.player.silence() }.font(.caption)
+                Button("Cordas prontas") { model.preset() }.font(.caption)
             }
             HStack {
                 Picker("Modo", selection: Binding(get: { model.board.mode }, set: { model.switchMode($0) })) {

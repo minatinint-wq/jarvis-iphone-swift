@@ -38,11 +38,13 @@ struct AirStringBoard {
         let scale: [UInt8] = [48, 50, 52, 55, 57, 60, 62, 64, 67, 69, 72, 74, 76]
         return scale[Int(((1 - min(1, max(0, (length - 0.10) / 0.9))) * Double(scale.count - 1)).rounded())]
     }
-    mutating func preset() {
+    mutating func preset(guitar: Bool = false) {
         clear()
-        for (index, note) in [UInt8(60),62,64,65,67,69,71,72].enumerated() {
-            let x = 0.16 + Double(index) * 0.095
-            strings.append(AirString(start: CGPoint(x:x,y:0.17 + Double(index)*0.025), end: CGPoint(x:x,y:0.84), note:note))
+        let notes: [UInt8] = guitar ? [40,45,50,55,59,64] : [60,62,64,65,67,69,71,72]
+        for (index,note) in notes.enumerated() {
+            let fraction=Double(index)/Double(notes.count-1)
+            let x=0.16+fraction*0.665
+            strings.append(AirString(start:CGPoint(x:x,y:guitar ? 0.19 : 0.17+fraction*0.175),end:CGPoint(x:x,y:0.84),note:note))
         }
         mode = .play
     }

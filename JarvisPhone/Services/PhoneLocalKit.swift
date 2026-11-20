@@ -9,12 +9,22 @@ import AVFoundation
     static func studio(for input: String) -> String? {
         let text = normalize(input)
         let sketch = #"^(?:desenhar(?: (?:com o dedo|na tela|no ar))?|(?:abrir?|abra|abre) (?:o )?(?:desenho(?: no ar)?|caderno de desenho|sketchbook)|modo desenho)$"#
-        let music = #"^(?:(?:abra|abre|abrir|ative|ativar) (?:(?:os?|as?) )?(?:harpa(?: no ar)?|cordas(?: no ar)?|instrumentos|piano|violao|baixo|flauta|bateria)|(?:modo )?(?:instrumentos|harpa(?: no ar)?|cordas(?: no ar)?)|(?:tocar|toca|toque|quero tocar) (?:a |o )?(?:harpa(?: no ar)?|piano|violao|baixo|flauta|bateria|instrumentos))$"#
+        let music = #"^(?:(?:abra|abre|abrir|ative|ativar) (?:(?:os?|as?) )?(?:harpa(?: no ar)?|cordas(?: no ar)?|instrumentos|piano|violao|guitarra|baixo|flauta|bateria)|(?:modo )?(?:instrumentos|harpa(?: no ar)?|cordas(?: no ar)?)|(?:tocar|toca|toque|quero tocar) (?:a |o )?(?:harpa(?: no ar)?|piano|violao|guitarra|baixo|flauta|bateria|instrumentos))$"#
         if text.range(of: #"^(?:(?:abra|abre|abrir|ative|ativar) (?:o )?(?:modo )?libras|(?:modo )?libras)$"#, options: .regularExpression) != nil { return "libras" }
         if text.range(of: #"^(?:traduz(?:a|ir)? (?:o que estou vendo|o que eu estou vendo|isso|pela camera|com a camera|este texto)|(?:abre|abra|abrir|ative|ativar) (?:o )?(?:tradutor|traducao)(?: (?:pela|na) camera)?|modo tradutor)$"#, options: .regularExpression) != nil { return "translate" }
         if text.range(of: sketch, options: .regularExpression) != nil { return "sketch" }
         if text.range(of: music, options: .regularExpression) != nil { return "music" }
         return nil
+    }
+
+    static func instrument(for input: String) -> StudioInstrument {
+        let words=normalize(input).split(separator:" ")
+        if words.contains("guitarra") { return .electricGuitar }
+        if words.contains("violao") { return .guitar }
+        if words.contains("piano") { return .piano }
+        if words.contains("baixo") { return .bass }
+        if words.contains("flauta") { return .flute }
+        return .harp
     }
 
     static func torchAction(_ input: String) -> PhoneAction? { PhoneIntentPhrases.torch(input) }

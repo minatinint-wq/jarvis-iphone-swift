@@ -186,6 +186,12 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertNil(PhoneLocalKit.studio(for:"não abre a harpa"))
         XCTAssertNil(PhoneLocalKit.studio(for:"toca harpa no spotify"))
         XCTAssertEqual(StudioInstrument.harp.program,46)
+        XCTAssertEqual(StudioInstrument.electricGuitar.program,27)
+        XCTAssertEqual(PhoneLocalKit.studio(for:"abre a guitarra"),"music")
+        XCTAssertEqual(PhoneLocalKit.instrument(for:"abre a guitarra"),.electricGuitar)
+        XCTAssertEqual(PhoneLocalKit.instrument(for:"abre o violão"),.guitar)
+        var board=AirStringBoard();board.preset(guitar:true)
+        XCTAssertEqual(board.strings.map(\.note),[40,45,50,55,59,64])
     }
     @MainActor func testCameraOCRRecognizesPrintedTextAndHarpRenders() throws {
         let format=UIGraphicsImageRendererFormat();format.scale=1

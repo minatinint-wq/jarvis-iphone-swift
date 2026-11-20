@@ -145,7 +145,7 @@ private enum VoiceState {
                 if let mode = model.studioMode {
                     VStack(spacing: 0) {
                         HStack {
-                            Text(["sketch": model.localStudio ? "Desenho na tela" : "Desenho no ar", "music": "Harpa e instrumentos", "libras": "Libras", "translate": "Traduzir pela câmera"][mode] ?? "Estúdio")
+                            Text(["sketch": model.localStudio ? "Desenho na tela" : "Desenho no ar", "music": "Cordas no ar", "libras": "Libras", "translate": "Traduzir pela câmera"][mode] ?? "Estúdio")
                                 .font(.headline)
                             Spacer()
                             if mode == "sketch" && model.localStudio && model.ready { Button("Estúdio completo") { model.openStudio(mode) } }
@@ -157,7 +157,7 @@ private enum VoiceState {
                         } else if model.localStudio && mode == "sketch" {
                             OfflineSketch()
                         } else if mode == "music" {
-                            AirStrings()
+                            AirStrings(instrument:model.studioInstrument)
                         } else {
                             StudioWeb(mode: mode, origin: model.origin) { text in
                                 model.studioMode = nil
@@ -375,7 +375,7 @@ private enum VoiceState {
                 }
                 tool(model.ready ? "Desenho no ar" : "Desenho na tela", symbol: "pencil.tip", color: ConsoleColor.gold, requiresPC: false) { model.openStudio("sketch") }
                 tool("Traduzir pela câmera", symbol: "character.viewfinder", color: ConsoleColor.cyan, requiresPC: false) { model.openStudio("translate") }
-                tool("Harpa no ar", symbol: "pianokeys", color: ConsoleColor.gold, requiresPC: false) { model.openStudio("music") }
+                tool("Cordas no ar", symbol: "pianokeys", color: ConsoleColor.gold, requiresPC: false) { model.openStudio("music") }
                 if model.paired {
                     tool("Libras", symbol: "hand.raised.fingers.spread", color: ConsoleColor.cyan) { model.openStudio("libras") }
                 }
