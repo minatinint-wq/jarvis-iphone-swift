@@ -18,7 +18,9 @@ struct DashboardView: View {
                             Text(controller.battery.map { "\($0)%" } ?? "—")
                                 .font(.caption.monospaced()).foregroundStyle(.secondary)
                         }
-                        Text("Às suas ordens.").font(.largeTitle.bold())
+                        Text("Seu iPhone, sob comando.").font(.title.bold())
+                        Text("Jarvis \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—") · revisão \(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—")")
+                            .font(.caption.monospaced()).foregroundStyle(.secondary)
                         Text(controller.message)
                             .foregroundStyle(controller.isError ? Color.orange : Color.white.opacity(0.8))
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -138,7 +140,7 @@ struct SetupView: View {
         NavigationStack {
             List {
                 Section("Controles do sistema") {
-                    Text("Importe JARVIS Sistema uma vez para usar reunião, economia de bateria, música, bloqueio de tela e volume por comando.")
+                    Text("Importe a revisão 14 do JARVIS Sistema para Wallet, Wi-Fi, Bluetooth, dados móveis, rotação, concentração, economia e mídia. Se o atalho já existir, substitua essa versão e mantenha o nome exato.")
                     if let file = Bundle.main.url(forResource: "JARVIS Sistema", withExtension: "shortcut") {
                         ShareLink(item: file) {
                             Label("Compartilhar arquivo de instalação", systemImage: "square.and.arrow.up")
@@ -147,8 +149,34 @@ struct SetupView: View {
                     Text("Salve o arquivo em Arquivos, abra-o e toque em Adicionar Atalho. Mantenha o nome JARVIS Sistema.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
+                Section("Verificar a instalação") {
+                    Text("Os atalhos antigos JARVIS+CONTROLE+iPhone e JARVIS+Executar+Comando não substituem JARVIS Sistema. Não precisa apagá-los.")
+                    Button("Testar JARVIS Sistema") { Task { await PhoneController.shared.run(.shortcutCheck) } }
+                    Text("O teste abre Atalhos e volta ao Jarvis. A confirmação aparece em Meu iPhone somente quando a revisão 14 responde. Se não voltar, confira a importação e o nome do atalho.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+                Section("Rotinas sem abrir o Jarvis") {
+                    Text("No Atalhos → Automação → +, escolha o evento e Executar Imediatamente quando disponível. Cada gatilho precisa ser configurado uma vez no seu iPhone.")
+                    Label("Ao parar o despertador", systemImage: "alarm")
+                    Text("Adicione Resumo local do iPhone (JARVIS XLV) e depois Falar Texto usando o resultado. Ele consulta hora, bateria e passos já autorizados, sem depender da ponte.")
+                    Label("Bateria abaixo de 20%", systemImage: "battery.25percent")
+                    Text("Adicione Texto: economizar → Executar Atalho: JARVIS Sistema. Passe o Texto como entrada.")
+                    Label("Ao conectar ao carregador", systemImage: "bolt.fill")
+                    Text("Use Resumo local do iPhone → Falar Texto. Para um aviso mais discreto, use Mostrar Notificação no lugar da fala.")
+                    Label("Ao conectar seus fones", systemImage: "headphones")
+                    Text("Escolha o dispositivo Bluetooth específico. Para retomar a mídia do iPhone, passe o Texto continuar ao JARVIS Sistema. Isso não escolhe um dispositivo Spotify remoto.")
+                    Label("Etiqueta NFC na mesa", systemImage: "wave.3.right")
+                    Text("Leia uma etiqueta na criação do gatilho e passe reuniao ao JARVIS Sistema. Ela ativa Não Perturbe e silencia a mídia. Use encerrar_reuniao para sair.")
+                    Text("O iOS pode exigir desbloqueio para algumas ações. Gatilhos de NFC não são pagamentos e não transformam uma etiqueta em cartão bancário.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+                Section("Comandos de voz") {
+                    Text("Jarvis, pagar • ligue o Wi-Fi • desligue o Bluetooth • trave a rotação • economizar bateria • resumo do iPhone • anote: comprar pilhas.")
+                    Text("Wallet abre a carteira. O cartão, a confirmação e a autenticação continuam no Wallet. Desligar Wi-Fi ou dados pode interromper integrações; desligar Bluetooth pode desconectar os fones.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
                 Section("No app Atalhos") {
-                    Text("Em Adicionar Ação, procure JARVIS XLV. Os 19 controles aparecem pelo nome. Use Executar ação no iPhone para fornecer uma ação e porcentagem na mesma chamada.")
+                    Text("Em Adicionar Ação, procure JARVIS XLV. Os controles aparecem pelo nome. Use Executar ação no iPhone para fornecer uma ação e porcentagem na mesma chamada.")
                     Text("As ações ficam disponíveis em Atalhos depois de instalar e abrir este app. Não é preciso configurar a Siri.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
@@ -156,7 +184,7 @@ struct SetupView: View {
                     Text("Câmera, Fotos, Localização e Lembretes são solicitados quando você usa cada função.")
                 }
                 Section("Jarvis") {
-                    Text("Os controles locais já estão preparados. A conexão com o Jarvis será configurada depois.")
+                    Text("Ações locais e automações funcionam no iPhone. A ponte fornece apenas as integrações que precisam dela. A máscara física ainda não está montada e não é requisito para estes controles.")
                 }
             }
             .navigationTitle("Configuração")

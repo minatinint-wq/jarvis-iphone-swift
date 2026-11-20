@@ -98,7 +98,7 @@ final class PhoneController: ObservableObject {
                 throw PhoneCommandError.unavailable("Bateria indisponível neste dispositivo ou simulador.")
             }
             return "Bateria em \(battery)%."
-        case .meeting, .endMeeting, .lowPower, .pause, .play, .next, .lock:
+        case .meeting, .endMeeting, .lowPower, .pause, .play, .next, .lock, .wallet, .wifiOn, .wifiOff, .bluetoothOn, .bluetoothOff, .cellularOn, .cellularOff, .rotationLock, .rotationUnlock, .lowPowerOff, .shortcutCheck:
             return try await openSystemShortcut(command)
         case .whatsapp:
             return try await openExternalApp("whatsapp://", name: "WhatsApp")
@@ -168,8 +168,30 @@ final class PhoneController: ObservableObject {
         return "Abertura do \(name) solicitada."
     }
 
+    private var shortcutProbe: (token: String, expires: Date)?
+    @Published private(set) var shortcutVerified = false
+
+    func acceptShortcutReceipt(_ url: URL) -> Bool {
+        guard let probe = shortcutProbe,
+              PhoneShortcutReceipt.accepts(url, token: probe.token, expires: probe.expires) else { return false }
+        shortcutProbe = nil
+        shortcutVerified = true
+        report("JARVIS Sistema revisão 14 respondeu. Os controles estão conectados ao Atalhos.")
+        return true
+    }
+
     private func openSystemShortcut(_ command: PhoneCommand) async throws -> String {
-        guard await UIApplication.shared.open(command.systemShortcutURL) else {
+        guard UIApplication.shared.applicationState == .active else {
+            throw PhoneCommandError.unavailable("Desbloqueie e abra o Jarvis para encaminhar esta ação ao Atalhos.")
+        }
+        var target = command.systemShortcutURL
+        if command.action == .shortcutCheck {
+            let token = UUID().uuidString
+            shortcutVerified = false
+            shortcutProbe = (token, Date().addingTimeInterval(120))
+            target = PhoneShortcutReceipt.probeURL(token: token)
+        }
+        guard await UIApplication.shared.open(target) else {
             throw PhoneCommandError.unavailable("Não foi possível abrir o app Atalhos.")
         }
         return "Pedido encaminhado ao Atalhos. Confira o resultado lá. Se necessário, importe JARVIS Sistema."

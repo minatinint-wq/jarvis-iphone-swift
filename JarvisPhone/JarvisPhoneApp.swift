@@ -71,7 +71,9 @@ import SwiftUI
             }
             .onAppear{if scenePhase == .active {remote.foreground(true)}}
             .onOpenURL{url in
-                if url.scheme?.lowercased()=="jarvisiphone",url.host?.lowercased()=="rosto" {tab=0;remote.showingFace=true}
+                if url.scheme == "jarvisiphone", url.host == "shortcut-receipt" {tab=1; _ = controller.acceptShortcutReceipt(url)}
+                else if url.scheme == "jarvisiphone", url.host == "automacoes" {tab=1;controller.sheet = .setup}
+                else if url.scheme?.lowercased()=="jarvisiphone",url.host?.lowercased()=="rosto" {tab=0;remote.showingFace=true}
                 else if url.scheme?.lowercased()=="jarvisiphone",url.host?.lowercased()=="conversar" {tab=0;remote.showingFace=true;remote.activate()}
                 else if url.scheme=="jarvisiphone",url.host=="parear" {tab=0;if !remote.paired {Task{await remote.pair(url.absoluteString)}}}
                 else {tab=1;Task{await controller.handle(url:url)}}

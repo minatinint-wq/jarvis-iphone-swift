@@ -11,6 +11,11 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+      - name: Prepare and sign local iPhone controls
+        shell: bash
+        run: |
+          python3 scripts/build-system-shortcut.py
+          shortcuts sign --mode anyone --input "Shortcuts/JARVIS Sistema.plist" --output "JarvisPhone/Resources/JARVIS Sistema.shortcut"
       - name: SDK e xtool oficial
         run: |
           set -eu
@@ -19,9 +24,9 @@ jobs:
           curl -fLsS --retry 2 https://github.com/xtool-org/xtool/releases/download/1.24.0/xtool.app.zip -o "$RUNNER_TEMP/xtool.zip"
           ditto -xk "$RUNNER_TEMP/xtool.zip" "$RUNNER_TEMP/xtool-bin"
           echo "$RUNNER_TEMP/xtool-bin/xtool.app/Contents/Resources/bin" >> "$GITHUB_PATH"
-      - name: Testar áudio e protocolo da câmera
+      - name: Testar Ã¡udio e protocolo da cÃ¢mera
         run: swiftc JarvisPhone/Core/PhoneMedia.swift scripts/test-phone-media.swift -o "$RUNNER_TEMP/media-test" && "$RUNNER_TEMP/media-test"
-      - name: Medir sa�da do sampler da Apple por instrumento
+      - name: Medir saída do sampler da Apple por instrumento
         run: swift scripts/probe-bank.swift JarvisPhone/Resources/JarvisInstruments.sf2
       - name: Compilar IPA arm64 com xtool
         run: |
@@ -32,7 +37,7 @@ jobs:
           test -f "$p"
           cp "$p" entrega/JarvisPhone.ipa
           python3 scripts/check-ipa.py entrega/JarvisPhone.ipa
-      - name: Empacotar aplicativo com a extensão da tela bloqueada e metadados do Atalhos
+      - name: Empacotar aplicativo com a extensÃ£o da tela bloqueada e metadados do Atalhos
         run: |
           set -eo pipefail
           xcodebuild -quiet -project JarvisPhone.xcodeproj -scheme JarvisPhone -configuration Release -destination "generic/platform=iOS" -derivedDataPath "$RUNNER_TEMP/phone-device" CODE_SIGNING_ALLOWED=NO build

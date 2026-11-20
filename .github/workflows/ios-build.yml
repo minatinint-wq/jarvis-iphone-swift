@@ -18,6 +18,11 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Prepare and sign local iPhone controls
+        shell: bash
+        run: |
+          python3 scripts/build-system-shortcut.py
+          shortcuts sign --mode anyone --input "Shortcuts/JARVIS Sistema.plist" --output "JarvisPhone/Resources/JARVIS Sistema.shortcut"
       - name: Xcode and simulator
         id: simulator
         shell: bash
@@ -51,6 +56,8 @@ jobs:
           xcrun simctl install '${{ steps.simulator.outputs.udid }}' .build/Build/Products/Debug-iphonesimulator/JarvisPhone.app
           xcrun simctl launch '${{ steps.simulator.outputs.udid }}' com.jarvisxlv.iphone
           sleep 3
+          xcrun simctl openurl '${{ steps.simulator.outputs.udid }}' jarvisiphone://automacoes
+          sleep 2
           xcrun simctl io '${{ steps.simulator.outputs.udid }}' screenshot JARVIS-IPHONE-SIMULADOR.png
           ditto -c -k --sequesterRsrc --keepParent .build/Build/Products/Debug-iphonesimulator/JarvisPhone.app JarvisPhone-Simulator.zip
       - name: Compile for physical iPhone without signing
@@ -73,6 +80,7 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
           path: |
+            JarvisPhone/Resources/JARVIS Sistema.shortcut
             xcodebuild.log
             TestResults.xcresult
             JARVIS-IPHONE-SIMULADOR.png

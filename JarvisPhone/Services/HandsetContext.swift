@@ -190,6 +190,17 @@ struct PhonePreview: Codable, Equatable {
                 return "Ligação encaminhada ao Telefone."
             }
         }
+        let localWords = PhoneVoiceControl.words(text).replacingOccurrences(of: #"^(?:(?:oi|ei) )?jarvis "#, with: "", options: .regularExpression)
+        if ["resumo do iphone", "meu resumo", "resumo do dia", "status do iphone", "me de um resumo"].contains(localWords) {
+            return await localBriefing(includeAgenda: !locked)
+        }
+        if let range = text.range(of: #"^(?:(?:(?:Oi|Ei)[, ]+)?Jarvis[, ]+)?(?:anote|anota|anotar|guarde uma nota)[: ,]+"#, options: [.regularExpression, .caseInsensitive]) {
+            guard !locked, UIApplication.shared.applicationState == .active else { return "Desbloqueie o iPhone para guardar uma nota." }
+            let body = String(text[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !body.isEmpty, body.count <= 2000 else { return "Diga o conteúdo da nota, em até dois mil caracteres." }
+            do { try PhoneController.shared.saveNote(text: body); return "Nota salva neste iPhone." }
+            catch { return "Não consegui salvar a nota no iPhone." }
+        }
         guard let request = Self.parse(text) else { return nil }
         switch request {
         case .steps: return await stepsReply(requestPermission: !locked)
@@ -211,6 +222,18 @@ struct PhonePreview: Codable, Equatable {
                 return body.map { "SMS para \(who). Texto: \($0). Posso abrir a mensagem?" } ?? "Posso ligar para \(who)?"
             } catch { return (error as? HandsetIssue)?.message ?? "Não consegui consultar os contatos do iPhone." }
         }
+    }
+    func localBriefing(includeAgenda: Bool) async -> String {
+        refreshBattery()
+        var lines = ["Agora são " + Date().formatted(date: .omitted, time: .shortened) + "."]
+        if let battery { lines.append("Bateria em \(battery)%.") }
+        if ProcessInfo.processInfo.isLowPowerModeEnabled { lines.append("Modo Pouca Energia ativo.") }
+        if let count = await readSteps(requestPermission: false) { lines.append("\(count) passos hoje.") }
+        if includeAgenda, UIApplication.shared.isProtectedDataAvailable {
+            _ = upcomingEvent()
+            if let upcoming { lines.append("Próximo compromisso: " + upcoming + ".") }
+        }
+        return lines.joined(separator: " ")
     }
     private func showComposer(to number: String, body: String) -> String {
         guard MFMessageComposeViewController.canSendText() else { return "O Mensagens deste iPhone não está disponível para envio." }

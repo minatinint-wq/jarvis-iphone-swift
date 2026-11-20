@@ -29,6 +29,17 @@ struct JarvisAnnounceNotification: AppIntent {
 }
 
 enum PhoneActionParameter: String, AppEnum {
+    case wallet = "carteira"
+    case wifiOn = "wifi_ligar"
+    case wifiOff = "wifi_desligar"
+    case bluetoothOn = "bluetooth_ligar"
+    case bluetoothOff = "bluetooth_desligar"
+    case cellularOn = "dados_ligar"
+    case cellularOff = "dados_desligar"
+    case rotationLock = "rotacao_bloquear"
+    case rotationUnlock = "rotacao_liberar"
+    case lowPowerOff = "economia_desligar"
+    case shortcutCheck = "verificar_atalho"
     case torchOn = "lanterna_ligar", torchOff = "lanterna_desligar"
     case volume, brightness = "brilho", battery = "bateria"
     case meeting = "reuniao", endMeeting = "encerrar_reuniao", lowPower = "economizar"
@@ -38,6 +49,18 @@ enum PhoneActionParameter: String, AppEnum {
 
     static var typeDisplayRepresentation: TypeDisplayRepresentation = "Ação do iPhone"
     static var caseDisplayRepresentations: [PhoneActionParameter: DisplayRepresentation] = [
+        .wallet: "Abrir Wallet",
+        .wifiOn: "Ligar Wi-Fi",
+        .wifiOff: "Desligar Wi-Fi",
+        .bluetoothOn: "Ligar Bluetooth",
+        .bluetoothOff: "Desligar Bluetooth",
+        .cellularOn: "Ligar dados móveis",
+        .cellularOff: "Desligar dados móveis",
+        .rotationLock: "Travar rotação",
+        .rotationUnlock: "Liberar rotação",
+        .lowPowerOff: "Desativar economia",
+        .shortcutCheck: "Testar atalho",
+
         .torchOn: "Ligar lanterna", .torchOff: "Desligar lanterna",
         .volume: "Volume", .brightness: "Brilho da tela", .battery: "Bateria",
         .meeting: "Modo reunião", .endMeeting: "Encerrar reunião", .lowPower: "Economizar bateria",
@@ -95,3 +118,12 @@ struct PhoneBatteryIntent: AppIntent {
 
 // AppIntents aparecem como ações no app Atalhos após instalar e abrir o app.
 // Não há AppShortcutsProvider, frases de ativação nem integração de voz com Siri.
+
+struct JarvisLocalBriefing: AppIntent {
+    static var title: LocalizedStringResource = "Resumo local do iPhone"
+    static var description = IntentDescription("Retorna hora, bateria e passos autorizados. Use Falar Texto em seguida para ouvir, inclusive em uma automação. Não inclui mensagens nem agenda privada.")
+    static var openAppWhenRun: Bool = false
+    @MainActor func perform() async throws -> some IntentResult & ReturnsValue<String> {
+        .result(value: await HandsetContext.shared.localBriefing(includeAgenda: false))
+    }
+}

@@ -3,6 +3,37 @@ import AVFoundation
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    func testLocalAutomationCommandsAreExactAndDoNotExecuteNegations() {
+        XCTAssertEqual(PhoneSystemVoice.action("Oi Jarvis, pagar"), .wallet)
+        XCTAssertEqual(PhoneSystemVoice.action("Jarvis, ligue o Wi-Fi"), .wifiOn)
+        XCTAssertEqual(PhoneSystemVoice.action("desligue os dados móveis"), .cellularOff)
+        XCTAssertEqual(PhoneSystemVoice.action("libere a rotação"), .rotationUnlock)
+        XCTAssertEqual(PhoneSystemVoice.action("teste o atalho"), .shortcutCheck)
+        for s in ["não ligue o wifi", "pagar mil reais", "explique como ligar o bluetooth", "ligue o wifi e desligue os dados", "pagar para Ana"] {
+            XCTAssertNil(PhoneSystemVoice.action(s), s)
+        }
+    }
+    func testShortcutReceiptRejectsReplayExpiredWrongVersionAndDuplicateFields() throws {
+        let now = Date()
+        let good = try XCTUnwrap(URL(string: "jarvisiphone://shortcut-receipt?token=test&result=JARVIS_SISTEMA_14"))
+        XCTAssertTrue(PhoneShortcutReceipt.accepts(good, token: "test", expires: now.addingTimeInterval(10), now: now))
+        XCTAssertFalse(PhoneShortcutReceipt.accepts(good, token: "different", expires: now.addingTimeInterval(10), now: now))
+        XCTAssertFalse(PhoneShortcutReceipt.accepts(good, token: "test", expires: now, now: now))
+        for suffix in ["&token=test", "&result=JARVIS_SISTEMA_14", "#fragment"] {
+            XCTAssertFalse(PhoneShortcutReceipt.accepts(URL(string:good.absoluteString + suffix)!, token:"test", expires:now.addingTimeInterval(10), now:now))
+        }
+        let probe = URLComponents(url: PhoneShortcutReceipt.probeURL(token: "x&y"), resolvingAgainstBaseURL: false)!
+        XCTAssertEqual(probe.queryItems?.first { $0.name == "text" }?.value, "verificar_atalho")
+        let callback = URLComponents(string: probe.queryItems!.first { $0.name == "x-success" }!.value!)!
+        XCTAssertEqual(callback.queryItems?.first?.value, "x&y")
+    }
+    @MainActor func testLockedSystemActionsDoNotAttemptToOpenAnotherApp() async {
+        for phrase in ["Jarvis pagar", "ligue o bluetooth", "desligue os dados móveis"] {
+            let reply = await PhoneLocalKit.resolve(phrase, readOnly: true)
+            XCTAssertEqual(reply, "Desbloqueie e abra o Jarvis para encaminhar esta ação ao Atalhos.")
+        }
+    }
+
     @MainActor func testPhoneContextCommands() {
         XCTAssertEqual(HandsetContext.parse("Oi, Jarvis, quantos passos hj?"), .steps)
         XCTAssertEqual(HandsetContext.parse("qual foi a última notificação?"), .notification)
@@ -163,8 +194,8 @@ final class PhoneCommandTests: XCTestCase {
     }
 
     func testAllNineteenActionsHaveUniqueIDs() {
-        XCTAssertEqual(PhoneAction.allCases.count, 19)
-        XCTAssertEqual(Set(PhoneAction.allCases.map(\.rawValue)).count, 19)
+        XCTAssertEqual(PhoneAction.allCases.count, 30)
+        XCTAssertEqual(Set(PhoneAction.allCases.map(\.rawValue)).count, 30)
     }
 
     func testDeepLinkRoutesKnownAction() throws {

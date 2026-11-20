@@ -54,6 +54,11 @@ import UIKit
 
         if matches(#"(?:oi|ola|bom dia|boa tarde|boa noite)(?: jarvis)?|jarvis"#) { return greeting }
         if let reply = await PhoneAlmanac.reply(text, locked: readOnly) { return reply }
+        if let localAction = PhoneSystemVoice.action(input) {
+            if readOnly { return "Desbloqueie e abra o Jarvis para encaminhar esta ação ao Atalhos." }
+            do { return try await PhoneController.shared.perform(PhoneCommand(action: localAction)) }
+            catch { return error.localizedDescription }
+        }
         var action: PhoneAction
         var percentage: Double?
         if matches(#"(?:(?:qual (?:e )?(?:o |a )?|quanto (?:tem |resta |falta )?(?:de )?|como (?:esta|ta) (?:a )?|quant[ao] (?:de )?)?(?:(?:o |a )?(?:percentual|porcentagem|nivel|carga|estado|status) (?:de |da )?)?(?:a |de )?bateria)"# + device + #"(?: (?:resta|tenho|eu tenho|disponivel))?"#) {

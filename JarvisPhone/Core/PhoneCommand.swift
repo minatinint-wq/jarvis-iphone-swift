@@ -1,6 +1,11 @@
 import Foundation
 
 enum PhoneAction: String, CaseIterable, Codable, Identifiable {
+    case wallet = "carteira", wifiOn = "wifi_ligar", wifiOff = "wifi_desligar"
+    case bluetoothOn = "bluetooth_ligar", bluetoothOff = "bluetooth_desligar"
+    case cellularOn = "dados_ligar", cellularOff = "dados_desligar"
+    case rotationLock = "rotacao_bloquear", rotationUnlock = "rotacao_liberar"
+    case lowPowerOff = "economia_desligar", shortcutCheck = "verificar_atalho"
     case torchOn = "lanterna_ligar"
     case torchOff = "lanterna_desligar"
     case volume, brightness = "brilho", battery = "bateria"
@@ -13,6 +18,17 @@ enum PhoneAction: String, CaseIterable, Codable, Identifiable {
 
     var title: String {
         switch self {
+        case .wallet: return "Abrir Wallet"
+        case .wifiOn: return "Ligar Wi-Fi"
+        case .wifiOff: return "Desligar Wi-Fi"
+        case .bluetoothOn: return "Ligar Bluetooth"
+        case .bluetoothOff: return "Desligar Bluetooth"
+        case .cellularOn: return "Ligar dados móveis"
+        case .cellularOff: return "Desligar dados móveis"
+        case .rotationLock: return "Travar rotação"
+        case .rotationUnlock: return "Liberar rotação"
+        case .lowPowerOff: return "Desativar economia"
+        case .shortcutCheck: return "Testar atalho"
         case .torchOn: return "Ligar lanterna"
         case .torchOff: return "Desligar lanterna"
         case .volume: return "Volume"
@@ -37,6 +53,17 @@ enum PhoneAction: String, CaseIterable, Codable, Identifiable {
 
     var symbol: String {
         switch self {
+        case .wallet: return "wallet.pass"
+        case .wifiOn: return "wifi"
+        case .wifiOff: return "wifi.slash"
+        case .bluetoothOn: return "antenna.radiowaves.left.and.right"
+        case .bluetoothOff: return "antenna.radiowaves.left.and.right.slash"
+        case .cellularOn: return "antenna.radiowaves.left.and.right"
+        case .cellularOff: return "antenna.radiowaves.left.and.right.slash"
+        case .rotationLock: return "lock.rotation"
+        case .rotationUnlock: return "rotate.right"
+        case .lowPowerOff: return "battery.100percent"
+        case .shortcutCheck: return "checkmark.shield"
         case .torchOn: return "flashlight.on.fill"
         case .torchOff: return "flashlight.off.fill"
         case .volume: return "speaker.wave.2.fill"
@@ -60,13 +87,24 @@ enum PhoneAction: String, CaseIterable, Codable, Identifiable {
 
     var usesSystemShortcut: Bool {
         switch self {
-        case .meeting, .endMeeting, .lowPower, .pause, .play, .next, .lock: return true
+        case .meeting, .endMeeting, .lowPower, .pause, .play, .next, .lock, .wallet, .wifiOn, .wifiOff, .bluetoothOn, .bluetoothOff, .cellularOn, .cellularOff, .rotationLock, .rotationUnlock, .lowPowerOff, .shortcutCheck: return true
         default: return false
         }
     }
 
     var subtitle: String {
         switch self {
+        case .wallet: return "Abre a carteira; o pagamento exige sua autenticação"
+        case .wifiOn: return "Executa no próprio iPhone"
+        case .wifiOff: return "Pode interromper a conexão com a ponte"
+        case .bluetoothOn: return "Conectar acessórios"
+        case .bluetoothOff: return "Pode desconectar seus fones"
+        case .cellularOn: return "Usa o plano de dados do iPhone"
+        case .cellularOff: return "Pode interromper a conexão com a ponte"
+        case .rotationLock: return "Manter a orientação da tela"
+        case .rotationUnlock: return "Permitir girar a tela"
+        case .lowPowerOff: return "Desativar o Modo Pouca Energia"
+        case .shortcutCheck: return "Confirma a versão instalada do JARVIS Sistema"
         case .volume: return "Controle de volume do iPhone"
         case .meeting: return "Não Perturbe e mídia em 0%"
         case .endMeeting: return "Não Perturbe desligado; mídia em 50%"
@@ -149,5 +187,58 @@ struct PhoneCommand: Equatable {
             URLQueryItem(name: "text", value: payload)
         ]
         return parts.url!
+    }
+}
+
+// Exact, local commands only. Quoted requests, negations and compound requests stay with the assistant.
+enum PhoneSystemVoice {
+    static func action(_ input: String) -> PhoneAction? {
+        var text = input.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "pt_BR"))
+        text = text.replacingOccurrences(of: #"[^a-z0-9 ]"#, with: " ", options: .regularExpression).split(separator: " ").joined(separator: " ")
+        text = text.replacingOccurrences(of: #"^(?:(?:oi|ei) )?jarvis "#, with: "", options: .regularExpression)
+        text = text.replacingOccurrences(of: #" por favor$"#, with: "", options: .regularExpression)
+        let on = #"(?:liga|ligue|ligar|ative|ativar|ativa) "#
+        let off = #"(?:desliga|desligue|desligar|desative|desativar|desativa) "#
+        let patterns: [(String,PhoneAction)] = [
+            (#"(?:pagar|quero pagar|(?:abra|abre|abrir) (?:a |o )?(?:wallet|carteira))"#, .wallet),
+            (on + #"(?:o )?wi ?fi"#, .wifiOn), (off + #"(?:o )?wi ?fi"#, .wifiOff),
+            (on + #"(?:o )?bluetooth"#, .bluetoothOn), (off + #"(?:o )?bluetooth"#, .bluetoothOff),
+            (on + #"(?:os )?dados moveis"#, .cellularOn), (off + #"(?:os )?dados moveis"#, .cellularOff),
+            (#"(?:trave|trava|bloqueie|bloquear) (?:a )?rotacao"#, .rotationLock),
+            (#"(?:libere|libera|desbloqueie|desbloquear) (?:a )?rotacao"#, .rotationUnlock),
+            (#"(?:modo reuniao|ative o modo reuniao|modo concentracao)"#, .meeting),
+            (#"(?:encerre|encerrar|desative|sair do) (?:o )?(?:modo )?reuniao"#, .endMeeting),
+            (#"(?:economizar bateria|economize bateria|ative (?:o )?modo (?:pouca energia|economia))"#, .lowPower),
+            (off + #"(?:o )?(?:modo )?(?:pouca energia|economia(?: de bateria)?)"#, .lowPowerOff),
+            (#"(?:bloqueie|bloquear|trave) (?:a tela|o iphone|o celular)"#, .lock),
+            (#"(?:teste|testar|verifique|verificar) (?:o )?(?:atalho|atalhos|jarvis sistema)"#, .shortcutCheck),
+            (#"(?:abra|abre|abrir) (?:o )?whatsapp"#, .whatsapp),
+            (#"(?:abra|abre|abrir) (?:o )?instagram"#, .instagram)
+        ]
+        return patterns.first { text.range(of: "^(?:" + $0.0 + ")$", options: .regularExpression) != nil }?.1
+    }
+}
+
+enum PhoneShortcutReceipt {
+    static let version = "JARVIS_SISTEMA_14"
+    static func probeURL(token: String) -> URL {
+        var callback = URLComponents()
+        callback.scheme = "jarvisiphone"; callback.host = "shortcut-receipt"
+        callback.queryItems = [URLQueryItem(name: "token", value: token)]
+        var target = URLComponents()
+        target.scheme = "shortcuts"; target.host = "x-callback-url"; target.path = "/run-shortcut"
+        target.queryItems = [URLQueryItem(name: "name", value: "JARVIS Sistema"),
+                             URLQueryItem(name: "input", value: "text"),
+                             URLQueryItem(name: "text", value: "verificar_atalho"),
+                             URLQueryItem(name: "x-success", value: callback.url!.absoluteString)]
+        return target.url!
+    }
+    static func accepts(_ url: URL, token: String, expires: Date, now: Date = Date()) -> Bool {
+        guard now < expires, let p = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              p.scheme == "jarvisiphone", p.host == "shortcut-receipt", p.path.isEmpty,
+              p.user == nil, p.password == nil, p.port == nil, p.fragment == nil else { return false }
+        let q = p.queryItems ?? []
+        return q.count == 2 && q.filter { $0.name == "token" && $0.value == token }.count == 1
+            && q.filter { $0.name == "result" && $0.value == version }.count == 1
     }
 }

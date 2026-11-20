@@ -475,6 +475,8 @@ import ActivityKit
             add(false, reply)
             message = reply
             if playBundledReply(reply) { return }
+            tellLocally(reply, append: false)
+            return
         }
         // Wait for a reconnect before sending. Never replay a request after sending it.
         if !ready && paired {
@@ -693,8 +695,7 @@ import ActivityKit
             add(false, reply)
             message = reply
             if playBundledReply(reply) { return }
-            guard ready, handsetActions, let sock = ws, sock === originalSocket else { tellLocally(reply, append: false); return }
-            await sendHandsetReply(reply, sock)
+            tellLocally(reply, append: false)
             return
         }
         guard ready, let sock = ws, sock === originalSocket else {

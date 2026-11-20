@@ -1,3 +1,4 @@
+// Fonte da base legada. Revisão 14 completa: scripts/build-system-shortcut.py + JARVIS Sistema.base.plist.
 #define name JARVIS Sistema
 #define version 17
 #define mac false
