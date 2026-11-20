@@ -16,8 +16,19 @@ import ActivityKit
     private var frameRequest: RearFrame?
     private var liveVisionJob: Task<Void, Never>?
     @Published private(set) var liveVision = false
-    private let localSpeech = AVSpeechSynthesizer()
     private var localSpeechJob: Task<Void, Never>?
+    private var replyCache = JarvisReplyCache()
+    private var captureReply: String?
+    private var capturePCM = Data()
+    private static let quickReplies: [String: Data] = {
+        guard let file = Bundle.main.url(forResource: "JarvisQuickReplies", withExtension: "json"),
+              let data = try? Data(contentsOf: file), let bank = try? JSONDecoder().decode(JarvisQuickReplyBank.self, from: data),
+              bank.voice == "a5b93aeddcc948c19ea04f0afe9d178c", bank.sampleRate == 24000 else { return [:] }
+        return bank.replies.compactMapValues { text in
+            guard let pcm = Data(base64Encoded: text), !pcm.isEmpty, pcm.count.isMultiple(of: 2) else { return nil }
+            return pcm
+        }
+    }()
 
     enum VisionCommand { case once, start, stop }
     static func visionCommand(_ text: String) -> VisionCommand? {
@@ -31,21 +42,30 @@ import ActivityKit
         default: return nil
         }
     }
-    private func tellLocally(_ text: String, append: Bool = true) {
+    private func speakJarvis(_ text: String, append: Bool = true) {
+        guard !quietUntilCalled else { return }
         message = text
         if append { add(false, text) }
-        let line = AVSpeechUtterance(string: text)
-        line.voice = AVSpeechSynthesisVoice(language: "pt-BR")
-        wakeResume?.cancel()
-        wake.setPaused(true)
-        localSpeech.speak(line)
+        if playBundledReply(text) { return }
+        if let pcm = replyCache.audio(for: text), playJarvisPCM(pcm) { return }
         localSpeechJob?.cancel()
-        localSpeechJob = Task { [weak self] in
-            repeat { try? await Task.sleep(for: .milliseconds(150)) }
-            while !Task.isCancelled && self?.localSpeech.isSpeaking == true
-            guard !Task.isCancelled else { return }
-            self?.updateWake()
+        guard ready, handsetActions, let sock = ws else {
+            _ = playBundledReply("Sem conexão com a voz do Jarvis agora. A resposta está na tela.")
+            return
         }
+        localSpeechJob = Task { [weak self] in
+            guard !Task.isCancelled, let self, !self.quietUntilCalled, self.ws === sock else { return }
+            await self.sendHandsetReply(text, sock)
+        }
+    }
+    func speakAutomation(_ text: String) throws {
+        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty, clean.count <= 1000 else { throw PhoneCommandError.unavailable("Use uma resposta de até mil caracteres.") }
+        guard !quietUntilCalled, !busy, !recording, !isSpeaking,
+              UIApplication.shared.applicationState == .active || listeningInBackground else {
+            throw PhoneCommandError.unavailable("Ative a escuta do Jarvis para falar em segundo plano, ou abra o app.")
+        }
+        speakJarvis(clean)
     }
     func stopVision() {
         pendingVisionUntil = nil
@@ -59,10 +79,10 @@ import ActivityKit
         guard !quietUntilCalled, frameRequest == nil else { return }
         guard active, UIApplication.shared.applicationState == .active else {
             pendingVisionUntil = Date().addingTimeInterval(45)
-            tellLocally("Abra o Jarvis para eu usar a câmera traseira.")
+            speakJarvis("Abra o Jarvis para eu usar a câmera traseira.")
             return
         }
-        guard ready, cameraAvailable else { tellLocally("A visão está indisponível. Confira a conexão com a ponte do PC."); return }
+        guard ready, cameraAvailable else { speakJarvis("A visão está indisponível. Confira a conexão com a ponte do PC."); return }
         guard !busy, !recording, studioMode == nil else { return }
         let request = RearFrame()
         frameRequest = request
@@ -70,12 +90,12 @@ import ActivityKit
         wake.setPaused(true)
         let allowed = await AVCaptureDevice.requestAccess(for: .video)
         guard frameRequest === request, active, !quietUntilCalled else { return }
-        guard allowed else { stopVision(); tellLocally("Permita a câmera para o Jarvis nos Ajustes do iPhone."); return }
+        guard allowed else { stopVision(); speakJarvis("Permita a câmera para o Jarvis nos Ajustes do iPhone."); return }
         guard UIApplication.shared.applicationState == .active else { return }
         message = "Olhando pela câmera traseira…"
         let photo = await request.capture()
         guard frameRequest === request, active, !quietUntilCalled, UIApplication.shared.applicationState == .active else { return }
-        guard let photo else { stopVision(); tellLocally("A câmera traseira não entregou uma imagem. Tente novamente."); return }
+        guard let photo else { stopVision(); speakJarvis("A câmera traseira não entregou uma imagem. Tente novamente."); return }
         await analyze(photo)
         if continuous && !liveVision && busy {
             liveVision = true
@@ -83,7 +103,7 @@ import ActivityKit
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .seconds(5))
                     guard !Task.isCancelled, let self, self.active, self.liveVision else { return }
-                    if self.ready && self.cameraAvailable && !self.busy && !self.isSpeaking && !self.wake.receivingCommand && !self.localSpeech.isSpeaking {
+                    if self.ready && self.cameraAvailable && !self.busy && !self.isSpeaking && !self.wake.receivingCommand {
                         await self.describeView()
                     }
                 }
@@ -160,17 +180,17 @@ import ActivityKit
     }
     private var canAnnounce: Bool {
         autonomous && !quietUntilCalled && listeningInBackground && !busy && !isSpeaking &&
-        !localSpeech.isSpeaking && !recording && !wakeHandling && !wake.receivingCommand &&
+        !recording && !wakeHandling && !wake.receivingCommand &&
         localRequest == nil && studioMode == nil && Date().timeIntervalSince(lastCall) > 7 &&
         AVAudioSession.sharedInstance().outputVolume > 0
     }
     private func autonomousTick() async {
         let now = Date()
         guard canAnnounce, (8..<22).contains(Calendar.current.component(.hour, from: now)) else { return }
-        if let preview = previews.next(now: now) { tellLocally("Nova notificação. " + preview); return }
+        if let preview = previews.next(now: now) { speakJarvis("Nova notificação. " + preview); return }
         guard now >= nextRemark else { return }
         nextRemark = now.addingTimeInterval(60)
-        if let line = await HandsetContext.shared.proactiveNotice(), canAnnounce { tellLocally(line) }
+        if let line = await HandsetContext.shared.proactiveNotice(), canAnnounce { speakJarvis(line) }
     }
     struct Line: Identifiable { let id=UUID(); let user:Bool; let text:String }
     @Published var paired = PairingStore.read() != nil
@@ -432,7 +452,7 @@ import ActivityKit
         wakeResume?.cancel()
         guard wakeEnabled, wakeAuthorized, !systemInterrupted else { return }
         if studioMode != nil { wake.stop(releaseSession: !isSpeaking); return }
-        guard !busy, !recording, !isSpeaking, !wakeHandling, !localSpeech.isSpeaking, frameRequest == nil, localRequest == nil else {
+        guard !busy, !recording, !isSpeaking, !wakeHandling, frameRequest == nil, localRequest == nil else {
             wake.setPaused(true)
             return
         }
@@ -444,7 +464,7 @@ import ActivityKit
             try? await Task.sleep(nanoseconds: 350_000_000)
             guard !Task.isCancelled, let self else { return }
             do {
-                guard self.frameRequest == nil, !self.localSpeech.isSpeaking, !self.busy else { return }
+                guard self.frameRequest == nil, !self.busy else { return }
                 if self.wake.running { self.wake.setPaused(false) }
                 else if self.active && UIApplication.shared.isProtectedDataAvailable { try self.wake.start() }
                 if self.openWhenArmed && self.wake.running { self.openWhenArmed = false; self.wake.openConversation() }
@@ -466,7 +486,7 @@ import ActivityKit
         }
         if let reply = await HandsetContext.shared.respond(text, locked: true) {
             guard !Task.isCancelled, !quietUntilCalled, listeningInBackground else { return }
-            add(true, text); tellLocally(reply); return
+            add(true, text); speakJarvis(reply); return
         }
         let reply = await PhoneLocalKit.resolve(text, readOnly: true)
         guard !Task.isCancelled, !quietUntilCalled, listeningInBackground else { return }
@@ -475,7 +495,7 @@ import ActivityKit
             add(false, reply)
             message = reply
             if playBundledReply(reply) { return }
-            tellLocally(reply, append: false)
+            speakJarvis(reply, append: false)
             return
         }
         // Wait for a reconnect before sending. Never replay a request after sending it.
@@ -530,7 +550,13 @@ import ActivityKit
                 switch event {
                 case .data(let chunk):
                     guard self.ready, self.busy, !self.suppressAudio, !self.recording else { continue }
-                    do { try self.sound.enqueue(chunk) }
+                    do {
+                        try self.sound.enqueue(chunk)
+                        if self.captureReply != nil {
+                            if self.capturePCM.count + chunk.count <= JarvisReplyCache.maxEntryBytes { self.capturePCM.append(chunk) }
+                            else { self.captureReply = nil; self.capturePCM.removeAll() }
+                        }
+                    }
                     catch {
                         self.suppressAudio = true
                         self.sound.stopPlayback()
@@ -630,10 +656,13 @@ import ActivityKit
             if let s=o["image"] as? String,let cut=s.firstIndex(of:","),s.hasPrefix("data:image/"),let d=Data(base64Encoded:String(s[s.index(after:cut)...])),let image=UIImage(data:d) {
                 if o["kind"] as? String=="generated" {artwork=image} else {display=image}
             }
-        case "voice-error": message=o["text"] as? String ?? "O pedido falhou.";let speakFailure = !active && listeningInBackground && busy;finishWait();if speakFailure { playConnectionNotice() }
+        case "voice-error": captureReply = nil; capturePCM.removeAll(); message=o["text"] as? String ?? "O pedido falhou.";let speakFailure = !active && listeningInBackground && busy;finishWait();if speakFailure { playConnectionNotice() }
         case "interrupted":
+            captureReply = nil; capturePCM.removeAll()
             sound.stopPlayback()
         case "turn-complete":
+            if let text = captureReply { replyCache.insert(capturePCM, for: text) }
+            captureReply = nil; capturePCM.removeAll()
             finishWait()
             sound.finishPlayback()
             if !isSpeaking && ["Jarvis está falando.", "Aguardando o Jarvis…"].contains(message) {
@@ -685,7 +714,7 @@ import ActivityKit
         if let reply = await HandsetContext.shared.respond(value, locked: !UIApplication.shared.isProtectedDataAvailable) {
             guard localRequest == request else { return }
             localRequest = nil
-            add(true, value); tellLocally(reply); return
+            add(true, value); speakJarvis(reply); return
         }
         let reply = await PhoneLocalKit.resolve(value)
         guard localRequest == request else { return }
@@ -695,7 +724,7 @@ import ActivityKit
             add(false, reply)
             message = reply
             if playBundledReply(reply) { return }
-            tellLocally(reply, append: false)
+            speakJarvis(reply, append: false)
             return
         }
         guard ready, let sock = ws, sock === originalSocket else {
@@ -735,10 +764,17 @@ import ActivityKit
         case Self.connectionNotice: name = "jarvis-connection"
         case "Lanterna ligada.": name = "jarvis-torch-on"
         case "Lanterna desligada.": name = "jarvis-torch-off"
-        default: return false
+        default:
+            guard let pcm = Self.quickReplies[reply] else { return false }
+            return playJarvisPCM(pcm)
         }
         guard let url = Bundle.main.url(forResource: name, withExtension: "pcm"),
               let pcm = try? Data(contentsOf: url), !pcm.isEmpty, pcm.count.isMultiple(of: 2) else { return false }
+        return playJarvisPCM(pcm)
+    }
+
+    private func playJarvisPCM(_ pcm: Data) -> Bool {
+        guard !quietUntilCalled else { return false }
         wakeResume?.cancel()
         wake.setPaused(true)
         sound.stopPlayback()
@@ -759,6 +795,7 @@ import ActivityKit
         guard !quietUntilCalled, ws === sock else { return }
         spokenWords = PhoneVoiceControl.words(reply)
         beginWait()
+        captureReply = reply; capturePCM.removeAll(keepingCapacity: true)
         do { try await send(["type":"text", "handsetResult":true, "text":reply], sock) } catch { lost(sock) }
     }
 
@@ -779,7 +816,8 @@ import ActivityKit
     private func muteUntilCalled() {
         HandsetContext.shared.cancelPending()
         stopVision()
-        localSpeech.stopSpeaking(at: .immediate)
+        localSpeechJob?.cancel(); localSpeechJob = nil
+        captureReply = nil; capturePCM.removeAll()
         let hadRemoteTurn = busy
         quietUntilCalled = true
         openWhenArmed = false; wantsVoice = false
@@ -817,6 +855,7 @@ import ActivityKit
         };message="A imagem excedeu o tamanho para análise."
     }
     private func beginWait() {
+        captureReply = nil; capturePCM.removeAll()
         setPhase("Processando")
         wakeResume?.cancel()
         wake.setPaused(true)
@@ -879,6 +918,7 @@ import ActivityKit
     }
 
     func drop() {
+        localSpeechJob?.cancel(); captureReply = nil; capturePCM.removeAll()
         stopVision()
         spotifyTimeout?.cancel(); spotifyBinding = false; allowSpotifyOpen = false
         let old = ws

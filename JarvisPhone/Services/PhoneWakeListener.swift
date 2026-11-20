@@ -185,7 +185,7 @@ private final class WakeAudioInput: @unchecked Sendable {
             guard !Task.isCancelled, let self, self.generation == id else { return }
             self.restart(afterFailure: false)
         }
-        if waiting && (greetIfSilent || !pendingText.isEmpty) { scheduleCommand(after: pendingText.isEmpty ? 0.75 : 0.9) }
+        if waiting && (greetIfSilent || !pendingText.isEmpty) { scheduleCommand(after: pendingText.isEmpty ? 0.75 : 0.65) }
     }
 
     private func armIdleTimer() {
@@ -284,7 +284,7 @@ private final class WakeAudioInput: @unchecked Sendable {
             window.listen(at: now); armIdleTimer()
             pendingText = next
             lastPartial = now
-            scheduleCommand(after: 0.9)
+            scheduleCommand(after: 0.65)
         }
         if final { dispatchCommand() }
     }

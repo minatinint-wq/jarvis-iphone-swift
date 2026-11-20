@@ -193,10 +193,8 @@ struct PhoneCommand: Equatable {
 // Exact, local commands only. Quoted requests, negations and compound requests stay with the assistant.
 enum PhoneSystemVoice {
     static func action(_ input: String) -> PhoneAction? {
-        var text = input.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "pt_BR"))
-        text = text.replacingOccurrences(of: #"[^a-z0-9 ]"#, with: " ", options: .regularExpression).split(separator: " ").joined(separator: " ")
-        text = text.replacingOccurrences(of: #"^(?:(?:oi|ei) )?jarvis "#, with: "", options: .regularExpression)
-        text = text.replacingOccurrences(of: #" por favor$"#, with: "", options: .regularExpression)
+        var text = PhoneIntentPhrases.normalized(input)
+        text = text.replacingOccurrences(of: #" (?:do|no) (?:meu )?(?:iphone|celular|telefone)$"#, with: "", options: .regularExpression)
         let on = #"(?:liga|ligue|ligar|ative|ativar|ativa) "#
         let off = #"(?:desliga|desligue|desligar|desative|desativar|desativa) "#
         let patterns: [(String,PhoneAction)] = [
@@ -240,5 +238,27 @@ enum PhoneShortcutReceipt {
         let q = p.queryItems ?? []
         return q.count == 2 && q.filter { $0.name == "token" && $0.value == token }.count == 1
             && q.filter { $0.name == "result" && $0.value == version }.count == 1
+    }
+}
+
+// Conversational wrappers are removed only at the edges. Negation is preserved.
+enum PhoneIntentPhrases {
+    static func normalized(_ input: String) -> String {
+        var s = input.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "pt_BR"))
+        s = s.replacingOccurrences(of: #"[^a-z0-9% ]+"#, with: " ", options: .regularExpression)
+            .split(separator: " ").joined(separator: " ")
+        s = s.replacingOccurrences(of: #"^(?:(?:(?:oi|ei|hey) )?(?:jarvis|jarves|jarvbis) |ah |entao |beleza |por favor |por gentileza |(?:voce |vc )?(?:pode|poderia|consegue) |(?:eu )?(?:quero|queria) (?:que (?:voce )?)?)+"#, with: "", options: .regularExpression)
+        s = s.replacingOccurrences(of: #"(?: (?:por favor|por gentileza|pra mim|para mim|agora|ai|aqui|de novo|novamente))+$"#, with: "", options: .regularExpression)
+        return s
+    }
+    static func torch(_ input: String) -> PhoneAction? {
+        let s = normalized(input)
+        let target = #"(?:a |o |minha |meu |essa |esse )?(?:lanterna|flash|luz (?:do|no) (?:meu )?(?:celular|telefone|iphone))(?: (?:do|no|desse|neste|deste) (?:meu |seu )?(?:iphone|celular|telefone|aparelho|dispositivo))?"#
+        let on = #"(?:liga|ligue|ligar|acende|acenda|acender|ative|ativa|ativar) "#
+        let off = #"(?:desliga|desligue|desligar|apaga|apague|apagar|desative|desativa|desativar) "#
+        for (verb, state, action): (String,String,PhoneAction) in [(on,"ligad[oa]|aces[oa]",.torchOn),(off,"desligad[oa]|apagad[oa]",.torchOff)] {
+            if s.range(of: "^(?:" + verb + target + "|(?:deixa|deixe|deixar|coloca|coloque) " + target + " (?:" + state + "))$", options: .regularExpression) != nil { return action }
+        }
+        return nil
     }
 }

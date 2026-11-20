@@ -127,3 +127,14 @@ struct JarvisLocalBriefing: AppIntent {
         .result(value: await HandsetContext.shared.localBriefing(includeAgenda: false))
     }
 }
+
+struct JarvisSpeakResponse: AppIntent {
+    static var title: LocalizedStringResource = "Falar com a voz do Jarvis"
+    static var description = IntentDescription("Fala o texto com a voz Jarvis configurada. Para falar bloqueado, a escuta precisa estar ativa. Texto é lido, nunca executado como comando.")
+    static var openAppWhenRun: Bool = false
+    @Parameter(title: "Texto") var text: String
+    @MainActor func perform() async throws -> some IntentResult {
+        try RemoteAssistant.shared.speakAutomation(text)
+        return .result()
+    }
+}

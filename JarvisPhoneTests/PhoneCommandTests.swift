@@ -3,6 +3,49 @@ import AVFoundation
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    func testConversationalAliasesRespectNegationAndDeviceScope() {
+        for text in ["Ah, liga o flash", "Jarvis, acende a lanterna", "Ei Jarvis, pode acender o flash pra mim?", "deixa o flash ligado", "por favor, ligue a luz do celular", "quero que você acenda minha lanterna", "então, Jarvis, liga o flash de novo"] {
+            XCTAssertEqual(PhoneIntentPhrases.torch(text), .torchOn, text)
+        }
+        for text in ["apaga o flash", "deixa a lanterna apagada", "ah, apaga a luz do celular", "pode desligar minha lanterna por favor"] {
+            XCTAssertEqual(PhoneIntentPhrases.torch(text), .torchOff, text)
+        }
+        for text in ["não liga o flash", "não apague a lanterna", "ele disse liga o flash", "acenda a luz do quarto", "liga o flash e a cafeteira", "quero que você não ligue a lanterna"] {
+            XCTAssertNil(PhoneIntentPhrases.torch(text), text)
+        }
+        XCTAssertEqual(PhoneSystemVoice.action("Ah, pode ligar o Wi-Fi do meu celular?"), .wifiOn)
+    }
+    func testJarvisAudioCacheExpiresBoundsMemoryAndRejectsIncompletePCM() {
+        var cache = JarvisReplyCache(); let t = Date()
+        let audio = Data(repeating: 1, count: 4)
+        cache.insert(audio, for: "ok", now: t)
+        XCTAssertEqual(cache.audio(for: "ok", now: t.addingTimeInterval(1)), audio)
+        XCTAssertNil(cache.audio(for: "outro", now: t))
+        XCTAssertNil(cache.audio(for: "ok", now: t.addingTimeInterval(301)))
+        cache.insert(Data([1]), for: "incompleto", now: t)
+        XCTAssertNil(cache.audio(for: "incompleto", now: t))
+        for i in 0..<5 { cache.insert(Data(repeating: 1, count: JarvisReplyCache.maxEntryBytes), for: "\(i)", now: t.addingTimeInterval(Double(i))) }
+        XCTAssertNil(cache.audio(for: "0", now: t.addingTimeInterval(5)))
+        XCTAssertNotNil(cache.audio(for: "4", now: t.addingTimeInterval(5)))
+    }
+    func testQuickRepliesUseOriginalJarvisVoiceAndValidPCM() throws {
+        let file = try XCTUnwrap(Bundle.main.url(forResource: "JarvisQuickReplies", withExtension: "json"))
+        let bank = try JSONDecoder().decode(JarvisQuickReplyBank.self, from: Data(contentsOf: file))
+        XCTAssertEqual(bank.voice, "a5b93aeddcc948c19ea04f0afe9d178c")
+        XCTAssertEqual(bank.sampleRate, 24000)
+        XCTAssertNotNil(bank.replies["Comando encaminhado."])
+        for (_, encoded) in bank.replies {
+            let pcm = try XCTUnwrap(Data(base64Encoded: encoded))
+            XCTAssertGreaterThan(pcm.count, 4800)
+            XCTAssertTrue(pcm.count.isMultiple(of: 2))
+            XCTAssertTrue(pcm.contains { $0 != 0 })
+        }
+    }
+    func testFasterEndpointStillWaitsForOngoingSpeech() {
+        XCTAssertEqual(WakeConversationWindow.endpointDelay(at: 10.66, partial: 10, voice: 9.8), 0)
+        XCTAssertGreaterThan(WakeConversationWindow.endpointDelay(at: 10.66, partial: 10, voice: 10.6), 0.4)
+    }
+
     func testLocalAutomationCommandsAreExactAndDoNotExecuteNegations() {
         XCTAssertEqual(PhoneSystemVoice.action("Oi Jarvis, pagar"), .wallet)
         XCTAssertEqual(PhoneSystemVoice.action("Jarvis, ligue o Wi-Fi"), .wifiOn)

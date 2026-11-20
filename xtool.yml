@@ -4,6 +4,7 @@ product: JarvisPhone
 infoPath: Support/Phone.plist
 iconPath: JarvisPhone/Assets.xcassets/AppIcon.appiconset/icon-1024.png
 resources:
+- JarvisPhone/Resources/JarvisQuickReplies.json
 - JarvisPhone/Resources/JARVIS Sistema.shortcut
 - JarvisPhone/Resources/PrivacyInfo.xcprivacy
 - JarvisPhone/Resources/jarvis-greeting.pcm

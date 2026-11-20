@@ -194,7 +194,7 @@ final class PhoneController: ObservableObject {
         guard await UIApplication.shared.open(target) else {
             throw PhoneCommandError.unavailable("Não foi possível abrir o app Atalhos.")
         }
-        return "Pedido encaminhado ao Atalhos. Confira o resultado lá. Se necessário, importe JARVIS Sistema."
+        return "Comando encaminhado."
     }
 
     func savePhoto(_ image: UIImage) async {

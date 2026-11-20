@@ -139,6 +139,11 @@ struct SetupView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("Voz do Jarvis") {
+                    Text("As respostas usam Jarvis UCM PT-BR. Confirmações frequentes já estão no iPhone; respostas novas usam a ponte para gerar essa mesma voz em streaming.")
+                    Text("Nas automações, use Falar com a voz do Jarvis no lugar de Falar Texto. Para falar com a tela bloqueada, deixe a escuta do Jarvis ativa. A ação Falar Texto do próprio Atalhos tem uma voz separada.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
                 Section("Controles do sistema") {
                     Text("Importe a revisão 14 do JARVIS Sistema para Wallet, Wi-Fi, Bluetooth, dados móveis, rotação, concentração, economia e mídia. Se o atalho já existir, substitua essa versão e mantenha o nome exato.")
                     if let file = Bundle.main.url(forResource: "JARVIS Sistema", withExtension: "shortcut") {
@@ -158,11 +163,11 @@ struct SetupView: View {
                 Section("Rotinas sem abrir o Jarvis") {
                     Text("No Atalhos → Automação → +, escolha o evento e Executar Imediatamente quando disponível. Cada gatilho precisa ser configurado uma vez no seu iPhone.")
                     Label("Ao parar o despertador", systemImage: "alarm")
-                    Text("Adicione Resumo local do iPhone (JARVIS XLV) e depois Falar Texto usando o resultado. Ele consulta hora, bateria e passos já autorizados, sem depender da ponte.")
+                    Text("Adicione Resumo local do iPhone (JARVIS XLV) e depois Falar com a voz do Jarvis usando o resultado. Ele consulta hora, bateria e passos já autorizados, sem depender da ponte.")
                     Label("Bateria abaixo de 20%", systemImage: "battery.25percent")
                     Text("Adicione Texto: economizar → Executar Atalho: JARVIS Sistema. Passe o Texto como entrada.")
                     Label("Ao conectar ao carregador", systemImage: "bolt.fill")
-                    Text("Use Resumo local do iPhone → Falar Texto. Para um aviso mais discreto, use Mostrar Notificação no lugar da fala.")
+                    Text("Use Resumo local do iPhone → Falar com a voz do Jarvis. Para um aviso mais discreto, use Mostrar Notificação no lugar da fala.")
                     Label("Ao conectar seus fones", systemImage: "headphones")
                     Text("Escolha o dispositivo Bluetooth específico. Para retomar a mídia do iPhone, passe o Texto continuar ao JARVIS Sistema. Isso não escolhe um dispositivo Spotify remoto.")
                     Label("Etiqueta NFC na mesa", systemImage: "wave.3.right")

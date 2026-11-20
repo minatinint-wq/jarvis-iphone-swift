@@ -20,7 +20,7 @@ struct WakeConversationWindow {
     static let silence: TimeInterval = 60
     // A late recognition update or background noise cannot hold a turn indefinitely.
     static func endpointDelay(at now: TimeInterval, partial: TimeInterval, voice: TimeInterval) -> TimeInterval {
-        max(0, min(partial + 2.8, max(partial + 0.9, voice + 0.55)) - now)
+        max(0, min(partial + 2.8, max(partial + 0.65, voice + 0.55)) - now)
     }
     mutating func listen(at now: TimeInterval) { phase = .listening(until: now + Self.silence) }
     mutating func expire(at now: TimeInterval) {
@@ -73,5 +73,30 @@ enum PhoneMedia {
     static func cameraPacket(_ jpeg: Data) -> Data? {
         guard (4...120_000).contains(jpeg.count), jpeg.starts(with:[0xff,0xd8,0xff]), jpeg.suffix(2)==Data([0xff,0xd9]) else { return nil }
         return cameraPrefix + jpeg
+    }
+}
+
+struct JarvisQuickReplyBank: Decodable {
+    let voice: String
+    let sampleRate: Int
+    let replies: [String: String]
+}
+
+// Session-only PCM cache. Never writes personal speech or keys to disk.
+struct JarvisReplyCache {
+    static let maxEntryBytes = 512 * 1024
+    private var entries: [String: (audio: Data, date: Date)] = [:]
+    mutating func audio(for text: String, now: Date = Date()) -> Data? {
+        entries = entries.filter { now.timeIntervalSince($0.value.date) < 300 }
+        return entries[text]?.audio
+    }
+    mutating func insert(_ audio: Data, for text: String, now: Date = Date()) {
+        guard !audio.isEmpty, audio.count.isMultiple(of: 2), audio.count <= Self.maxEntryBytes else { return }
+        entries = entries.filter { now.timeIntervalSince($0.value.date) < 300 }
+        entries[text] = (audio, now)
+        while entries.count > 16 || entries.values.reduce(0, { $0 + $1.audio.count }) > 2 * 1024 * 1024 {
+            guard let oldest = entries.min(by: { $0.value.date < $1.value.date })?.key else { break }
+            entries.removeValue(forKey: oldest)
+        }
     }
 }

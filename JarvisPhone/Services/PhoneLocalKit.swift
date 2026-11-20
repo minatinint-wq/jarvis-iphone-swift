@@ -1,16 +1,10 @@
 import Foundation
 import UIKit
+import AVFoundation
 
 @MainActor enum PhoneLocalKit {
     static let greeting = "Às suas ordens, magnata."
-    private static func normalize(_ input: String) -> String {
-        let folded = input.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "pt_BR"))
-        var text = folded.replacingOccurrences(of: #"[^a-z0-9% ]+"#, with: " ", options: .regularExpression)
-        text = text.split(separator: " ").joined(separator: " ")
-        text = text.replacingOccurrences(of: #"^(?:(?:(?:oi|ei|hey) )?(?:jarvis|jarves|jarvbis) |por favor )+"#, with: "", options: .regularExpression)
-        text = text.replacingOccurrences(of: #" por favor$"#, with: "", options: .regularExpression)
-        return text
-    }
+    private static func normalize(_ input: String) -> String { PhoneIntentPhrases.normalized(input) }
 
     static func studio(for input: String) -> String? {
         let text = normalize(input)
@@ -21,16 +15,7 @@ import UIKit
         return nil
     }
 
-    static func torchAction(_ input: String) -> PhoneAction? {
-        var s = normalize(input)
-        s = s.replacingOccurrences(of: #"^(?:(?:voce |vc )?(?:pode|consegue|poderia) |(?:eu )?(?:queria|quero) (?:que (?:voce )?)?|por gentileza |por favor )+"#, with:"", options:.regularExpression)
-        s = s.replacingOccurrences(of: #"(?:(?: (?:por favor|agora|ai|aqui|pra mim|para mim|por gentileza|de novo|novamente)))+$"#, with:"", options:.regularExpression)
-        let target = #" (?:a |o |minha |meu |essa |esse )?(?:lanterna|flash|luz (?:do|no) (?:meu )?(?:celular|telefone|iphone))(?: (?:do|no|desse|neste|deste) (?:meu |seu )?(?:iphone|celular|telefone|aparelho|dispositivo))?"#
-        for (pattern, a): (String,PhoneAction) in [(#"(?:lig[ae]|ligar|ligue|acend[ae]|acender|ativ[ae]|ativar|ative)"#, .torchOn), (#"(?:deslig[ae]|desligar|desligue|apag[ae]|apague|apagar|desativ[ae]|desativar|desative)"#, .torchOff)] {
-            if s.range(of:"^"+pattern+target+"$",options:.regularExpression) != nil { return a }
-        }
-        return nil
-    }
+    static func torchAction(_ input: String) -> PhoneAction? { PhoneIntentPhrases.torch(input) }
 
     // Match the entire request so PC commands mentioning a light, time or battery stay with the assistant.
     static func resolve(_ input: String, readOnly: Bool = false) async -> String? {
@@ -67,6 +52,13 @@ import UIKit
             action = torch
         } else if text.range(of:#"\b(?:lanterna|flash)\b"#, options:.regularExpression) != nil && text.range(of:#"\b(?:lig\w*|deslig\w*|acend\w*|apag\w*|ativ\w*|desativ\w*)\b"#,options:.regularExpression) != nil {
             return "Para controlar a lanterna deste iPhone, diga “ligue a lanterna” ou “apague a lanterna”."
+        } else if matches(#"(?:aumenta|aumente|sobe|suba|diminui|diminua|abaixa|abaixe|reduz|reduza|baixe) (?:o )?(?:volume|som)"# + device) {
+            let lower = ["dimin", "abaix", "redu", "baix"].contains(where: { text.hasPrefix($0) })
+            action = .volume
+            percentage = min(100, max(0, (Double(AVAudioSession.sharedInstance().outputVolume) * 100).rounded() + (lower ? -10 : 10)))
+        } else if matches(#"(?:clareia|clareie|escurece|escureca) (?:a )?tela"# + device) {
+            action = .brightness
+            percentage = min(100, max(0, (Double(UIScreen.main.brightness) * 100).rounded() + (text.hasPrefix("escur") ? -10 : 10)))
         } else if matches(#"(?:(?:qual (?:e )?(?:o )?)?brilho)"# + device) {
             if readOnly { return "Abra o Jarvis no iPhone desbloqueado para consultar o brilho." }
             return "O brilho da tela está em \(Int((UIScreen.main.brightness * 100).rounded()))%."
