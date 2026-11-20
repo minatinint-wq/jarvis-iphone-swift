@@ -9,7 +9,7 @@ import AVFoundation
     static func studio(for input: String) -> String? {
         let text = normalize(input)
         let sketch = #"^(?:desenhar(?: (?:com o dedo|na tela|no ar))?|(?:abrir?|abra|abre) (?:o )?(?:desenho(?: no ar)?|caderno de desenho|sketchbook)|modo desenho)$"#
-        let music = #"^(?:(?:abra|abre|abrir|ative|ativar) (?:(?:os?|a) )?(?:harpa(?: no ar)?|cordas(?: no ar)?|instrumentos|piano|violao|baixo|flauta|bateria)|(?:modo )?(?:instrumentos|harpa(?: no ar)?|cordas(?: no ar)?)|(?:tocar|toca|toque|quero tocar) (?:a |o )?(?:harpa(?: no ar)?|piano|violao|baixo|flauta|bateria|instrumentos))$"#
+        let music = #"^(?:(?:abra|abre|abrir|ative|ativar) (?:(?:os?|as?) )?(?:harpa(?: no ar)?|cordas(?: no ar)?|instrumentos|piano|violao|baixo|flauta|bateria)|(?:modo )?(?:instrumentos|harpa(?: no ar)?|cordas(?: no ar)?)|(?:tocar|toca|toque|quero tocar) (?:a |o )?(?:harpa(?: no ar)?|piano|violao|baixo|flauta|bateria|instrumentos))$"#
         if text.range(of: #"^(?:(?:abra|abre|abrir|ative|ativar) (?:o )?(?:modo )?libras|(?:modo )?libras)$"#, options: .regularExpression) != nil { return "libras" }
         if text.range(of: #"^(?:traduz(?:a|ir)? (?:o que estou vendo|o que eu estou vendo|isso|pela camera|com a camera|este texto)|(?:abre|abra|abrir|ative|ativar) (?:o )?(?:tradutor|traducao)(?: (?:pela|na) camera)?|modo tradutor)$"#, options: .regularExpression) != nil { return "translate" }
         if text.range(of: sketch, options: .regularExpression) != nil { return "sketch" }

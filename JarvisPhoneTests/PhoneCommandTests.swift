@@ -151,6 +151,7 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertTrue(board.consume(point:CGPoint(x:0.28,y:0.5),pinchRatio:0.8,time:1.38).isEmpty)
         board.beginPull(p);board.dragPull(CGPoint(x:0.30,y:0.5));board.resetGesture()
         XCTAssertTrue(board.endPull(time:2).isEmpty)
+        _ = board.consume(point:p,pinchRatio:0.8,time:2)
         board.beginPull(p)
         XCTAssertTrue(board.consume(point:p,pinchRatio:0.8,time:5).isEmpty)
         XCTAssertNil(board.held)

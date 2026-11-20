@@ -89,7 +89,7 @@ enum CameraTextReader {
                 let requests = snapshot.map { TranslationSession.Request(sourceText:$0.text,clientIdentifier:String($0.id)) }
                 let result = try await session.translations(from:requests)
                 guard !Task.isCancelled, own == generation else { return }
-                translated = Dictionary(uniqueKeysWithValues:result.compactMap { response in
+                translated = Dictionary(uniqueKeysWithValues:result.compactMap { response -> (Int,String)? in
                     guard let id=response.clientIdentifier.flatMap(Int.init) else { return nil }
                     return (id,response.targetText)
                 })
