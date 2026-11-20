@@ -193,7 +193,7 @@ final class PhoneCommandTests: XCTestCase {
         var board=AirStringBoard();board.preset(guitar:true)
         XCTAssertEqual(board.strings.map(\.note),[40,45,50,55,59,64])
     }
-    @MainActor func testCameraOCRRecognizesPrintedTextAndHarpRenders() throws {
+    @MainActor func testCameraOCRRecognizesPrintedTextAndHarpRenders() async throws {
         let format=UIGraphicsImageRendererFormat();format.scale=1
         let image=UIGraphicsImageRenderer(size:CGSize(width:800,height:240),format:format).image { ctx in
             UIColor.white.setFill();ctx.fill(CGRect(x:0,y:0,width:800,height:240))
@@ -202,8 +202,17 @@ final class PhoneCommandTests: XCTestCase {
         let rows=try CameraTextReader.read(XCTUnwrap(image.cgImage))
         XCTAssertTrue(rows.contains { $0.text.uppercased().contains("HELLO WORLD") })
         let view=UIHostingController(rootView:AirStrings())
-        view.view.frame=CGRect(x:0,y:0,width:428,height:850);view.view.layoutIfNeeded()
-        let screenshot=UIGraphicsImageRenderer(size:view.view.bounds.size).image { ctx in view.view.layer.render(in:ctx.cgContext) }
+        let scene=try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let previous=scene.windows.first(where: \.isKeyWindow)
+        let window=UIWindow(windowScene:scene);window.frame=CGRect(x:0,y:0,width:428,height:850)
+        window.rootViewController=view;window.makeKeyAndVisible()
+        defer { window.isHidden=true;previous?.makeKeyAndVisible() }
+        view.view.frame=window.bounds;view.view.layoutIfNeeded()
+        try await Task.sleep(for:.milliseconds(300))
+        let screenshot=UIGraphicsImageRenderer(size:view.view.bounds.size).image { _ in view.view.drawHierarchy(in:view.view.bounds,afterScreenUpdates:true) }
+        let pixels=try XCTUnwrap(screenshot.cgImage?.dataProvider?.data)
+        let data=Data(bytes:CFDataGetBytePtr(pixels)!,count:CFDataGetLength(pixels))
+        XCTAssertGreaterThan(Set(data).count,20,"The screenshot must contain rendered controls and colored strings")
         let attachment=XCTAttachment(image:screenshot);attachment.name="Harpa-no-ar-rev16";attachment.lifetime = .keepAlways;add(attachment)
     }
 
