@@ -1,0 +1,53 @@
+JARVIS IPHONE — REVISÃO 14
+
+1. IMPORTAR
+No Jarvis: Meu iPhone > Configuração > Compartilhar arquivo de instalação.
+Salve JARVIS Sistema.shortcut em Arquivos, abra e Adicionar Atalho.
+Se já existir JARVIS Sistema, substitua. Não acrescente + nem mude o nome.
+Os JARVIS+CONTROLE+iPhone e JARVIS+Executar+Comando antigos podem permanecer.
+
+2. CONFERIR
+No Jarvis, toque Testar JARVIS Sistema.
+Atalhos deve abrir e voltar ao Jarvis com confirmação da revisão 14.
+Isso confirma a ligação e a versão do atalho, não o funcionamento de cada ação.
+Permissões e o resultado real dos controles ainda precisam de teste no aparelho.
+
+3. COMANDOS LOCAIS
+Jarvis, pagar: abre Wallet; confirme o cartão e autentique no sistema Apple.
+Ligue/desligue o Wi-Fi, Bluetooth ou dados móveis.
+Trave/libere a rotação.
+Modo reunião: Não Perturbe ligado e mídia em zero.
+Encerre a reunião: Não Perturbe desligado e mídia em 50%.
+Economizar bateria: Pouca Energia ligado, brilho em 25%.
+Desligue o modo economia: Pouca Energia desligado.
+Bloqueie a tela.
+Resumo do iPhone: hora, bateria, passos autorizados e próximo compromisso se desbloqueado e autorizado.
+Anote: [texto]: guarda uma nota somente neste iPhone.
+
+Desligar redes pode derrubar a ponte; desligar Bluetooth pode desconectar fones.
+Abrir Wallet não autoriza pagamento. Não há leitura de dados bancários.
+
+4. ROTINAS AUTOMÁTICAS — CONFIGURE UMA VEZ NO IPHONE
+No Atalhos > Automação > + escolha o evento. Se disponível, use Executar Imediatamente.
+Para comandos do sistema, adicione Texto com o código abaixo e depois Executar Atalho > JARVIS Sistema, usando esse Texto como entrada.
+- Bateria abaixo de 20%: economizar
+- Conectar aos seus fones Bluetooth: continuar (retoma o reprodutor local; não seleciona dispositivo remoto)
+- Etiqueta NFC da mesa: reuniao
+- Ao sair da concentração: encerrar_reuniao (atenção: fixa o volume em 50%)
+- Ao conectar carregador: Resumo local do iPhone (ação do JARVIS XLV), depois Falar Texto usando o resultado.
+- Ao parar despertador: Resumo local do iPhone, depois Falar Texto.
+
+Resumo local do iPhone usado pelo Atalhos não inclui agenda ou mensagens privadas.
+Permita Movimento e Preparo Físico no Jarvis antes se quiser passos no resumo.
+O iOS pode pedir desbloqueio para ações específicas. Não é possível cadastrar seus gatilhos pessoais apenas instalando o app.
+NFC de automação lê uma etiqueta; não emula cartão de pagamento.
+
+5. TESTES NO APARELHO
+Primeiro teste a revisão do atalho. Depois rotação, brilho e resumo.
+Teste Wallet sem aproximar da maquininha: veja se abre a carteira correta.
+Teste redes só quando puder reconectar; confirme o estado nos Ajustes.
+Teste uma automação com tela bloqueada e registre se o sistema pede desbloqueio.
+A conversa por voz bloqueada requer a sessão de escuta já iniciada. Câmera requer o app aberto.
+
+A MÁSCARA FÍSICA NÃO ESTÁ MONTADA. Não há servo ou capacete conectado presumido nesta versão.
+PC: somente ponte para serviços remotos. Controles locais e resumo não precisam dela.

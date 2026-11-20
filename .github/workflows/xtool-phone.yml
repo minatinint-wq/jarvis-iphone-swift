@@ -28,7 +28,9 @@ jobs:
         shell: bash
         run: |
           python3 scripts/build-system-shortcut.py
-          shortcuts sign --mode anyone --input "Shortcuts/JARVIS Sistema.unsigned.shortcut" --output "JarvisPhone/Resources/JARVIS Sistema.shortcut"
+          python3 scripts/check-system-shortcut.py
+          aea decrypt -i "JarvisPhone/Resources/JARVIS Sistema.shortcut" -o "$RUNNER_TEMP/system-decoded.plist"
+          python3 scripts/check-system-shortcut.py "$RUNNER_TEMP/system-decoded.plist"
       - name: SDK e xtool oficial
 
         run: |
