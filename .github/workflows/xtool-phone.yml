@@ -29,8 +29,10 @@ jobs:
         run: |
           python3 scripts/build-system-shortcut.py
           python3 scripts/check-system-shortcut.py
-          aea decrypt -i "JarvisPhone/Resources/JARVIS Sistema.shortcut" -o "$RUNNER_TEMP/system-decoded.plist"
-          python3 scripts/check-system-shortcut.py "$RUNNER_TEMP/system-decoded.plist"
+          aea decrypt -i "JarvisPhone/Resources/JARVIS Sistema.shortcut" -o "$RUNNER_TEMP/system.aa" -sign-pub Shortcuts/system-signing-public.hex
+          mkdir -p "$RUNNER_TEMP/system-decoded"
+          aa extract -i "$RUNNER_TEMP/system.aa" -d "$RUNNER_TEMP/system-decoded"
+          python3 scripts/check-system-shortcut.py "$RUNNER_TEMP/system-decoded/Shortcut.wflow"
       - name: SDK e xtool oficial
 
         run: |
