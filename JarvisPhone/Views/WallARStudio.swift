@@ -52,6 +52,8 @@ enum WallMaterials {
     private var history: [WallFinish] = []
     private var occluders: [UUID:SCNNode] = [:]
     private var meshUpdated: [UUID:TimeInterval] = [:]
+    private let meshQueue = DispatchQueue(label:"jarvis.wall.occlusion",qos:.utility)
+    private var pendingMeshes: Set<UUID> = []
     private var materials: [WallFinish:SCNMaterial] = [:]
     private var gate = WallTrackingGate()
     private var foreground = true
@@ -319,8 +321,27 @@ enum WallMaterials {
         let now = ProcessInfo.processInfo.systemUptime
         guard now-(meshUpdated[anchor.identifier] ?? 0) > 0.5 else { return }
         guard occluders[anchor.identifier] != nil || occluders.count < 48 else { return }
+        guard pendingMeshes.count < 4, !pendingMeshes.contains(anchor.identifier) else { return }
         meshUpdated[anchor.identifier] = now
-        let mesh = anchor.geometry
+        pendingMeshes.insert(anchor.identifier)
+        // Do not enumerate/rebuild LiDAR triangles on the UI/rendering thread.
+        // Bounded pending work drops intermediate meshes instead of accumulating lag.
+        meshQueue.async { [weak self] in
+            let geometry = Self.occlusionGeometry(anchor.geometry)
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.pendingMeshes.remove(anchor.identifier)
+                guard !self.stopped, self.meshUpdated[anchor.identifier] != nil else { return }
+                guard let geometry else { self.occluders.removeValue(forKey:anchor.identifier)?.removeFromParentNode(); return }
+                let node = self.occluders[anchor.identifier] ?? SCNNode()
+                node.geometry = geometry; node.simdTransform = anchor.transform; node.renderingOrder = -100
+                if node.parent == nil { self.view.scene.rootNode.addChildNode(node) }
+                self.occluders[anchor.identifier] = node
+            }
+        }
+    }
+
+    nonisolated private static func occlusionGeometry(_ mesh: ARMeshGeometry) -> SCNGeometry? {
         let vertices = SCNGeometrySource(buffer:mesh.vertices.buffer, vertexFormat:mesh.vertices.format, semantic:.vertex,
                                          vertexCount:mesh.vertices.count, dataOffset:mesh.vertices.offset, dataStride:mesh.vertices.stride)
         var indices: [UInt32] = []
@@ -337,15 +358,12 @@ enum WallMaterials {
                 indices.append(mesh.faces.bytesPerIndex == 2 ? UInt32(pointer.load(as:UInt16.self)) : pointer.load(as:UInt32.self))
             }
         }
-        guard !indices.isEmpty else { occluders.removeValue(forKey:anchor.identifier)?.removeFromParentNode(); return }
+        guard !indices.isEmpty else { return nil }
         let geometry = SCNGeometry(sources:[vertices],elements:[SCNGeometryElement(indices:indices,primitiveType:.triangles)])
         let depth = SCNMaterial(); depth.colorBufferWriteMask = []; depth.isDoubleSided = true
         depth.writesToDepthBuffer = true; depth.readsFromDepthBuffer = true
         geometry.materials = [depth]
-        let node = occluders[anchor.identifier] ?? SCNNode()
-        node.geometry = geometry; node.simdTransform = anchor.transform; node.renderingOrder = -100
-        if node.parent == nil { view.scene.rootNode.addChildNode(node) }
-        occluders[anchor.identifier] = node
+        return geometry
     }
 }
 
