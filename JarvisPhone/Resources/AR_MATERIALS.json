@@ -1,0 +1,68 @@
+[
+  {
+    "file": "AR_plaster_Color.jpg",
+    "sha256": "a00fba1037d184bb7e4f381750c86e20c184e9acb305e128885aa85db71f6e4a",
+    "width": 2048,
+    "height": 2048,
+    "source": "Original procedural material; scripts/build-wall-materials.py"
+  },
+  {
+    "file": "AR_plaster_NormalGL.jpg",
+    "sha256": "76c37807a8cf2ea900edea308142e47a58c7c3c56e9036a0e08a430b1e4af364",
+    "width": 2048,
+    "height": 2048,
+    "source": "Original procedural material; scripts/build-wall-materials.py"
+  },
+  {
+    "file": "AR_plaster_Roughness.jpg",
+    "sha256": "a1a78ae9ddebda667cbee249e7794fa1163a478f752ffac646307746f19d887a",
+    "width": 2048,
+    "height": 2048,
+    "source": "Original procedural material; scripts/build-wall-materials.py"
+  },
+  {
+    "file": "AR_wood_Color.jpg",
+    "sha256": "63ae5cd186197b40f18bc020fe2b652bb08df4d9fc6240c6cbf8a7e3bc32c096",
+    "width": 2048,
+    "height": 2048,
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_table_001/wood_table_001_diff_2k.jpg",
+    "license": "CC0-1.0"
+  },
+  {
+    "file": "AR_wood_NormalGL.jpg",
+    "sha256": "d56f02c911391267ddc6adc92e8a5bc29b9803196e8d57ad5b9702e6c842dc28",
+    "width": 2048,
+    "height": 2048,
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_table_001/wood_table_001_nor_gl_2k.jpg",
+    "license": "CC0-1.0"
+  },
+  {
+    "file": "AR_wood_Roughness.jpg",
+    "sha256": "c788876d80e4d96598590631f8de92447fb1b0ba1265a812514ee717d270ac3e",
+    "width": 2048,
+    "height": 2048,
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_table_001/wood_table_001_rough_2k.jpg",
+    "license": "CC0-1.0"
+  },
+  {
+    "file": "AR_concrete_Color.jpg",
+    "sha256": "09c8b9ce72909153393f0c064357a8ffe5529fa37c7d3ecc568b21dcb718f63a",
+    "width": 2048,
+    "height": 2048,
+    "source": "Original procedural material; scripts/build-wall-materials.py"
+  },
+  {
+    "file": "AR_concrete_NormalGL.jpg",
+    "sha256": "68953fc7a57dfdfbce0a829b2fef495d50fedd78e81c3f828627db3bee7511e7",
+    "width": 2048,
+    "height": 2048,
+    "source": "Original procedural material; scripts/build-wall-materials.py"
+  },
+  {
+    "file": "AR_concrete_Roughness.jpg",
+    "sha256": "4705cd55224defe123507ca7a8c761993b380924a73612438b1d84f8b74a0b72",
+    "width": 2048,
+    "height": 2048,
+    "source": "Original procedural material; scripts/build-wall-materials.py"
+  }
+]

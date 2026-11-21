@@ -1,4 +1,4 @@
-import sys, zipfile, plistlib, struct
+import sys, zipfile, plistlib, struct, json, hashlib
 from pathlib import Path
 with zipfile.ZipFile(sys.argv[1]) as z:
  p=next(n for n in z.namelist() if n.startswith("Payload/") and n.endswith(".app/Info.plist") and n.count("/")==2)
@@ -9,6 +9,8 @@ with zipfile.ZipFile(sys.argv[1]) as z:
  assert any("jarvisiphone" in x["CFBundleURLSchemes"] for x in info["CFBundleURLTypes"])
  assert root+"PrivacyInfo.xcprivacy" in z.namelist()
  resources = Path(__file__).resolve().parents[1] / "JarvisPhone" / "Resources"
+ for item in json.loads((resources/'AR_MATERIALS.json').read_text()):
+  assert hashlib.sha256(z.read(root+item['file'])).hexdigest() == item['sha256'], 'AR material missing or altered: '+item['file']
  for name in ["jarvis-greeting.pcm","jarvis-connection.pcm","jarvis-torch-on.pcm","jarvis-torch-off.pcm","JarvisInstruments.sf2","GeneralUser-LICENSE.txt"]:
   expected = (resources / name).read_bytes()
   assert expected and z.read(root + name) == expected, f"recurso local divergente: {name}"

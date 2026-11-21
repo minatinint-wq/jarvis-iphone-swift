@@ -1,0 +1,6 @@
+Original procedural plaster and concrete created for JARVIS, seed 1701.
+Wood: Wood Table 001, Poly Haven, CC0 1.0. Photography: Dimitrios Savva; processing: Rico Cilliers.
+https://polyhaven.com/a/wood_table_001
+https://polyhaven.com/license
+2048 x 2048 base color, OpenGL normal and roughness.
+See AR_MATERIALS.json for provenance and SHA-256 hashes.

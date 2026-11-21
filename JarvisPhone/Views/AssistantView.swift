@@ -145,13 +145,15 @@ private enum VoiceState {
                 if let mode = model.studioMode {
                     VStack(spacing: 0) {
                         HStack {
-                            Text(["sketch": model.localStudio ? "Desenho na tela" : "Desenho no ar", "music": "Cordas no ar", "libras": "Libras", "translate": "Traduzir pela câmera"][mode] ?? "Estúdio")
+                            Text(["sketch": model.localStudio ? "Desenho na tela" : "Desenho no ar", "music": "Cordas no ar", "libras": "Libras", "translate": "Traduzir pela câmera", "wallAR": "JARVIS · Parede AR"][mode] ?? "Estúdio")
                                 .font(.headline)
                             Spacer()
                             if mode == "sketch" && model.localStudio && model.ready { Button("Estúdio completo") { model.openStudio(mode) } }
                             Button("Fechar") { model.studioMode = nil }
                         }.padding()
-                        if mode == "translate" {
+                        if mode == "wallAR" {
+                            WallARStudio(model:model)
+                        } else if mode == "translate" {
                             if #available(iOS 18.0, *) { CameraTranslation() }
                             else { Text("A tradução pela câmera requer iOS 18 ou posterior.").padding() }
                         } else if model.localStudio && mode == "sketch" {
@@ -376,6 +378,7 @@ private enum VoiceState {
                 tool(model.ready ? "Desenho no ar" : "Desenho na tela", symbol: "pencil.tip", color: ConsoleColor.gold, requiresPC: false) { model.openStudio("sketch") }
                 tool("Traduzir pela câmera", symbol: "character.viewfinder", color: ConsoleColor.cyan, requiresPC: false) { model.openStudio("translate") }
                 tool("Cordas no ar", symbol: "pianokeys", color: ConsoleColor.gold, requiresPC: false) { model.openStudio("music") }
+                tool("Parede AR", symbol: "viewfinder", color: ConsoleColor.cyan, requiresPC: false) { model.openStudio("wallAR") }
                 if model.paired {
                     tool("Libras", symbol: "hand.raised.fingers.spread", color: ConsoleColor.cyan) { model.openStudio("libras") }
                 }

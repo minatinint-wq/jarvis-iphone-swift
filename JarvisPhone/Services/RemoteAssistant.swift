@@ -127,7 +127,7 @@ import ActivityKit
         quietUntilCalled = false
         spokenWords = ""
         lastCall = Date()
-        if active { showingFace = true }
+        if active && studioMode == nil { showingFace = true }
         message = "Ouvindo seu pedido…"
         setPhase("Ouvindo seu pedido")
     }
@@ -304,6 +304,7 @@ import ActivityKit
     @Published var recording = false
     @Published var cameraAvailable = false
     @Published var studioMode: String? { didSet { updateWake() } }
+    @Published var wallARRequest: WallARRequest?
     @Published private(set) var localStudio = false
     @Published private(set) var studioInstrument = StudioInstrument.harp
     @Published var wantsVoice = false
@@ -452,7 +453,7 @@ import ActivityKit
     private func updateWake() {
         wakeResume?.cancel()
         guard wakeEnabled, wakeAuthorized, !systemInterrupted else { return }
-        if studioMode != nil { wake.stop(releaseSession: !isSpeaking); return }
+        if let mode = studioMode, mode != "wallAR" { wake.stop(releaseSession: !isSpeaking); return }
         guard !busy, !recording, !isSpeaking, !wakeHandling, frameRequest == nil, localRequest == nil else {
             wake.setPaused(true)
             return
@@ -682,6 +683,18 @@ import ActivityKit
         if PhoneVoiceControl.isMute(value) { muteUntilCalled(); return }
         guard !quietUntilCalled else { message = "Em silêncio. Diga “Oi, Jarvis”."; return }
         guard active, !value.isEmpty, value.count <= 2000, !busy, !recording, localRequest == nil else { return }
+        if let command = WallARCommand.parse(value, inStudio:studioMode == "wallAR") {
+            add(true,value)
+            if command == .close { studioMode = nil; wallARRequest = nil; message = "Modo AR fechado."; return }
+            if studioMode == "wallAR" || openStudio("wallAR") {
+                wallARRequest = WallARRequest(command:command)
+            }
+            return
+        }
+        if studioMode == "wallAR" {
+            wallARFeedback("No modo AR, peça uma cor, madeira ou cimento. Você também pode dizer essa parede, desfaz ou fechar AR.")
+            return
+        }
         if let command = Self.visionCommand(value) {
             switch command {
             case .stop: stopVision(); message = "Visão encerrada."
@@ -744,7 +757,7 @@ import ActivityKit
 
     @discardableResult func openStudio(_ mode: String, instrument: StudioInstrument = .harp) -> Bool {
         guard active, UIApplication.shared.applicationState == .active, UIApplication.shared.isProtectedDataAvailable,
-              !busy, !recording, ["sketch","music","libras","translate"].contains(mode) else { return false }
+              !busy, !recording, ["sketch","music","libras","translate","wallAR"].contains(mode) else { return false }
         guard ready || mode != "libras" else { message = "Conecte ao PC para abrir Libras."; return false }
         stopVision()
         showingFace = false; sound.stopPlayback()
@@ -752,6 +765,12 @@ import ActivityKit
         studioInstrument = instrument
         studioMode = mode
         return true
+    }
+
+    func wallARFeedback(_ text: String) {
+        message = text
+        guard studioMode == "wallAR", !quietUntilCalled, !busy, !isSpeaking else { return }
+        speakJarvis(text)
     }
 
     private func studioWentOffline() {
@@ -948,7 +967,7 @@ import ActivityKit
         active = yes
         if yes {
             if !wakeEnabled && UserDefaults.standard.bool(forKey:"jarvis.wakeOptIn") { setWakeEnabled(true) }
-            if wakeEnabled, wake.conversationOpen { showingFace = true }
+            if wakeEnabled, wake.conversationOpen, studioMode == nil { showingFace = true }
             connect()
             continueSpotifyBinding()
             resumePendingVision()

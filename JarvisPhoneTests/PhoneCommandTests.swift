@@ -1,9 +1,76 @@
 import XCTest
 import SwiftUI
 import AVFoundation
+import SceneKit
+import Metal
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    func testWallVoiceRoutesColorsWithoutConfusingRoomControls() {
+        for input in ["Jarvis, deixa essa parede branca", "pode mudar a cor dessa parede para branco?", "troca a parede cinza para branca"] {
+            XCTAssertEqual(WallARCommand.parse(input,inStudio:false),.finish(.white),input)
+        }
+        XCTAssertEqual(WallARCommand.parse("agora azul",inStudio:true),.finish(.blue))
+        XCTAssertEqual(WallARCommand.parse("coloca textura de madeira",inStudio:true),.finish(.wood))
+        XCTAssertEqual(WallARCommand.parse("aplique cimento nessa parede",inStudio:false),.finish(.concrete))
+        XCTAssertEqual(WallARCommand.parse("Oi Jarvis abre o modo AR",inStudio:false),.open)
+        XCTAssertEqual(WallARCommand.parse("essa parede",inStudio:true),.select)
+        XCTAssertEqual(WallARCommand.parse("desfaz",inStudio:true),.undo)
+        XCTAssertEqual(WallARCommand.parse("fecha o modo AR",inStudio:true),.close)
+        for input in ["não pinte essa parede branca","ele disse pinta a parede branca","liga a luz branca","muda a luz da parede para azul","pinta metade da parede de azul","coloca imagem na parede branca","se pintar a parede branca"] {
+            XCTAssertNil(WallARCommand.parse(input,inStudio:true),input)
+        }
+        XCTAssertNil(WallARCommand.parse("agora azul",inStudio:false))
+        XCTAssertNil(WallARCommand.parse("desfaz",inStudio:false))
+    }
+
+    func testWallTrackingHidesUntilStableAndResetsOnInterruption() {
+        var gate = WallTrackingGate()
+        XCTAssertFalse(gate.update(normal:false,at:0))
+        XCTAssertFalse(gate.update(normal:true,at:1))
+        XCTAssertFalse(gate.update(normal:true,at:1.5))
+        XCTAssertTrue(gate.update(normal:true,at:1.7))
+        XCTAssertFalse(gate.update(normal:false,at:2))
+        XCTAssertFalse(gate.update(normal:true,at:2.1))
+        XCTAssertFalse(gate.update(normal:true,at:2.5))
+        XCTAssertTrue(gate.update(normal:true,at:2.8))
+        XCTAssertFalse(gate.update(normal:true,at:.nan))
+    }
+
+    @MainActor func testWallPBRResourcesAndRender() throws {
+        for kind in ["wood","concrete","plaster"] {
+            for channel in ["Color","NormalGL","Roughness"] {
+                let path = try XCTUnwrap(Bundle.main.path(forResource:"AR_\(kind)_\(channel)",ofType:"jpg"))
+                let image = try XCTUnwrap(UIImage(contentsOfFile:path)?.cgImage)
+                XCTAssertEqual(image.width,2048); XCTAssertEqual(image.height,2048)
+            }
+        }
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable; physical AR still requires device verification") }
+        let scene = SCNScene()
+        scene.background.contents = UIColor(white:0.08,alpha:1)
+        let camera = SCNNode(); camera.camera = SCNCamera(); camera.position = SCNVector3(0,0,5)
+        camera.camera?.usesOrthographicProjection = true; camera.camera?.orthographicScale = 2
+        scene.rootNode.addChildNode(camera)
+        let light = SCNNode(); light.light = SCNLight(); light.light?.type = .omni
+        light.light?.intensity = 1100; light.position = SCNVector3(-2,3,4); scene.rootNode.addChildNode(light)
+        let ambient = SCNNode(); ambient.light = SCNLight(); ambient.light?.type = .ambient; ambient.light?.intensity = 300
+        scene.rootNode.addChildNode(ambient)
+        for (i, finish) in [WallFinish.white,.wood,.concrete].enumerated() {
+            let geometry = SCNPlane(width:1.4,height:2.8)
+            let material = WallMaterials.make(finish)
+            XCTAssertEqual(material.lightingModel,.physicallyBased)
+            XCTAssertNotNil(material.normal.contents)
+            XCTAssertEqual(material.diffuse.mipFilter,.linear)
+            geometry.materials = [material]
+            let node = SCNNode(geometry:geometry); node.position.x = Float(i-1)*1.6
+            scene.rootNode.addChildNode(node)
+        }
+        let renderer = SCNRenderer(device:device,options:nil); renderer.scene = scene; renderer.pointOfView = camera
+        let image = renderer.snapshot(atTime:0,with:CGSize(width:1000,height:700),antialiasingMode:.multisampling4X)
+        let attachment = XCTAttachment(image:image); attachment.name = "Wall-AR-PBR-2K-preview"; attachment.lifetime = .keepAlways
+        add(attachment)
+        XCTAssertNotNil(image.cgImage)
+    }
     func testConversationalAliasesRespectNegationAndDeviceScope() {
         for text in ["Ah, liga o flash", "Jarvis, acende a lanterna", "Ei Jarvis, pode acender o flash pra mim?", "deixa o flash ligado", "por favor, ligue a luz do celular", "quero que você acenda minha lanterna", "então, Jarvis, liga o flash de novo"] {
             XCTAssertEqual(PhoneIntentPhrases.torch(text), .torchOn, text)

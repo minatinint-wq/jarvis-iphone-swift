@@ -17,3 +17,15 @@ resources:
 - JarvisPhone/Resources/GeneralUser-LICENSE.txt
 - JarvisPhone/Resources/JarvisInstruments.sf2
 - JarvisPhone/Resources/WakeHelmet.mesh
+
+- JarvisPhone/Resources/AR_concrete_Color.jpg
+- JarvisPhone/Resources/AR_concrete_NormalGL.jpg
+- JarvisPhone/Resources/AR_concrete_Roughness.jpg
+- JarvisPhone/Resources/AR_MATERIALS.json
+- JarvisPhone/Resources/AR_MATERIALS_LICENSE.txt
+- JarvisPhone/Resources/AR_plaster_Color.jpg
+- JarvisPhone/Resources/AR_plaster_NormalGL.jpg
+- JarvisPhone/Resources/AR_plaster_Roughness.jpg
+- JarvisPhone/Resources/AR_wood_Color.jpg
+- JarvisPhone/Resources/AR_wood_NormalGL.jpg
+- JarvisPhone/Resources/AR_wood_Roughness.jpg
