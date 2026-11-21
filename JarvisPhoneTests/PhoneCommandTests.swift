@@ -6,6 +6,39 @@ import Metal
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    func testWallCornersJoinMeasuredCeilingAndDoNotInventMissingCeiling() {
+        let outline: [SIMD2<Float>] = [.init(-0.9,0.1),.init(0.9,0.1),.init(0.9,2.8),.init(-0.9,2.8)]
+        let edges = [WallEdge(normal:.init(0,-1),offset:3,ceiling:true),
+                     WallEdge(normal:.init(1,0),offset:1,ceiling:false),
+                     WallEdge(normal:.init(-1,0),offset:1,ceiling:false),
+                     WallEdge(normal:.init(0,1),offset:0,ceiling:false)]
+        let fitted = WallBoundary.fitted(outline,edges:edges)
+        XCTAssertTrue(WallBoundary.touchesCeiling(fitted,edges:edges))
+        XCTAssertEqual(fitted.map { $0.y }.max(),3)
+        XCTAssertEqual(fitted.map { $0.y }.min(),0)
+        XCTAssertEqual(fitted.map { $0.x }.max(),1)
+        XCTAssertEqual(fitted.map { $0.x }.min(),-1)
+        XCTAssertEqual(WallBoundary.triangles(fitted).count,6)
+        XCTAssertFalse(WallBoundary.touchesCeiling(outline,edges:[]))
+        let distant = [WallEdge(normal:.init(0,-1),offset:5,ceiling:true)]
+        XCTAssertFalse(WallBoundary.touchesCeiling(WallBoundary.fitted(outline,edges:distant),edges:distant))
+    }
+    func testWallTriangulationPreservesConcaveOutlineAndBothWindings() {
+        let polygon: [SIMD2<Float>] = [.init(0,0),.init(3,0),.init(3,1),.init(1,1),.init(1,3),.init(0,3)]
+        for points in [polygon,Array(polygon.reversed())] {
+            let indices = WallBoundary.triangles(points)
+            XCTAssertEqual(indices.count,12)
+            var area: Float = 0
+            for i in stride(from:0,to:indices.count,by:3) {
+                let a = points[Int(indices[i])], b = points[Int(indices[i+1])], c = points[Int(indices[i+2])]
+                area += abs(WallBoundary.cross(b-a,c-a))/2
+            }
+            XCTAssertEqual(area,5,accuracy:0.0001)
+        }
+        XCTAssertTrue(WallBoundary.triangles([.init(0,0),.init(1,1),.init(0,1),.init(1,0)]).isEmpty)
+        let clipped = WallBoundary.fitted(polygon,edges:[WallEdge(normal:.init(-1,0),offset:2,ceiling:false)])
+        XCTAssertTrue(clipped.allSatisfy { $0.x <= 2.001 })
+    }
     func testWallVoiceRoutesColorsWithoutConfusingRoomControls() {
         for input in ["Jarvis, deixa essa parede branca", "pode mudar a cor dessa parede para branco?", "troca a parede cinza para branca"] {
             XCTAssertEqual(WallARCommand.parse(input,inStudio:false),.finish(.white),input)

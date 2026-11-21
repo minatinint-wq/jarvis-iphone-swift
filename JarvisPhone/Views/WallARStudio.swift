@@ -36,7 +36,7 @@ enum WallMaterials {
 /// Owns one live ARSession. Painted geometry has its own world anchor and frozen
 /// metric UVs, so plane refinement cannot stretch the texture or move its edges.
 @MainActor final class WallARController: NSObject, ObservableObject, ARSessionDelegate {
-    @Published var status = "Aponte para a parede e mova o iPhone devagar."
+    @Published var status = "Mostre a parede, o encontro com o teto e os cantos."
     @Published var selected = false
     @Published var finish = WallFinish.white
     @Published var tracking = false
@@ -108,7 +108,7 @@ enum WallMaterials {
     private func run() {
         guard foreground, !stopped, !fatal else { return }
         let config = ARWorldTrackingConfiguration()
-        config.planeDetection = [.vertical]
+        config.planeDetection = [.horizontal,.vertical]
         config.sceneReconstruction = .meshWithClassification
         config.environmentTexturing = .automatic
         if ARWorldTrackingConfiguration.supportsFrameSemantics(.personSegmentationWithDepth) {
@@ -150,8 +150,15 @@ enum WallMaterials {
               plane.extent.x > 0.25, plane.extent.z > 0.25 else {
             status = "Ainda não encontrei uma parede nesse ponto. Mostre também os cantos e tente de novo."; return false
         }
+        let edges = boundaries(for:plane)
+        let outline = plane.geometry.boundaryVertices.map { SIMD2<Float>($0.x,$0.z) }
+        let fitted = WallBoundary.fitted(outline,edges:edges)
+        guard WallBoundary.touchesCeiling(fitted,edges:edges) else {
+            status = "Mostre o encontro dessa parede com o teto e os cantos; depois selecione de novo. Ainda falta mapear a borda superior."
+            return false
+        }
+        guard let geometry = Self.surface(fitted) else { status = "O contorno ainda está incompleto. Mostre os cantos da parede."; return false }
         clear(silent:true)
-        let geometry = Self.surface(plane.geometry)
         geometry.materials = [materials[finish] ?? WallMaterials.make(finish)]
         let root = SCNNode()
         root.simdTransform = plane.transform
@@ -168,18 +175,46 @@ enum WallMaterials {
         view.session.add(anchor:anchor)
         selected = true; comparing = false; history = []
         status = "\(finish.title) fixado. Mova o iPhone para conferir."
-        notice = "Recorte estimado pelo LiDAR. Confira janelas, quadros e limites da parede."
+        notice = "Encaixe no teto detectado · \(edges.filter { !$0.ceiling }.count) limites adicionais. Confira janelas e quadros."
         return true
     }
 
     /// Use meters directly, not ARKit's changing normalized texture coordinates.
-    static func surface(_ mesh: ARPlaneGeometry) -> SCNGeometry {
-        let vertices = mesh.vertices.map { SCNVector3($0.x,$0.y,$0.z) }
-        let uv = mesh.vertices.map { CGPoint(x:CGFloat($0.x),y:CGFloat($0.z)) }
-        let normals = mesh.vertices.map { _ in SCNVector3(0,1,0) }
-        let indices = mesh.triangleIndices.map { UInt16(bitPattern:$0) }
+    static func surface(_ outline: [SIMD2<Float>]) -> SCNGeometry? {
+        let indices = WallBoundary.triangles(outline)
+        guard !indices.isEmpty else { return nil }
+        let vertices = outline.map { SCNVector3($0.x,0,$0.y) }
+        let uv = outline.map { CGPoint(x:CGFloat($0.x),y:CGFloat($0.y)) }
+        let normals = outline.map { _ in SCNVector3(0,1,0) }
         return SCNGeometry(sources:[SCNGeometrySource(vertices:vertices),SCNGeometrySource(normals:normals),SCNGeometrySource(textureCoordinates:uv)],
                            elements:[SCNGeometryElement(indices:indices,primitiveType:.triangles)])
+    }
+
+    private func boundaries(for wall: ARPlaneAnchor) -> [WallEdge] {
+        let origin = SIMD3<Float>(wall.transform.columns.3.x,wall.transform.columns.3.y,wall.transform.columns.3.z)
+        let axisX = SIMD3<Float>(wall.transform.columns.0.x,wall.transform.columns.0.y,wall.transform.columns.0.z)
+        let axisZ = SIMD3<Float>(wall.transform.columns.2.x,wall.transform.columns.2.y,wall.transform.columns.2.z)
+        let inverse = simd_inverse(wall.transform)
+        let center = SIMD2<Float>(wall.center.x,wall.center.z)
+        var edges: [WallEdge] = []
+        for other in planes.values where other.identifier != wall.identifier {
+            guard other.classification == .ceiling || other.classification == .floor || other.classification == .wall else { continue }
+            // Only planes whose measured footprint reaches this wall define a corner.
+            let footprint = other.geometry.boundaryVertices.map { inverse * other.transform * SIMD4<Float>($0.x,$0.y,$0.z,1) }
+            guard !footprint.isEmpty,
+                  (footprint.map { $0.y }.min() ?? 1) <= 0.25,
+                  (footprint.map { $0.y }.max() ?? -1) >= -0.25 else { continue }
+            let n = SIMD3<Float>(other.transform.columns.1.x,other.transform.columns.1.y,other.transform.columns.1.z)
+            let p = SIMD3<Float>(other.transform.columns.3.x,other.transform.columns.3.y,other.transform.columns.3.z)
+            var normal = SIMD2<Float>(simd_dot(n,axisX),simd_dot(n,axisZ))
+            let length = simd_length(normal)
+            guard length > 0.5 else { continue }
+            normal /= length
+            var offset = simd_dot(n,origin-p)/length
+            if simd_dot(normal,center)+offset < 0 { normal = -normal; offset = -offset }
+            edges.append(WallEdge(normal:normal,offset:offset,ceiling:other.classification == .ceiling))
+        }
+        return edges
     }
 
     func apply(_ command: WallARCommand) {
@@ -384,7 +419,7 @@ private struct WallCameraView: UIViewRepresentable {
                             .font(.caption).foregroundStyle(.cyan)
                     }
                     if help {
-                        Text("Mostre uma parede lisa e seus cantos. Toque nela ou diga “essa parede”. Depois: “agora azul”, “coloca madeira”, “desfaz” ou “mostra o original”.\n\nO recorte é aproximado: portas, quadros, espelhos e móveis pequenos podem não ficar perfeitos. A pintura dura nesta sessão. Se perder a posição, ela é ocultada até estabilizar.\n\nTexturas PBR 2K locais. A iluminação é aproximada; não preserva todas as sombras da parede real. Meta: 60 FPS, com redução térmica para 30 FPS.\n\n\(controller.notice)")
+                        Text("Mostre uma parede lisa, os cantos e o encontro com o teto. Toque nela ou diga “essa parede”. Depois: “agora azul”, “coloca madeira”, “desfaz” ou “mostra o original”.\n\nO recorte é aproximado: portas, quadros, espelhos e móveis pequenos podem não ficar perfeitos. A pintura dura nesta sessão. Se perder a posição, ela é ocultada até estabilizar.\n\nTexturas PBR 2K locais. A iluminação é aproximada; não preserva todas as sombras da parede real. Meta: 60 FPS, com redução térmica para 30 FPS.\n\n\(controller.notice)")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }.padding(14).background(.ultraThinMaterial,in:RoundedRectangle(cornerRadius:20))

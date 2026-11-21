@@ -115,7 +115,7 @@ jobs:
 
           xcrun simctl boot "$id"
 
-          xcodebuild -parallel-testing-enabled NO -project JarvisPhone.xcodeproj -scheme JarvisPhone -destination "id=$id" -derivedDataPath "$RUNNER_TEMP/jarvis-derived" CODE_SIGNING_ALLOWED=NO test
+          xcodebuild -parallel-testing-enabled NO -project JarvisPhone.xcodeproj -scheme JarvisPhone -destination "id=$id" -derivedDataPath "$RUNNER_TEMP/jarvis-derived" -resultBundlePath "$RUNNER_TEMP/wall-tests.xcresult" CODE_SIGNING_ALLOWED=NO test
 
           xcrun simctl install "$id" "$RUNNER_TEMP/jarvis-derived/Build/Products/Debug-iphonesimulator/JarvisPhone.app"
 
@@ -126,6 +126,13 @@ jobs:
           sleep 3
 
           xcrun simctl io "$id" screenshot "$RUNNER_TEMP/assistant.png"
+
+      - name: Exportar evidência visual dos materiais AR
+        if: always()
+        run: |
+          if [ -d "$RUNNER_TEMP/wall-tests.xcresult" ]; then
+            xcrun xcresulttool export attachments --path "$RUNNER_TEMP/wall-tests.xcresult" --output-path "$RUNNER_TEMP/wall-attachments"
+          fi
 
       - uses: actions/upload-artifact@v4
 
@@ -140,4 +147,5 @@ jobs:
             ${{ runner.temp }}/assistant.png
 
             ${{ runner.temp }}/xtool-build.log
+            ${{ runner.temp }}/wall-attachments
 
