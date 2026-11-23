@@ -76,8 +76,8 @@ enum SpatialPanelGeometry {
     var dwellProgress: Double { handGesture.progress }
     private weak var hovered:SCNNode?
     private var dragOffset=SIMD3<Float>.zero
-    private var dragDepth:Float=0
     private var dragging=false
+    private var palmScale=SpatialPalmScale()
     private var swipe = SpatialPageSwipe()
     private var pcOutput = (UserDefaults.standard.string(forKey:"spatialSpotifyOutput") ?? "pc") == "pc"
     var onWeb: ((SpatialModule)->Void)?
@@ -103,7 +103,7 @@ enum SpatialPanelGeometry {
         guard let frame=view.session.currentFrame else { return }
         let orientation=view.window?.windowScene?.interfaceOrientation ?? .portrait
         let camera=simd_inverse(frame.camera.viewMatrix(for:orientation))
-        var distance:Float=0.9
+        var distance:Float=0.55
         if let query=view.raycastQuery(from:CGPoint(x:view.bounds.midX,y:view.bounds.midY),allowing:.existingPlaneGeometry,alignment:.any),
            let hit=view.session.raycast(query).first {
             let gap=simd_distance(SIMD3(hit.worldTransform.columns.3.x,hit.worldTransform.columns.3.y,hit.worldTransform.columns.3.z),SIMD3(camera.columns.3.x,camera.columns.3.y,camera.columns.3.z))-0.18
@@ -149,6 +149,17 @@ enum SpatialPanelGeometry {
             anchor=updated;root?.simdTransform=updated.transform;root?.simdScale=scale
         }
     }
+    func snapshot() -> SpatialPanelRecord? {
+        guard visible,!dragging,let anchor,let root else { return nil }
+        return SpatialPanelRecord(anchor:anchor.identifier,module:module.rawValue,scale:root.simdScale.x)
+    }
+    func restore(_ saved: SpatialPanelRecord, anchor: ARAnchor) {
+        guard root == nil,let destination=SpatialModule(rawValue:saved.module),destination != .browser,destination != .youtube else { return }
+        let node=SCNNode();node.simdTransform=anchor.transform;node.simdScale=SIMD3(repeating:saved.scale);node.isHidden=true
+        root=node;self.anchor=anchor;module=destination;visible=true
+        view.scene.rootNode.addChildNode(node);render()
+        status="Painel salvo. Aguarde a relocalização estabilizar."
+    }
     func setTracking(_ good: Bool) {
         trackingGood=good
         if !good { swipe=SpatialPageSwipe(); if dragging { finishDrag() };handGesture.reset() }
@@ -185,6 +196,11 @@ enum SpatialPanelGeometry {
     func hand(_ sample:SpatialHandSample?) {
         guard visible,root?.isHidden==false else { handGesture.reset();return }
         let time=sample?.time ?? ProcessInfo.processInfo.systemUptime
+        if let sample,sample.openPalm,let palm=sample.palmWorld,let frame=view.session.currentFrame {
+            let camera=SIMD3(frame.camera.transform.columns.3.x,frame.camera.transform.columns.3.y,frame.camera.transform.columns.3.z)
+            let over=localHit(sample.point) != nil
+            if let multiplier=palmScale.update(target:over ? "panel" : nil,depth:Double(simd_distance(camera,palm)),time:time) { resize(multiplier) }
+        } else { palmScale=SpatialPalmScale() }
         if let sample, sample.menuPose, sample.ratio >= 0.48, !dragging, view.bounds.width > 0, view.bounds.height > 0 {
             handGesture.reset()
             let pos=CGPoint(x:sample.point.x/view.bounds.width,y:sample.point.y/view.bounds.height)
@@ -199,22 +215,24 @@ enum SpatialPanelGeometry {
         }
         let overPanel = sample.flatMap { localHit($0.point) } != nil
         let hit = target ?? (overPanel ? "panel-surface" : nil)
-        let canClick = target.flatMap { actions[$0] }.map { action -> Bool in
+        let contact = sample?.worldPoint.map { p in
+            guard let root else { return false }
+            let local=simd_inverse(root.simdWorldTransform)*SIMD4(p,1)
+            return abs(local.z)*root.simdScale.x<0.12
+        } ?? false
+        let canClick = contact && (target.flatMap { actions[$0] }.map { action -> Bool in
             if case .dragHandle = action { return false }
             return true
-        } ?? false
-        for event in handGesture.update(ratio:sample?.ratio ?? .nan,pointing:sample?.pointing == true && canClick,target:hit,time:time) {
+        } ?? false)
+        for event in handGesture.update(ratio:sample?.worldPoint == nil ? .nan : sample!.ratio,pointing:sample?.pointing == true && canClick,target:hit,time:time) {
             switch event {
             case .press:
-                guard let root,let sample else { continue }
-                dragDepth=view.projectPoint(root.worldPosition).z
-                let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),dragDepth))
-                dragOffset=root.simdWorldPosition-SIMD3(p.x,p.y,p.z);dragging=false
+                guard let root,let p=sample?.worldPoint else { continue }
+                dragOffset=root.simdWorldPosition-p;dragging=false
             case .drag:
-                guard let root,let sample else { continue }
+                guard let root,let sample,let p=sample.worldPoint else { continue }
                 if !dragging { if let anchor { view.session.remove(anchor:anchor) };anchor=nil;dragging=true }
-                let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),dragDepth))
-                let destination=SIMD3(p.x,p.y,p.z)+dragOffset
+                let destination=p+dragOffset
                 if let frame=view.session.currentFrame,let query=view.raycastQuery(from:sample.point,allowing:.existingPlaneGeometry,alignment:.any),let hit=view.session.raycast(query).first {
                     let camera=SIMD3(frame.camera.transform.columns.3.x,frame.camera.transform.columns.3.y,frame.camera.transform.columns.3.z)
                     let obstacle=SIMD3(hit.worldTransform.columns.3.x,hit.worldTransform.columns.3.y,hit.worldTransform.columns.3.z)
@@ -448,13 +466,17 @@ enum SpatialPanelGeometry {
             }
             let geometry=SCNPlane(width:width,height:height);geometry.cornerRadius=0.008
             let material=SCNMaterial();material.diffuse.contents=image;material.lightingModel = .constant;material.isDoubleSided=false
+            material.readsFromDepthBuffer=false;material.writesToDepthBuffer=false
+            material.diffuse.mipFilter = .linear;material.diffuse.maxAnisotropy=8
             geometry.materials=[material]
             let node=SCNNode(geometry:geometry);node.categoryBitMask=4;node.position=SCNVector3(x,y,0.008)
+            node.renderingOrder=101
             if let action { let id=UUID().uuidString;node.name=id;actions[id]=action }
             root.addChildNode(node)
         }
         let back=SCNNode(geometry:SCNBox(width:width+0.015,height:height+0.015,length:0.012,chamferRadius:0.012));back.categoryBitMask=4
         back.geometry?.firstMaterial?.diffuse.contents=UIColor(red:0.018,green:0.04,blue:0.06,alpha:1);back.geometry?.firstMaterial?.lightingModel = .constant
+        back.geometry?.firstMaterial?.readsFromDepthBuffer=false;back.geometry?.firstMaterial?.writesToDepthBuffer=false;back.renderingOrder=100
         root.addChildNode(back)
         let color=UIColor(red:0.045,green:0.12,blue:0.16,alpha:1)
         plate(module.title,"hand.draw",width:0.53,height:0.075,x:-0.045,y:0.24,color:.clear,action:.dragHandle)

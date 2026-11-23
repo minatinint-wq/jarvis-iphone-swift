@@ -1,0 +1,22 @@
+{
+  "demo_human": {
+    "heightMeters": 1.7,
+    "triangles": 2444
+  },
+  "demo_box": {
+    "heightMeters": 0.3,
+    "triangles": 188
+  },
+  "demo_chair": {
+    "heightMeters": 0.9,
+    "triangles": 1128
+  },
+  "demo_table": {
+    "heightMeters": 0.75,
+    "triangles": 940
+  },
+  "demo_panel": {
+    "heightMeters": 0.36,
+    "triangles": 752
+  }
+}

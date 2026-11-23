@@ -3111,5 +3111,534 @@
     ],
     "triangles": 14036,
     "vertices": 8550
+  },
+  {
+    "id": "demo_human",
+    "title": "Personagem · 1,70 m",
+    "author": "JARVIS project",
+    "license": "CC0-1.0",
+    "source": "Blender procedural metric demo",
+    "heightMeters": 1.7,
+    "triangles": 2444,
+    "parts": [
+      {
+        "mesh": "Spatial_demo_human_0.mesh",
+        "baseColor": [
+          0.550000011920929,
+          0.6200000047683716,
+          0.699999988079071,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_human_1.mesh",
+        "baseColor": [
+          0.054999999701976776,
+          0.07999999821186066,
+          0.11999999731779099,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_human_2.mesh",
+        "baseColor": [
+          0.550000011920929,
+          0.6200000047683716,
+          0.699999988079071,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_human_3.mesh",
+        "baseColor": [
+          0.019999999552965164,
+          0.6499999761581421,
+          0.800000011920929,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_human_4.mesh",
+        "baseColor": [
+          0.054999999701976776,
+          0.07999999821186066,
+          0.11999999731779099,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_human_5.mesh",
+        "baseColor": [
+          0.550000011920929,
+          0.6200000047683716,
+          0.699999988079071,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_human_6.mesh",
+        "baseColor": [
+          0.054999999701976776,
+          0.07999999821186066,
+          0.11999999731779099,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_human_7.mesh",
+        "baseColor": [
+          0.550000011920929,
+          0.6200000047683716,
+          0.699999988079071,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_human_8.mesh",
+        "baseColor": [
+          0.054999999701976776,
+          0.07999999821186066,
+          0.11999999731779099,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_human_9.mesh",
+        "baseColor": [
+          0.550000011920929,
+          0.6200000047683716,
+          0.699999988079071,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_human_10.mesh",
+        "baseColor": [
+          0.054999999701976776,
+          0.07999999821186066,
+          0.11999999731779099,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_human_11.mesh",
+        "baseColor": [
+          0.550000011920929,
+          0.6200000047683716,
+          0.699999988079071,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_human_12.mesh",
+        "baseColor": [
+          0.019999999552965164,
+          0.6499999761581421,
+          0.800000011920929,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_demo_human_0.mesh",
+        "sha256": "6a620f8708c315438bbc325c447f999d06197f2cba152f3089cbf08ab0f9ffae",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_human_1.mesh",
+        "sha256": "4f7dc49956d271076d020dfa66db00e5c3669e01d9ad52f94ac1795449c74859",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_human_2.mesh",
+        "sha256": "d5b568bae924027a4c4367cbdaff314eb8b25c683c65948a61488fdae7838492",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_human_3.mesh",
+        "sha256": "a775ff5ca6dc2d0522bb0d9675a865abff4d20321d5429d04378d8ccf1188014",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_human_4.mesh",
+        "sha256": "205a9d121cf63487ef7cbfc7c4f762f3a677c3c50eb83ce0e82f06c034e546cd",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_human_5.mesh",
+        "sha256": "75bc6cd820f0196f43c25dd4ad5914ebc6393508aa9047185ba41b66d9d8d7fd",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_human_6.mesh",
+        "sha256": "358af420f00d7bb450e22b07dffdf28dcfdf341c0e3bad3c32bc0d5b1be3f2e1",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_human_7.mesh",
+        "sha256": "b652b2f433c737bc6d4618dc8eac4841911cf31f075edd2528ab94f8db826f41",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_human_8.mesh",
+        "sha256": "c87a1d80b16faa79b5d7f7c0b03b92d6f34e1092e5ce17f42d1ad183d005cb79",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_human_9.mesh",
+        "sha256": "336ff5d6c67cfaa7d4efd765bcbac01e649f566659dca6cdab0c41c7973e5d0f",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_human_10.mesh",
+        "sha256": "380c57d5caabb499c99e541bb9dfee6e7201217fd6115dd7ad33078ac67ce287",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_human_11.mesh",
+        "sha256": "3c443f0520e5511f6902a267099e2e78641f9ade8c2f069e4658732fd45d8123",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_human_12.mesh",
+        "sha256": "68b1549eed10b07c8b5465c32a283c0676c77a78cb8f9af0d7c7b5b162a8032a",
+        "bytes": 20316
+      }
+    ]
+  },
+  {
+    "id": "demo_box",
+    "title": "Caixa · 30 cm",
+    "author": "JARVIS project",
+    "license": "CC0-1.0",
+    "source": "Blender procedural metric demo",
+    "heightMeters": 0.3,
+    "triangles": 188,
+    "parts": [
+      {
+        "mesh": "Spatial_demo_box_0.mesh",
+        "baseColor": [
+          0.550000011920929,
+          0.6200000047683716,
+          0.699999988079071,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_demo_box_0.mesh",
+        "sha256": "89db77d2c0208c866d60aedb5c5f88d27c234167081abc86e32ff389fcd6f907",
+        "bytes": 20316
+      }
+    ]
+  },
+  {
+    "id": "demo_chair",
+    "title": "Cadeira · 90 cm",
+    "author": "JARVIS project",
+    "license": "CC0-1.0",
+    "source": "Blender procedural metric demo",
+    "heightMeters": 0.9,
+    "triangles": 1128,
+    "parts": [
+      {
+        "mesh": "Spatial_demo_chair_0.mesh",
+        "baseColor": [
+          0.550000011920929,
+          0.6200000047683716,
+          0.699999988079071,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_chair_1.mesh",
+        "baseColor": [
+          0.550000011920929,
+          0.6200000047683716,
+          0.699999988079071,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_chair_2.mesh",
+        "baseColor": [
+          0.054999999701976776,
+          0.07999999821186066,
+          0.11999999731779099,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_chair_3.mesh",
+        "baseColor": [
+          0.054999999701976776,
+          0.07999999821186066,
+          0.11999999731779099,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_chair_4.mesh",
+        "baseColor": [
+          0.054999999701976776,
+          0.07999999821186066,
+          0.11999999731779099,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_chair_5.mesh",
+        "baseColor": [
+          0.054999999701976776,
+          0.07999999821186066,
+          0.11999999731779099,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_demo_chair_0.mesh",
+        "sha256": "d16127377b5d01d91513589a0999216f0ce955ea353fadaa1d11cece3efeb1b1",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_chair_1.mesh",
+        "sha256": "585b7318ed9a3d035da92cea18d19faed10e20f1df0961b41b4391cb177e5151",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_chair_2.mesh",
+        "sha256": "d261a7985b22ec9b09257dc8d452ebc162ff26b2bf3ae0efce0bc56dd1f95b1f",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_chair_3.mesh",
+        "sha256": "5cd3841f583e720926af6790e6ad3a24d7ea3963ebabc23773a579d4d196fef8",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_chair_4.mesh",
+        "sha256": "475b4079abc9301f6288cfaf3e04788b8ff5f919d896ca798e7d239785e7e42a",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_chair_5.mesh",
+        "sha256": "1d7938f343b9cde5e59326019de5b0a7f0cee34e566398100681e60d053f85c5",
+        "bytes": 20316
+      }
+    ]
+  },
+  {
+    "id": "demo_table",
+    "title": "Mesa · 75 cm",
+    "author": "JARVIS project",
+    "license": "CC0-1.0",
+    "source": "Blender procedural metric demo",
+    "heightMeters": 0.75,
+    "triangles": 940,
+    "parts": [
+      {
+        "mesh": "Spatial_demo_table_0.mesh",
+        "baseColor": [
+          0.550000011920929,
+          0.6200000047683716,
+          0.699999988079071,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_table_1.mesh",
+        "baseColor": [
+          0.054999999701976776,
+          0.07999999821186066,
+          0.11999999731779099,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_table_2.mesh",
+        "baseColor": [
+          0.054999999701976776,
+          0.07999999821186066,
+          0.11999999731779099,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_table_3.mesh",
+        "baseColor": [
+          0.054999999701976776,
+          0.07999999821186066,
+          0.11999999731779099,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_table_4.mesh",
+        "baseColor": [
+          0.054999999701976776,
+          0.07999999821186066,
+          0.11999999731779099,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_demo_table_0.mesh",
+        "sha256": "4ef4255f32da307b266b2ee8fa234ee081da44720a58c704117c837a4396f4fa",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_table_1.mesh",
+        "sha256": "5c4dce510bc5183af27f853a53b7658b8b4460817c2fc2f087da7d2d8aee6bb0",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_table_2.mesh",
+        "sha256": "eca27bcdb174e464e3cbf08fb810cd1988f1307d5c8e635325b5f84e08c1f084",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_table_3.mesh",
+        "sha256": "fd0c0b979245b132e4c2162ff97406e03440c334850d4f5a99e9bf06275cffca",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_table_4.mesh",
+        "sha256": "66ee5ce498c374aa19b2ed49171e86cb9015de13fadd577c1aa2d78a476f7d56",
+        "bytes": 20316
+      }
+    ]
+  },
+  {
+    "id": "demo_panel",
+    "title": "Painel de teste · 60 cm",
+    "author": "JARVIS project",
+    "license": "CC0-1.0",
+    "source": "Blender procedural metric demo",
+    "heightMeters": 0.36,
+    "triangles": 752,
+    "parts": [
+      {
+        "mesh": "Spatial_demo_panel_0.mesh",
+        "baseColor": [
+          0.054999999701976776,
+          0.07999999821186066,
+          0.11999999731779099,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_panel_1.mesh",
+        "baseColor": [
+          0.019999999552965164,
+          0.6499999761581421,
+          0.800000011920929,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_panel_2.mesh",
+        "baseColor": [
+          0.019999999552965164,
+          0.6499999761581421,
+          0.800000011920929,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      },
+      {
+        "mesh": "Spatial_demo_panel_3.mesh",
+        "baseColor": [
+          0.019999999552965164,
+          0.6499999761581421,
+          0.800000011920929,
+          1.0
+        ],
+        "roughness": 0.38,
+        "metalness": 0.3
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_demo_panel_0.mesh",
+        "sha256": "d6a1fb434c0184cde7f0ebda4418bd834229b3120e3d78c4d3ac3e8dd9240412",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_panel_1.mesh",
+        "sha256": "796385a01aec416099d0c77442b9e8561358142e28921042fb84ac9e4a8fb655",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_panel_2.mesh",
+        "sha256": "712bbbff705219df5628bbd2b761e5b1b411e7b45e97c0cfedcaeed10415142f",
+        "bytes": 20316
+      },
+      {
+        "file": "Spatial_demo_panel_3.mesh",
+        "sha256": "496f64f0dd0c427b337858563c94e221e90a9a1c934235712fde40eaf5bdacee",
+        "bytes": 20316
+      }
+    ]
   }
 ]

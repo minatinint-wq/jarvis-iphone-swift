@@ -2,6 +2,20 @@ import SwiftUI
 import ARKit
 import SceneKit
 import AVFoundation
+import Darwin
+
+enum SpatialDemo: String, CaseIterable {
+    case human = "demo_human", box = "demo_box", chair = "demo_chair", table = "demo_table", panel = "demo_panel"
+    var title: String {
+        switch self { case .human:return "Personagem · 1,70 m";case .box:return "Caixa · 30 cm";case .chair:return "Cadeira · 90 cm";case .table:return "Mesa · 75 cm";case .panel:return "Painel · 60 cm" }
+    }
+    var radius: Float {
+        switch self { case .human:return 0.36;case .box:return 0.22;case .chair:return 0.33;case .table:return 0.66;case .panel:return 0.31 }
+    }
+    func make() throws -> SCNNode {
+        let node = try SpatialAssets.load(rawValue);node.name="catalogObject";return node
+    }
+}
 
 enum SpatialTheme: String, CaseIterable {
     case forest, enchanted, studio, garage, lounge, aquarium
@@ -148,6 +162,130 @@ enum SpatialTheme: String, CaseIterable {
     var dwellProgress: Double { handGesture.progress }
     private var handGesture=SpatialGesture()
     private var handDragging:UUID?
+    private var handOffset=SIMD3<Float>.zero
+    private var palmScale=SpatialPalmScale()
+    @Published var persistenceStatus = "Mapa ainda não salvo."
+    @Published var roomName = "Ambiente 1"
+    private var worldID = UUID()
+    private var rooms = [SpatialRoom(id:UUID(),name:"Ambiente 1",origin:SpatialArchive.values(matrix_identity_float4x4))]
+    private var records: [UUID:SpatialObjectRecord] = [:]
+    private var restored: [UUID:SpatialObjectRecord] = [:]
+    private var revision = 0
+    private var saving = false
+    private var lastSavedRevision = -1
+    private var lastSaveAttempt: TimeInterval = -.infinity
+    private var currentRoom: UUID?
+    private var relocalizationBegan: TimeInterval?
+    private var diagnostics: [[String:Any]] = []
+    private var lastDiagnostic: TimeInterval = -.infinity
+    var panelSnapshot: (() -> SpatialPanelRecord?)?
+    var restoredPanel: SpatialPanelRecord?
+    private let storageQueue = DispatchQueue(label:"jarvis.spatial.persistence",qos:.utility)
+    var recovering: Bool { !restored.isEmpty || restoredPanel != nil }
+
+    func loadMap() async throws -> ARWorldMap? {
+        let archive = try await Task.detached(priority:.utility) { try SpatialArchive.load() }.value
+        guard let archive else { return nil }
+        let map = try NSKeyedUnarchiver.unarchivedObject(ofClass:ARWorldMap.self,from:archive.map)
+        guard let map, archive.objects.allSatisfy({ record in map.anchors.contains { $0.identifier == record.anchor && $0.name == "JarvisObject:" + record.id.uuidString } }),
+              archive.panel.map({ panel in map.anchors.contains { $0.identifier == panel.anchor && $0.name == "JarvisControlPanel" } }) ?? true else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        worldID=archive.world;rooms=archive.rooms;currentRoom=rooms.first?.id;roomName=rooms.first?.name ?? "Ambiente 1"
+        records=Dictionary(uniqueKeysWithValues:archive.objects.map { ($0.id,$0) });restored=records
+        restoredPanel=archive.panel
+        relocalizationBegan=ProcessInfo.processInfo.systemUptime
+        revision=0;lastSavedRevision=0
+        active = !records.isEmpty
+        persistenceStatus="Relocalizando mapa salvo. Mostre o ambiente original; objetos aguardam suas âncoras."
+        return map
+    }
+
+    func chooseRoom(_ name: String) {
+        guard !recovering else { persistenceStatus="Espere a relocalização antes de identificar outro ambiente.";return }
+        if let room=rooms.first(where: { $0.name == name }) { currentRoom=room.id;roomName=room.name;return }
+        guard rooms.count<32,let camera=view.session.currentFrame?.camera.transform else { return }
+        var origin=matrix_identity_float4x4;origin.columns.3=camera.columns.3
+        let room=SpatialRoom(id:UUID(),name:name,origin:SpatialArchive.values(origin))
+        rooms.append(room);currentRoom=room.id;roomName=name;revision+=1
+    }
+
+    func saveMap(force: Bool = true) {
+        guard !saving,!recovering,handDragging == nil,let frame=view.session.currentFrame,
+              case .normal=frame.camera.trackingState,frame.worldMappingStatus == .mapped || frame.worldMappingStatus == .extending else {
+            if force { persistenceStatus="Para salvar, termine o gesto e mostre mais detalhes do ambiente até o mapa estabilizar." };return
+        }
+        guard force || revision != lastSavedRevision else { return }
+        lastSaveAttempt=frame.timestamp;saving=true
+        let savedRevision=revision, snapshot=Array(records.values), roomSnapshot=rooms, world=worldID, panel=panelSnapshot?()
+        view.session.getCurrentWorldMap { [self] map,error in
+            Task { @MainActor in
+                guard let map,error == nil,self.revision == savedRevision,
+                      snapshot.allSatisfy({ record in map.anchors.contains { $0.identifier == record.anchor } }),
+                      panel.map({ p in map.anchors.contains { $0.identifier == p.anchor } }) ?? true else {
+                    self.saving=false;self.persistenceStatus="Mapa não salvo. Aguarde estabilizar e tente novamente.";return
+                }
+                self.storageQueue.async {
+                    do {
+                        let bytes=try NSKeyedArchiver.archivedData(withRootObject:map,requiringSecureCoding:true)
+                        let archive=SpatialArchive(world:world,rooms:roomSnapshot,objects:snapshot,panel:panel,map:bytes,saved:Date())
+                        try archive.write()
+                        Task { @MainActor in self.saving=false;self.lastSavedRevision=savedRevision;self.persistenceStatus="Salvo no iPhone: \(snapshot.count) objetos e \(roomSnapshot.count) ambientes." }
+                    } catch {
+                        Task { @MainActor in self.saving=false;self.persistenceStatus="Falha ao salvar: \(error.localizedDescription)" }
+                    }
+                }
+            }
+        }
+    }
+
+    func persistenceTick(_ frame: ARFrame) {
+        if frame.timestamp-lastSaveAttempt>30 { saveMap(force:false);lastSaveAttempt=frame.timestamp }
+    }
+
+    func recordPerformance(fps: Int, frame: ARFrame) {
+        guard frame.timestamp-lastDiagnostic>=5 else { return };lastDiagnostic=frame.timestamp
+        var entry:[String:Any] = ["date":Date().timeIntervalSince1970,"fps":fps,"objects":objectCount,
+                                 "thermal":ProcessInfo.processInfo.thermalState.rawValue,
+                                 "mapping":frame.worldMappingStatus.rawValue,"battery":UIDevice.current.batteryLevel]
+        var info=mach_task_basic_info(),count=mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size/MemoryLayout<integer_t>.size)
+        let result=withUnsafeMutablePointer(to:&info) { pointer in
+            pointer.withMemoryRebound(to:integer_t.self,capacity:Int(count)) { task_info(mach_task_self_,task_flavor_t(MACH_TASK_BASIC_INFO),$0,&count) }
+        }
+        if result == KERN_SUCCESS { entry["residentMB"]=Double(info.resident_size)/1048576 }
+        if let began=relocalizationBegan,!recovering,restoredPanel==nil,case .normal=frame.camera.trackingState {
+            entry["relocalizationSeconds"]=ProcessInfo.processInfo.systemUptime-began
+            entry["restoredAnchors"]=records.count
+            var deltas:[[String:Any]]=[]
+            for record in records.values {
+                guard let room=rooms.first(where:{$0.id==record.room}),let origin=SpatialArchive.matrix(room.origin),
+                      let local=SpatialArchive.matrix(record.localTransform),let anchor=anchors[record.id] else { continue }
+                let expected=origin*local,actual=anchor.transform
+                let a=SIMD3(expected.columns.3.x,expected.columns.3.y,expected.columns.3.z)
+                let b=SIMD3(actual.columns.3.x,actual.columns.3.y,actual.columns.3.z)
+                let angle=2*acos(min(1,abs(simd_dot(simd_quatf(expected).vector,simd_quatf(actual).vector))))
+                deltas.append(["id":record.id.uuidString,"metersFromSavedTransform":simd_distance(a,b),"radiansFromSavedTransform":angle,"scale":record.scale])
+            }
+            entry["anchorDeltas"]=deltas;relocalizationBegan=nil
+            persistenceStatus="Mapa relocalizado. \(objectCount) objetos recuperados. Confira a posição física."
+        }
+        diagnostics.append(entry)
+        if diagnostics.count>300 { diagnostics.removeFirst(diagnostics.count-300) }
+        guard let bytes=try? JSONSerialization.data(withJSONObject:diagnostics,options:[.sortedKeys]) else { return }
+        let file=SpatialArchive.file.deletingLastPathComponent().appendingPathComponent("diagnostics.json")
+        storageQueue.async {
+            try? FileManager.default.createDirectory(at:file.deletingLastPathComponent(),withIntermediateDirectories:true)
+            try? bytes.write(to:file,options:[.atomic,.completeFileProtectionUntilFirstUserAuthentication])
+        }
+    }
+
+    private func remember(_ id: UUID, model: String? = nil) {
+        guard let node=objects[id],let anchor=anchors[id],let room=rooms.first(where:{$0.id == (records[id]?.room ?? currentRoom ?? rooms[0].id)}),
+              let origin=SpatialArchive.matrix(room.origin) else { return }
+        records[id]=SpatialObjectRecord(id:id,model:model ?? records[id]?.model ?? "theme:"+theme.rawValue,room:room.id,anchor:anchor.identifier,
+                                      localTransform:SpatialArchive.values(simd_inverse(origin)*anchor.transform),scale:node.simdScale.x,updated:Date())
+        revision+=1
+    }
     init(view: ARSCNView) { self.view=view; super.init() }
     func attach() {
         view.addGestureRecognizer(UIPanGestureRecognizer(target:self,action:#selector(pan(_:))))
@@ -155,6 +293,7 @@ enum SpatialTheme: String, CaseIterable {
         view.addGestureRecognizer(UIRotationGestureRecognizer(target:self,action:#selector(rotate(_:))))
     }
     func setTheme(_ value: SpatialTheme) {
+        guard !recovering else { status="Aguarde recuperar as âncoras do mapa salvo.";return }
         active=true; theme=value;selectedModel=nil
         if let selected, let root=objects[selected] {
             guard let support=supports[selected],let plane=planes[support],fits(SIMD4(root.simdPosition,1),radius:0.48*root.simdScale.x,on:plane,ignoring:selected) else { status="O cenário precisa de mais área livre. Use Adicionar.";return }
@@ -165,17 +304,19 @@ enum SpatialTheme: String, CaseIterable {
                 player?.stop();playingID=nil
                 root.childNodes.filter { $0.name != "selection" }.forEach { $0.removeFromParentNode() }
                 root.addChildNode(replacement)
+                remember(selected,model:"theme:"+value.rawValue)
                 status="\(value.title) no mesmo lugar. Toque para interagir; arraste para mover."
             } catch { status="Não consegui carregar o modelo incluído no app." }
         } else { placing=true; status="\(value.title): toque numa área livre e mapeada do piso ou mesa." }
     }
     func setModel(_ id:String) {
-        guard SpatialAssets.catalog.contains(where:{$0.id==id}) else { return }
+        guard !recovering,SpatialAssets.catalog.contains(where:{$0.id==id}) || SpatialDemo.allCases.contains(where:{$0.rawValue==id}) else { return }
         active=true;selectedModel=id;selected=nil;hasSelection=false;placing=true
-        status="\(SpatialAssets.catalog.first(where:{$0.id==id})?.title ?? id): toque no piso ou numa mesa. Tamanho inicial: até 30 cm."
+        status=SpatialDemo(rawValue:id).map { "\($0.title): toque em uma área livre do piso." } ?? "\(SpatialAssets.catalog.first(where:{$0.id==id})?.title ?? id): toque no piso ou numa mesa. Tamanho inicial: até 30 cm."
     }
     private func content() throws -> SCNNode {
         guard let selectedModel else { return try SpatialAssets.composition(theme) }
+        if let demo=SpatialDemo(rawValue:selectedModel) { return try demo.make() }
         let holder=SCNNode();holder.name="catalogObject"
         let model=try SpatialAssets.load(selectedModel);model.scale=SCNVector3(0.30,0.30,0.30);holder.addChildNode(model)
         return holder
@@ -192,22 +333,24 @@ enum SpatialTheme: String, CaseIterable {
     #endif
     func addAnother() { selected=nil; hasSelection=false; placing=true; active=true; status="Toque em outra área livre. Máximo: 6 conjuntos." }
     func tap(_ point: CGPoint, tracking: Bool) {
-        guard active,!panelBlocking,tracking else { status="Espere o rastreamento estabilizar."; return }
+        guard active,!panelBlocking,tracking,!recovering else { status="Espere o rastreamento estabilizar e recuperar o mapa salvo."; return }
         if !placing, let id=hit(point) {
             if selected==id { interact() } else { selected=id;hasSelection=true;markSelection();status="Selecionado. Toque novamente para interagir." }
             return
         }
         guard placing else { status="Toque em Adicionar para colocar outro conjunto."; return }
         guard objects.count<6 else { status="Limite de seis conjuntos para manter o desempenho."; return }
-        guard let placement=placement(point,radius:selectedModel == nil ? 0.48 : 0.24,ignoring:nil) else { return }
+        let footprint=selectedModel.flatMap { SpatialDemo(rawValue:$0)?.radius } ?? (selectedModel == nil ? 0.48 : 0.24)
+        guard let placement=placement(point,radius:footprint,ignoring:nil) else { return }
         do {
             let content=try content(), root=SCNNode()
             guard triangles(content)+objects.values.reduce(0,{ $0+triangles($1) })<=350000 else { status="Remova um objeto antes de adicionar outro modelo detalhado.";return }
-            let anchor=ARAnchor(name:"JarvisSpatialObject",transform:placement.0)
+            let id=UUID(),anchor=ARAnchor(name:"JarvisObject:"+id.uuidString,transform:placement.0)
             root.simdTransform=anchor.transform;root.addChildNode(content);root.isHidden = !visibility
             view.scene.rootNode.addChildNode(root);view.session.add(anchor:anchor)
-            objects[anchor.identifier]=root;anchors[anchor.identifier]=anchor;supports[anchor.identifier]=placement.1;radii[anchor.identifier]=selectedModel == nil ? 0.48 : 0.24
-            selected=anchor.identifier;objectCount=objects.count;hasSelection=true;placing=false;markSelection()
+            objects[id]=root;anchors[id]=anchor;supports[id]=placement.1;radii[id]=footprint
+            remember(id,model:selectedModel ?? "theme:"+theme.rawValue)
+            selected=id;objectCount=objects.count;hasSelection=true;placing=false;markSelection()
             status="Objeto fixado. Arraste, gire com dois dedos ou use pinça. Toque para interagir."
         } catch { status="Falha ao abrir o modelo local: \(error.localizedDescription)" }
     }
@@ -221,15 +364,25 @@ enum SpatialTheme: String, CaseIterable {
         return nil
     }
     func hand(_ sample:SpatialHandSample?) {
-        guard active,!panelBlocking,visibility,!placing else { handGesture.reset();return }
+        guard active,!panelBlocking,visibility,!placing,!recovering else { handGesture.reset();palmScale=SpatialPalmScale();return }
         let id=sample.flatMap { hit($0.point) }
-        for event in handGesture.update(ratio:sample?.ratio ?? .nan,pointing:sample?.pointing == true,target:id?.uuidString,time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {
+        let contact=sample.flatMap { sample -> Bool? in
+            guard let p=sample.worldPoint,let hit=view.hitTest(sample.point,options:[.categoryBitMask:1,.searchMode:SCNHitTestSearchMode.closest.rawValue]).first else { return nil }
+            let q=hit.worldCoordinates
+            return simd_distance(p,SIMD3(q.x,q.y,q.z))<0.15
+        } ?? false
+        if let sample,sample.openPalm,let palm=sample.palmWorld,let selected,selected==id,let frame=view.session.currentFrame {
+            let camera=SIMD3(frame.camera.transform.columns.3.x,frame.camera.transform.columns.3.y,frame.camera.transform.columns.3.z)
+            if let factor=palmScale.update(target:selected.uuidString,depth:Double(simd_distance(camera,palm)),time:sample.time) { resizeSelected(factor) }
+        } else { palmScale=SpatialPalmScale() }
+        for event in handGesture.update(ratio:sample?.worldPoint == nil ? .nan : sample!.ratio,pointing:sample?.pointing == true && contact,target:contact ? id?.uuidString : nil,time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {
             switch event {
-            case .press(let key):selected=UUID(uuidString:key);hasSelection=selected != nil;markSelection()
+            case .press(let key):
+                selected=UUID(uuidString:key);hasSelection=selected != nil;markSelection()
+                if let selected,let node=objects[selected],let p=sample?.worldPoint { handOffset=node.simdWorldPosition-p }
             case .drag(let key):
-                guard let id=UUID(uuidString:key),let node=objects[id],let sample,
-                      let location=placement(sample.point,radius:radius(id)*node.simdScale.x,ignoring:id) else { continue }
-                handDragging=id;node.simdPosition=SIMD3(location.0.columns.3.x,location.0.columns.3.y,location.0.columns.3.z);supports[id]=location.1
+                guard let id=UUID(uuidString:key),let node=objects[id],let p=sample?.worldPoint else { continue }
+                handDragging=id;node.simdPosition=p+handOffset
             case .release:
                 if let id=handDragging { reanchor(id);handDragging=nil }
             case .cancel:if let id=handDragging { reanchor(id);handDragging=nil }
@@ -237,12 +390,27 @@ enum SpatialTheme: String, CaseIterable {
             }
         }
     }
+    func resizeSelected(_ factor: Float) {
+        guard visibility,let selected,let node=objects[selected],factor.isFinite else { return }
+        let scale=min(2,max(0.25,node.simdScale.x*factor))
+        if let support=supports[selected],let plane=planes[support],!fits(SIMD4(node.simdPosition,1),radius:radius(selected)*scale,on:plane,ignoring:selected) { status="Esse tamanho ultrapassa a superfície livre.";return }
+        node.simdScale=SIMD3(repeating:scale);remember(selected)
+    }
+    func moveSelected(x: Float,z: Float) {
+        guard visibility,!recovering,x.isFinite,z.isFinite,let selected,let node=objects[selected] else { return }
+        let destination=node.simdPosition+SIMD3(x,0,z)
+        guard let support=supports[selected],let plane=planes[support],fits(SIMD4(destination,1),radius:radius(selected)*node.simdScale.x,on:plane,ignoring:selected) else {
+            status="Mapeie a superfície antes de mover o objeto por comando.";return
+        }
+        node.simdPosition=destination;reanchor(selected)
+    }
     /// Whole footprint must fit measured support. No placement on an estimated
     /// infinite plane, through walls, in doorways, or on an unmapped passage.
     private func placement(_ point: CGPoint, radius: Float, ignoring: UUID?) -> (simd_float4x4,UUID)? {
-        guard let query=view.raycastQuery(from:point,allowing:.existingPlaneGeometry,alignment:.horizontal),
+        let panelSurface=selectedModel == SpatialDemo.panel.rawValue
+        guard let query=view.raycastQuery(from:point,allowing:.existingPlaneGeometry,alignment:panelSurface ? .any : .horizontal),
               let result=view.session.raycast(query).first, let plane=result.anchor as? ARPlaneAnchor,
-              plane.classification == .floor || plane.classification == .table else {
+              plane.classification == .floor || plane.classification == .table || (panelSurface && plane.classification == .wall) else {
             status="Mostre mais do piso ou da mesa. Não coloco objetos em área desconhecida.";return nil
         }
         let p=result.worldTransform.columns.3
@@ -250,6 +418,17 @@ enum SpatialTheme: String, CaseIterable {
             status="Muito perto de uma borda, parede, porta ou outro objeto. Escolha uma área livre.";return nil
         }
         var transform=matrix_identity_float4x4; transform.columns.3=p
+        if plane.alignment == .vertical {
+            var normal=SIMD3(plane.transform.columns.1.x,0,plane.transform.columns.1.z)
+            guard simd_length(normal)>0.1 else { return nil };normal=simd_normalize(normal)
+            if let frame=view.session.currentFrame {
+                let camera=SIMD3(frame.camera.transform.columns.3.x-p.x,0,frame.camera.transform.columns.3.z-p.z)
+                if simd_dot(normal,camera)<0 { normal = -normal }
+            }
+            let right=simd_cross(SIMD3<Float>(0,1,0),normal)
+            transform.columns.0=SIMD4(right,0);transform.columns.1=SIMD4(0,1,0,0);transform.columns.2=SIMD4(normal,0)
+            transform.columns.3 += SIMD4(normal*0.025,0)
+        }
         return (transform,plane.identifier)
     }
     private func fits(_ p: SIMD4<Float>,radius: Float,on plane: ARPlaneAnchor,ignoring: UUID?) -> Bool {
@@ -259,7 +438,7 @@ enum SpatialTheme: String, CaseIterable {
             let angle=Float(i)*2*Float.pi/16
             guard MeasuredWall.contains(SIMD2<Float>(local.x+cos(angle)*radius,local.z+sin(angle)*radius),polygon:polygon) else { return false }
         }
-        for other in planes.values where other.alignment == .vertical {
+        for other in planes.values where other.alignment == .vertical && other.identifier != plane.identifier {
             let q=simd_inverse(other.transform)*p
             if abs(q.y)<radius+0.10 && abs(q.x-other.center.x)<other.extent.x/2+radius && abs(q.z-other.center.z)<other.extent.z/2+0.55 { return false }
         }
@@ -291,13 +470,12 @@ enum SpatialTheme: String, CaseIterable {
         if gesture.state == .ended { reanchor(id) }
     }
     private func reanchor(_ id: UUID) {
-        guard let root=objects.removeValue(forKey:id),let old=anchors.removeValue(forKey:id) else { return }
-        let support=supports.removeValue(forKey:id),footprint=radii.removeValue(forKey:id)
+        guard let root=objects[id],let old=anchors[id] else { return }
         view.session.remove(anchor:old)
-        let new=ARAnchor(name:"JarvisSpatialObject",transform:root.simdTransform)
-        objects[new.identifier]=root;anchors[new.identifier]=new;supports[new.identifier]=support;radii[new.identifier]=footprint
-        if playingID==id { playingID=new.identifier }
-        selected=new.identifier;view.session.add(anchor:new)
+        var pose=root.simdTransform
+        for c in 0..<3 { let v=SIMD3(pose[c].x,pose[c].y,pose[c].z)/root.simdScale.x;pose[c]=SIMD4(v,0) }
+        let new=ARAnchor(name:"JarvisObject:"+id.uuidString,transform:pose)
+        anchors[id]=new;view.session.add(anchor:new);remember(id)
     }
     func interact() {
         guard visibility, let id=selected,let root=objects[id] else { return }
@@ -343,18 +521,35 @@ enum SpatialTheme: String, CaseIterable {
         guard let id=selected else { return }
         if playingID==id { player?.stop();playingID=nil }
         objects.removeValue(forKey:id)?.removeFromParentNode();supports.removeValue(forKey:id);radii.removeValue(forKey:id)
+        records.removeValue(forKey:id);revision+=1
         if let anchor=anchors.removeValue(forKey:id) { view.session.remove(anchor:anchor) }
         selected=nil;hasSelection=false;objectCount=objects.count;status="Conjunto removido."
     }
     func update(_ anchor: ARAnchor) {
         if let plane=anchor as? ARPlaneAnchor { planes[plane.identifier]=plane }
-        if let root=objects[anchor.identifier] { root.simdTransform=anchor.transform }
+        if let id=anchors.first(where:{$0.value.identifier==anchor.identifier})?.key,let root=objects[id] {
+            let scale=root.simdScale;root.simdTransform=anchor.transform;root.simdScale=scale;anchors[id]=anchor
+        }
+        guard let name=anchor.name,name.hasPrefix("JarvisObject:"),let id=UUID(uuidString:String(name.dropFirst("JarvisObject:".count))),
+              let record=restored[id],record.anchor==anchor.identifier else { return }
+        do {
+            let node:SCNNode
+            if record.model.hasPrefix("theme:"),let value=SpatialTheme(rawValue:String(record.model.dropFirst(6))) { node=try SpatialAssets.composition(value) }
+            else if let demo=SpatialDemo(rawValue:record.model) { node=try demo.make() }
+            else { let holder=SCNNode();let mesh=try SpatialAssets.load(record.model);mesh.simdScale=SIMD3(repeating:0.3);holder.addChildNode(mesh);node=holder }
+            let root=SCNNode();root.addChildNode(node);root.simdTransform=anchor.transform;root.simdScale=SIMD3(repeating:record.scale);root.isHidden = !visibility
+            objects[id]=root;anchors[id]=anchor;radii[id]=SpatialDemo(rawValue:record.model)?.radius ?? (record.model.hasPrefix("theme:") ? 0.48 : 0.24)
+            view.scene.rootNode.addChildNode(root);restored.removeValue(forKey:id);objectCount=objects.count
+            if restored.isEmpty { persistenceStatus="Âncoras recuperadas. Aguardando rastreamento estável para exibir." }
+        } catch { persistenceStatus="Modelo salvo indisponível: \(record.model). Dados preservados." }
     }
     func remove(_ anchor: ARAnchor) { planes.removeValue(forKey:anchor.identifier) }
     func setVisible(_ value: Bool) {
-        if !value { if let id=handDragging { reanchor(id);handDragging=nil };handGesture.reset() }
-        visibility=value;objects.values.forEach { $0.isHidden = !value }
-        if !value { player?.pause() }
+        let allowed=value && !recovering
+        guard allowed != visibility else { return }
+        if !allowed { if let id=handDragging { reanchor(id);handDragging=nil };handGesture.reset();palmScale=SpatialPalmScale() }
+        visibility=allowed;objects.values.forEach { $0.isHidden = !allowed }
+        if !allowed { player?.pause() }
         else if playingID != nil { player?.play() }
     }
     func setThermal(_ thermal: ProcessInfo.ThermalState) {
@@ -381,7 +576,7 @@ struct SpatialControls: View {
                 }
             }
             }
-            Button(catalogOpen ? "Fechar catálogo" : "20 modelos · abrir catálogo",systemImage:"cube.transparent") { catalogOpen.toggle() }.font(.caption)
+            Button(catalogOpen ? "Fechar catálogo" : "\(SpatialAssets.catalog.count) modelos · abrir catálogo",systemImage:"cube.transparent") { catalogOpen.toggle() }.font(.caption)
             if catalogOpen {
                 LazyVGrid(columns:[GridItem(.flexible()),GridItem(.flexible())],spacing:6) {
                     ForEach(Array(SpatialAssets.catalog.dropFirst(catalogPage*4).prefix(4))) { item in
@@ -400,7 +595,17 @@ struct SpatialControls: View {
                 Button("Interagir",systemImage:"hand.tap") { world.interact() }.disabled(!world.hasSelection)
                 Button("Remover",systemImage:"trash") { world.removeSelected() }.disabled(!world.hasSelection)
             }.buttonStyle(.bordered).controlSize(.small)
-            Text("Modelos incluídos · sem geração · toque, arraste e use dois dedos. Objetos duram nesta sessão.").font(.caption2).foregroundStyle(.secondary)
+            HStack {
+                Button("Quarto") { world.chooseRoom("Quarto") }
+                Button("Sala") { world.chooseRoom("Sala") }
+                Text(world.roomName).font(.caption)
+                Button("Salvar mapa") { world.saveMap() }
+            }.font(.caption).buttonStyle(.bordered)
+            ScrollView(.horizontal) { HStack {
+                ForEach(SpatialDemo.allCases,id:\.rawValue) { demo in Button(demo.title) { world.setModel(demo.rawValue) }.buttonStyle(.bordered) }
+            }}.font(.caption)
+            Text(world.persistenceStatus).font(.caption2).foregroundStyle(.secondary)
+            ShareLink("Compartilhar diagnóstico",item:SpatialArchive.file.deletingLastPathComponent().appendingPathComponent("diagnostics.json")).font(.caption)
         }
     }
 }

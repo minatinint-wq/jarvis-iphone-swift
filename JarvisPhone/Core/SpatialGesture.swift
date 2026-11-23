@@ -9,6 +9,7 @@ struct SpatialGesture {
     private var began = 0.0
     private var fired = false
     private var lastTime: Double?
+    private var pinchBegan: Double?
     private(set) var progress = 0.0
 
     mutating func reset() { self = Self() }
@@ -26,10 +27,13 @@ struct SpatialGesture {
             progress = 0
             fired = false
             if pinched { return held.map { [.drag($0)] } ?? [] }
+            if pinchBegan == nil { pinchBegan=time }
+            guard time-(pinchBegan ?? time)>=0.12 else { return [] }
             pinched = true
             held = target
             return target.map { [.press($0)] } ?? []
         }
+        pinchBegan=nil
         if pinched {
             pinched = false
             let active = held != nil
@@ -68,5 +72,27 @@ struct SpatialPageSwipe {
         guard time-started >= 0.12, abs(dx)>=0.18, abs(dx)>1.5*abs(dy) else { return nil }
         fired=true
         return dx < 0 ? 1 : -1
+    }
+}
+
+/// An open palm must remain over the selected target before depth motion scales
+/// it. A free hand elsewhere cannot resize a selected object accidentally.
+struct SpatialPalmScale {
+    private var target: String?
+    private var began=0.0
+    private var lastTime=0.0
+    private var previous: Double?
+    private var filtered: Double?
+    mutating func update(target: String?, depth: Double?, time: Double) -> Float? {
+        guard let target,let depth,depth.isFinite,time.isFinite,(0.15...2).contains(depth) else { self=Self();return nil }
+        if self.target != target || time-lastTime>0.35 || time<lastTime {
+            self.target=target;began=time;previous=depth;filtered=depth
+        }
+        lastTime=time
+        filtered=(filtered ?? depth)*0.65+depth*0.35
+        guard time-began>=0.45,let value=filtered,let previous,abs(value-previous)>0.035 else { return nil }
+        let multiplier=Float(exp((previous-value)*2))
+        self.previous=value
+        return min(1.2,max(0.8,multiplier))
     }
 }

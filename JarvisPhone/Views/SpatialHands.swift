@@ -9,6 +9,9 @@ struct SpatialHandSample {
     let menuPose:Bool
     let pointing:Bool
     let time:Double
+    var worldPoint: SIMD3<Float>? = nil
+    var palmWorld: SIMD3<Float>? = nil
+    var openPalm = false
 }
 
 enum SpatialHandMath {
@@ -40,6 +43,38 @@ enum SpatialHandMath {
         let others = [9,13,17].compactMap(extensionScore)
         return others.count >= 2 && others.allSatisfy { $0 < 0.5 }
     }
+    static func openPalm(_ joints: [CGPoint?]) -> Bool {
+        guard joints.count==21 else { return false }
+        return [5,9,13,17].allSatisfy { base in
+            guard let a=joints[base],let b=joints[base+1],let c=joints[base+3] else { return false }
+            let ux=b.x-a.x,uy=b.y-a.y,vx=c.x-b.x,vy=c.y-b.y
+            let length=hypot(ux,uy)*hypot(vx,vy)
+            return length>1 && (ux*vx+uy*vy)/length>0.75
+        }
+    }
+    /// Scene depth is in captured-image coordinates. Require a coherent patch
+    /// with high confidence, rather than reading a single mixed edge pixel.
+    static func worldPoint(_ point: CGPoint, frame: ARFrame) -> SIMD3<Float>? {
+        guard let depth=frame.smoothedSceneDepth,let confidence=depth.confidenceMap else { return nil }
+        let map=depth.depthMap
+        CVPixelBufferLockBaseAddress(map,.readOnly);CVPixelBufferLockBaseAddress(confidence,.readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(map,.readOnly);CVPixelBufferUnlockBaseAddress(confidence,.readOnly) }
+        guard let values=CVPixelBufferGetBaseAddress(map),let levels=CVPixelBufferGetBaseAddress(confidence) else { return nil }
+        let w=CVPixelBufferGetWidth(map),h=CVPixelBufferGetHeight(map)
+        let x=Int(point.x*Double(w)),y=Int(point.y*Double(h))
+        guard x>0,y>0,x<w-1,y<h-1 else { return nil }
+        var samples:[Float]=[]
+        for row in (y-1)...(y+1) { for column in (x-1)...(x+1) {
+            guard levels.load(fromByteOffset:row*CVPixelBufferGetBytesPerRow(confidence)+column,as:UInt8.self)==2 else { continue }
+            let d=values.load(fromByteOffset:row*CVPixelBufferGetBytesPerRow(map)+column*4,as:Float.self)
+            if d.isFinite,(0.15...2).contains(d) { samples.append(d) }
+        }}
+        guard samples.count>=6,let low=samples.min(),let high=samples.max(),high-low<0.045 else { return nil }
+        samples.sort();let d=samples[samples.count/2],k=frame.camera.intrinsics,size=frame.camera.imageResolution
+        let p=SIMD4<Float>((Float(point.x*size.width)-k[2][0])*d/k[0][0],-(Float(point.y*size.height)-k[2][1])*d/k[1][1],-d,1)
+        let world=frame.camera.transform*p
+        return SIMD3(world.x,world.y,world.z)
+    }
     /// The wrist may be outside the camera image. Knuckles still define palm scale.
     static func pinchRatio(_ points:[CGPoint?],size:CGSize)->Double? {
         guard points.count==21,let index=points[8],let thumb=points[4] else { return nil }
@@ -65,6 +100,8 @@ enum SpatialHandMath {
     private var generation=0
     private var wasEnabled=false
     private var smoothed:CGPoint?
+    private var smoothedWorld:SIMD3<Float>?
+    private var smoothedPalm:SIMD3<Float>?
     private var lastSeen:Double=0
     private var lastRawTip:CGPoint?
     private var lastReport:Double=0
@@ -93,7 +130,7 @@ enum SpatialHandMath {
         dwellRing.strokeEnd = CGFloat(value)
         CATransaction.commit()
     }
-    func reset() { showProgress(0);generation+=1;cursor.isHidden=true;bones.path=nil;smoothed=nil;lastRawTip=nil;onSample?(nil) }
+    func reset() { showProgress(0);generation+=1;cursor.isHidden=true;bones.path=nil;smoothed=nil;smoothedWorld=nil;smoothedPalm=nil;lastRawTip=nil;onSample?(nil) }
     private func report(_ text:String) { let now=ProcessInfo.processInfo.systemUptime;if text != quality,now-lastReport>0.3 { lastReport=now;quality=text;onQuality?(text) } }
     func update(_ frame:ARFrame,view:ARSCNView,enabled:Bool) {
         guard enabled else { if wasEnabled { reset() };wasEnabled=false;return };wasEnabled=true
@@ -108,7 +145,7 @@ enum SpatialHandMath {
         let pixels=frame.capturedImage,resolution=frame.camera.imageResolution
         queue.async {
             let luminance=Self.luminance(pixels)
-            var positions:[CGPoint?]=[];var ratio:Double?;var rawTip:CGPoint?;var detectorError=false
+            var positions:[CGPoint?]=[];var ratio:Double?;var rawTip:CGPoint?;var rawPalm:CGPoint?;var detectorError=false
             do {
                 if luminance<0.10 {
                     let image=CIImage(cvPixelBuffer:pixels).applyingFilter("CIExposureAdjust",parameters:[kCIInputEVKey:0.7])
@@ -133,6 +170,8 @@ enum SpatialHandMath {
                         return SpatialHandMath.rawPoint(p.location,orientation:imageOrientation)
                     }
                     positions=raw.map { $0.map { p in let q=p.applying(transform);return CGPoint(x:q.x*size.width,y:q.y*size.height) } }
+                    let palm=[0,5,9,13,17].compactMap { raw[$0] }
+                    if palm.count>=4 { rawPalm=CGPoint(x:palm.map(\.x).reduce(0,+)/CGFloat(palm.count),y:palm.map(\.y).reduce(0,+)/CGFloat(palm.count)) }
                     if let tip=raw[8] {
                         rawTip=tip
                         if (joints[.indexTip]?.confidence ?? 0)>=0.50,(joints[.thumbTip]?.confidence ?? 0)>=0.50 {
@@ -141,12 +180,12 @@ enum SpatialHandMath {
                     }
                 }
             } catch { detectorError=true }
-            let result=positions,amount=ratio,tip=rawTip,failed=detectorError
+            let result=positions,amount=ratio,tip=rawTip,palm=rawPalm,failed=detectorError
             Task { @MainActor [weak self] in
                 guard let self else { return };self.busy=false
                 guard self.generation==ticket else { return }
                 let now=ProcessInfo.processInfo.systemUptime
-                guard now-stamp<0.65 else { self.cursor.isHidden=true;self.bones.path=nil;self.onSample?(nil);self.report("Detector atrasado. Gestos pausados até atualizar a mão.");return }
+                guard now-stamp<0.2 else { self.cursor.isHidden=true;self.bones.path=nil;self.onSample?(nil);self.report("Detector atrasado. Gestos pausados até atualizar a mão.");return }
                 guard result.count==21,let point=result[8],CGRect(origin:.zero,size:size).contains(point) else {
                     if now-self.lastSeen>0.18 { self.cursor.isHidden=true;self.bones.path=nil;self.smoothed=nil }
                     self.report(failed ? "O detector não processou a imagem. Toque nos cartões enquanto ele retoma." : luminance<0.10 ? "Pouca luz na imagem. Mostre indicador e polegar à câmera." : "Indicador ainda não localizado. Afaste um pouco a mão da lente.")
@@ -163,7 +202,11 @@ enum SpatialHandMath {
                 self.bones.path=path.cgPath
                 let pointing = SpatialHandMath.pointing(result)
                 self.report(amount == nil ? "Mostre a mão inteira." : amount! < 0.28 ? "Pinça · arrastar" : pointing ? "Indicador · mantenha sobre o alvo" : "Mão livre")
-                self.onSample?(SpatialHandSample(point:p,ratio:amount ?? .nan,menuPose:SpatialHandMath.pointing(result,twoFingers:true),pointing:pointing,time:stamp))
+                let world=tip.flatMap { SpatialHandMath.worldPoint($0,frame:frame) },palmWorld=palm.flatMap { SpatialHandMath.worldPoint($0,frame:frame) }
+                self.smoothedWorld=world.map { value in self.smoothedWorld.map { $0+(value-$0)*Float(alpha) } ?? value }
+                self.smoothedPalm=palmWorld.map { value in self.smoothedPalm.map { $0+(value-$0)*Float(alpha) } ?? value }
+                if pointing && world == nil { self.report("Profundidade da ponta incerta. Aproxime a mão do painel e mantenha-a visível.") }
+                self.onSample?(SpatialHandSample(point:p,ratio:amount ?? .nan,menuPose:SpatialHandMath.pointing(result,twoFingers:true),pointing:pointing,time:stamp,worldPoint:self.smoothedWorld,palmWorld:self.smoothedPalm,openPalm:SpatialHandMath.openPalm(result)))
             }
         }
     }

@@ -37,6 +37,7 @@ enum WallFinish: String, CaseIterable, Identifiable {
 enum WallARCommand: Equatable {
     case open, select, finish(WallFinish), undo, clear, compare, close
     case measure, point, opening, approve, theme(SpatialTheme), interact, removeObject, panel(SpatialModule), navigate(String)
+    case model(String), resizeObject(Float), moveObject(Float,Float), saveMap, room(String)
 
     /// Only navigation-like speech enters the spatial interpreter; ordinary tools stay available.
     static func needsInterpretation(_ input: String) -> Bool {
@@ -54,6 +55,16 @@ enum WallARCommand: Equatable {
         if let scene=scenes[s] { return .theme(scene) }
         if ["abre o modo espacial","abre o modo cenarios","cenarios ar","modo espacial"].contains(s) { return .theme(.forest) }
         if inStudio {
+            if ["salvar mapa","salva o mapa","salvar ambiente","salva os objetos"].contains(s) { return .saveMap }
+            if ["este e o quarto","estou no quarto","ambiente quarto"].contains(s) { return .room("Quarto") }
+            if ["esta e a sala","estou na sala","ambiente sala"].contains(s) { return .room("Sala") }
+            let models:[String:String] = ["personagem":"demo_human","humanoide":"demo_human","caixa":"demo_box","cadeira":"demo_chair","mesa":"demo_table"]
+            if s.range(of:#"^(?:coloca|coloque|cria|crie|adiciona|adicione)\b"#,options:.regularExpression) != nil,
+               let model=s.split(separator:" ").compactMap({ models[String($0)] }).first { return .model(model) }
+            if ["aumente esse objeto","aumenta esse objeto","aumentar objeto"].contains(s) { return .resizeObject(1.15) }
+            if ["diminua esse objeto","diminui esse objeto","diminuir objeto"].contains(s) { return .resizeObject(0.85) }
+            if ["leve o objeto para a esquerda","mova o objeto para a esquerda"].contains(s) { return .moveObject(-0.1,0) }
+            if ["leve o objeto para a direita","mova o objeto para a direita"].contains(s) { return .moveObject(0.1,0) }
             if ["marcar parede","marca a parede","medir parede","marcar cantos"].contains(s) { return .measure }
             if ["adicionar ponto","marca esse ponto","marca aqui","adiciona ponto"].contains(s) { return .point }
             if ["excluir area","excluir porta","excluir armario","marca a porta","marca o armario"].contains(s) { return .opening }

@@ -7,6 +7,41 @@ import ARKit
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    func testSpatialArchiveRoundTripRejectsDuplicateIDsAndInvalidTransforms() throws {
+        let room=SpatialRoom(id:UUID(),name:"Quarto",origin:SpatialArchive.values(matrix_identity_float4x4))
+        var pose=matrix_identity_float4x4;pose.columns.3=SIMD4(1,0,-2,1)
+        let record=SpatialObjectRecord(id:UUID(),model:"demo_box",room:room.id,anchor:UUID(),localTransform:SpatialArchive.values(pose),scale:1,updated:Date())
+        var archive=SpatialArchive(world:UUID(),rooms:[room],objects:[record],panel:nil,map:Data([1,2,3]),saved:Date())
+        let directory=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at:directory) }
+        let file=directory.appendingPathComponent("map.json")
+        try archive.write(to:file)
+        let restored=try XCTUnwrap(SpatialArchive.load(from:file))
+        XCTAssertEqual(restored.objects,[record]);XCTAssertEqual(restored.rooms,[room]);XCTAssertEqual(restored.world,archive.world)
+        archive.objects.append(record)
+        XCTAssertThrowsError(try archive.write(to:file))
+        XCTAssertEqual(try SpatialArchive.load(from:file)?.objects.count,1)
+        archive.objects=[record];archive.objects[0].localTransform[0] = .nan
+        XCTAssertThrowsError(try archive.validate())
+        XCTAssertNil(SpatialArchive.matrix([1,2]))
+    }
+    func testPalmScaleNeedsStableSelectionAndResetsAfterLostHand() throws {
+        var gesture=SpatialPalmScale()
+        for i in 0...5 { XCTAssertNil(gesture.update(target:nil,depth:0.4,time:Double(i)*0.1)) }
+        for i in 0...5 { XCTAssertNil(gesture.update(target:"box",depth:0.4,time:1+Double(i)*0.1)) }
+        var factors:[Float]=[]
+        for i in 1...6 { if let f=gesture.update(target:"box",depth:0.4+Double(i)*0.02,time:1.5+Double(i)*0.1) { factors.append(f) } }
+        XCTAssertFalse(factors.isEmpty);XCTAssertTrue(factors.allSatisfy { $0<1 })
+        XCTAssertNil(gesture.update(target:"box",depth:0.2,time:4))
+        XCTAssertNil(gesture.update(target:"box",depth:nil,time:4.1))
+    }
+    @MainActor func testMetricDemoModelsHaveFloorOriginsAndRealHeights() throws {
+        for (demo,height) in [(SpatialDemo.human,Float(1.7)),(.box,0.30),(.chair,0.90),(.table,0.75),(.panel,0.36)] {
+            let node=try demo.make(),bounds=node.boundingBox
+            XCTAssertEqual(bounds.min.y,0,accuracy:0.001,demo.rawValue)
+            XCTAssertEqual(bounds.max.y-bounds.min.y,height,accuracy:0.001,demo.rawValue)
+        }
+    }
     func testPortraitPanelIgnoresCameraRollAndFitsScreen() throws {
         let viewport=CGSize(width:390,height:760)
         let f:Float=1/tan(.pi/6),aspect=Float(viewport.width/viewport.height)
@@ -70,12 +105,12 @@ final class PhoneCommandTests: XCTestCase {
         }
     }
     @MainActor func testTwentyAdditionalModelsRenderActualGeometry() throws {
-        XCTAssertEqual(SpatialAssets.catalog.count,20)
-        XCTAssertEqual(Set(SpatialAssets.catalog.map(\.id)).count,20)
+        XCTAssertEqual(SpatialAssets.catalog.filter { !$0.id.hasPrefix("demo_") }.count,20)
+        XCTAssertEqual(Set(SpatialAssets.catalog.map(\.id)).count,SpatialAssets.catalog.count)
         guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
         let atlas=UIGraphicsImageRenderer(size:CGSize(width:1400,height:1400)).image { ctx in
             UIColor.black.setFill();ctx.fill(CGRect(x:0,y:0,width:1400,height:1400))
-            for (i,item) in SpatialAssets.catalog.enumerated() {
+            for (i,item) in SpatialAssets.catalog.filter({ !$0.id.hasPrefix("demo_") }).enumerated() {
                 do {
                     let scene=SCNScene();scene.background.contents=UIColor(white:0.08,alpha:1)
                     let model=try SpatialAssets.load(item.id);scene.rootNode.addChildNode(model)
@@ -209,12 +244,15 @@ final class PhoneCommandTests: XCTestCase {
         func event(_ ratio:Double,_ tick:Int,_ target:String?)->[SpatialGesture.Event] {
             gate.update(ratio:ratio,pointing:false,target:target,time:Double(tick)/10)
         }
-        XCTAssertEqual(event(0.12,0,"play"),[.press("play")])
-        XCTAssertEqual(event(0.15,1,nil),[.drag("play")])
-        XCTAssertEqual(event(1,2,"other"),[.release])
-        for tick in 3...30 { XCTAssertTrue(event(1,tick,"play").isEmpty) }
-        XCTAssertEqual(event(0.12,31,"play"),[.press("play")])
-        XCTAssertEqual(event(.nan,32,nil),[.cancel])
+        XCTAssertTrue(event(0.12,0,"play").isEmpty)
+        XCTAssertTrue(event(0.12,1,"play").isEmpty)
+        XCTAssertEqual(event(0.12,2,"play"),[.press("play")])
+        XCTAssertEqual(event(0.15,3,nil),[.drag("play")])
+        XCTAssertEqual(event(1,4,"other"),[.release])
+        for tick in 5...30 { XCTAssertTrue(event(1,tick,"play").isEmpty) }
+        XCTAssertTrue(event(0.12,31,"play").isEmpty)
+        XCTAssertEqual(event(0.12,33,"play"),[.press("play")])
+        XCTAssertEqual(event(.nan,34,nil),[.cancel])
     }
     func testMenuSwipeNeedsDirectionAndRelease() {
         var swipe=SpatialPageSwipe()

@@ -78,6 +78,8 @@ enum WallMeasureMode { case none, outline, opening }
     private var gate = WallTrackingGate()
     var foreground = true
     private var started = false
+    private var initialMap: ARWorldMap?
+    private var mapStarted = false
     var stopped = false
     private var lastMetric: TimeInterval = 0
     private var cameraFrames = 0
@@ -95,6 +97,7 @@ enum WallMeasureMode { case none, outline, opening }
         view.scene = SCNScene()
         panel=SpatialPanel(view:view)
         spatial = SpatialWorld(view:view)
+        spatial.panelSnapshot = { [weak self] in self?.panel.snapshot() }
         hands=SpatialHands(view:view)
         hands.onSample = { [weak self] sample in
             guard let self else { return }
@@ -114,6 +117,7 @@ enum WallMeasureMode { case none, outline, opening }
         light.type = .ambient; light.intensity = stableLight
         let node = SCNNode(); node.light = light
         view.scene.rootNode.addChildNode(node)
+        UIDevice.current.isBatteryMonitoringEnabled=true
         let tap = UITapGestureRecognizer(target:self, action:#selector(tapped(_:)))
         view.addGestureRecognizer(tap)
     }
@@ -127,6 +131,8 @@ enum WallMeasureMode { case none, outline, opening }
         let permission = await AVCaptureDevice.requestAccess(for:.video)
         guard !stopped else { return }
         guard permission else { status = "Permita a câmera nos Ajustes para pintar em AR."; fatal = true; return }
+        do { initialMap = try await spatial.loadMap() }
+        catch { status="Não consegui ler o mapa salvo. Seus dados foram preservados. \(error.localizedDescription)";fatal=true;return }
         // Decode and upload once, before scanning; no image generation or downloading
         // competes with tracking. Shared PBR textures use metric UVs and mipmaps.
         for f in WallFinish.allCases { materials[f] = WallMaterials.make(f) }
@@ -151,6 +157,7 @@ enum WallMeasureMode { case none, outline, opening }
         config.planeDetection = [.horizontal,.vertical]
         config.sceneReconstruction = .meshWithClassification
         config.environmentTexturing = .automatic
+        if !mapStarted { config.initialWorldMap=initialMap;mapStarted=true }
         if ARWorldTrackingConfiguration.supportsFrameSemantics(.smoothedSceneDepth) {
             config.frameSemantics.insert(.smoothedSceneDepth)
         }
@@ -168,12 +175,14 @@ enum WallMeasureMode { case none, outline, opening }
         foreground = active
         if active && started { run() }
         else if !active {
+            spatial.saveMap(force:false)
             view.session.pause(); view.isPlaying = false
             tracking = false; _ = gate.update(normal:false, at:0); setVisible(false)
         }
     }
 
     func stop() {
+        spatial.saveMap(force:false)
         stopped = true
         hands.reset()
         view.session.pause(); view.isPlaying = false
@@ -295,6 +304,11 @@ enum WallMeasureMode { case none, outline, opening }
         case .theme(let theme): measureMode = .none; spatial.setTheme(theme)
         case .interact: spatial.interact()
         case .removeObject: spatial.removeSelected()
+        case .model(let id): measureMode = .none;spatial.setModel(id)
+        case .resizeObject(let factor): spatial.resizeSelected(factor)
+        case .moveObject(let x,let z): spatial.moveSelected(x:x,z:z)
+        case .saveMap: spatial.saveMap()
+        case .room(let name): spatial.chooseRoom(name)
         case .close: break
         }
     }
@@ -326,6 +340,9 @@ enum WallMeasureMode { case none, outline, opening }
         let normal: Bool
         switch frame.camera.trackingState { case .normal: normal = true; default: normal = false }
         let good = gate.update(normal:normal, at:frame.timestamp)
+        spatial.persistenceTick(frame)
+        spatial.setVisible(good && !comparing)
+        panel.setTracking(good)
         hands.update(frame,view:view,enabled:good && !webWindowVisible && (panel.visible || spatial.active))
         if tracking != good {
             tracking = good; setVisible(good && !comparing)
@@ -335,6 +352,7 @@ enum WallMeasureMode { case none, outline, opening }
         cameraFrames += 1
         if frame.timestamp-lastMetric >= 1 {
             let fps = performance.sample()
+            spatial.recordPerformance(fps:fps,frame:frame)
             metrics = fps > 0 ? "\(fps) FPS · LiDAR · local" : "LiDAR · renderização local"
             lastMetric = frame.timestamp; cameraFrames = 0
             let thermal = ProcessInfo.processInfo.thermalState
@@ -363,6 +381,9 @@ enum WallMeasureMode { case none, outline, opening }
                 if approved && (plane.classification == .door || plane.classification == .window) { refreshAutomaticOpenings() }
             }
             panel.update(anchor)
+            if let saved=spatial.restoredPanel,saved.anchor==anchor.identifier {
+                panel.restore(saved,anchor:anchor);spatial.restoredPanel=nil
+            }
             spatial.update(anchor)
             if let mesh = anchor as? ARMeshAnchor { updateOccluder(mesh) }
         }
@@ -648,6 +669,7 @@ private struct WallCameraView: UIViewRepresentable {
             webModule=nil
         }
         if case .theme = request.command { objectsTab=true }
+        if case .model = request.command { objectsTab=true }
         if case .panel = request.command, !controller.tracking {
             // Opening a panel by voice must wait for AR tracking, not consume the request.
             Task { @MainActor in
