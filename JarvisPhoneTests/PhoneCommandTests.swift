@@ -34,6 +34,9 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertFalse(factors.isEmpty);XCTAssertTrue(factors.allSatisfy { $0<1 })
         XCTAssertNil(gesture.update(target:"box",depth:0.2,time:4))
         XCTAssertNil(gesture.update(target:"box",depth:nil,time:4.1))
+        XCTAssertEqual(WallARCommand.parse("puxe a tela do computador",inStudio:true),.desktop)
+        XCTAssertEqual(WallARCommand.parse("coloque um personagem aqui",inStudio:true),.model("demo_human"))
+        XCTAssertNil(WallARCommand.parse("não coloque uma cadeira",inStudio:true))
     }
     @MainActor func testMetricDemoModelsHaveFloorOriginsAndRealHeights() throws {
         for (demo,height) in [(SpatialDemo.human,Float(1.7)),(.box,0.30),(.chair,0.90),(.table,0.75),(.panel,0.36)] {

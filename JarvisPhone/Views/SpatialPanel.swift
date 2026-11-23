@@ -425,7 +425,8 @@ enum SpatialPanelGeometry {
         case .creation:
             return [("Desenhar","pencil.tip",.studio("sketch")),("Gerar imagem por voz","photo",.command("gere uma imagem")),("Objetos e cenários","cube",.module(.scenes))]
         case .scenes:
-            return SpatialTheme.allCases.map { ($0.title,$0.symbol,.scene($0)) } + SpatialAssets.catalog.map { ($0.title,"cube",.model($0.id)) }
+            return [("Tela do PC ao vivo","desktopcomputer",.wall(.desktop)),("Salvar ambiente","square.and.arrow.down",.wall(.saveMap))]
+                + SpatialTheme.allCases.map { ($0.title,$0.symbol,.scene($0)) } + SpatialAssets.catalog.map { ($0.title,"cube",.model($0.id)) }
         case .instruments:
             return StudioInstrument.allCases.map { ($0.rawValue,"music.note",.instrument($0)) }
         case .libras:return [("Abrir reconhecimento","hands.sparkles",.studio("libras"))]

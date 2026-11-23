@@ -15,6 +15,8 @@ struct SpatialObjectRecord: Codable, Equatable, Identifiable {
     var localTransform: [Float]
     var scale: Float
     var updated: Date
+    var kind: String = "object"
+    var persistence: String = "anchored"
 }
 
 struct SpatialPanelRecord: Codable {

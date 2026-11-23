@@ -294,6 +294,8 @@ enum SpatialTheme: String, CaseIterable {
               let origin=SpatialArchive.matrix(room.origin) else { return }
         records[id]=SpatialObjectRecord(id:id,model:model ?? records[id]?.model ?? "theme:"+theme.rawValue,room:room.id,anchor:anchor.identifier,
                                       localTransform:SpatialArchive.values(simd_inverse(origin)*anchor.transform),scale:node.simdScale.x,updated:Date())
+        if records[id]?.model == SpatialDemo.human.rawValue { records[id]?.kind="character" }
+        else if records[id]?.model.hasPrefix("theme:") == true { records[id]?.kind="scene" }
         revision+=1
     }
     init(view: ARSCNView) { self.view=view; super.init() }

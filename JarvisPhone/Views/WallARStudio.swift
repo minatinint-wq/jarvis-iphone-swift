@@ -604,6 +604,7 @@ private struct WallCameraView: UIViewRepresentable {
                     case .instrument(let instrument):
                         if model.openStudio("music",instrument:instrument) { controller.panel.close() }
                     case .wall(let command):
+                        if command == .saveMap { controller.apply(command);return }
                         objectsTab=false;controller.panel.close();controller.apply(command)
                     case .systemAction(let action):
                         if [.wifiOff,.bluetoothOff,.cellularOff,.lock].contains(action) { confirmAction=action }
