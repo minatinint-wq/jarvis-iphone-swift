@@ -7,6 +7,95 @@ import ARKit
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    @MainActor func testAnimatedCharactersRenderDistinctPoses() throws {
+        guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
+        let format=UIGraphicsImageRendererFormat();format.scale=1
+        var rendered:[Data]=[]
+        var images:[UIImage]=[]
+        let variants=[("animated_robot","Wave",0.0),("animated_robot","Wave",0.65),("animated_fox","Run",0.0),("animated_fox","Run",0.5)]
+            for variant in variants {
+                let node=try SpatialAssets.load(variant.0)
+                try SpatialRig.previewPose(node,clip:variant.1,fraction:variant.2)
+                let scene=SCNScene();scene.background.contents=UIColor(white:0.06,alpha:1);scene.rootNode.addChildNode(node)
+                let camera=SCNNode();camera.camera=SCNCamera();camera.camera?.fieldOfView=50
+                let robot=variant.0 == "animated_robot"
+                camera.position=robot ? SCNVector3(2.2,1.5,3.2) : SCNVector3(0.9,0.65,1.1)
+                camera.look(at:robot ? SCNVector3(0,0.85,0) : SCNVector3(0,0.22,0));scene.rootNode.addChildNode(camera)
+                let sun=SCNNode();sun.light=SCNLight();sun.light?.type = .directional;sun.light?.intensity=1000;sun.eulerAngles=SCNVector3(-0.7,-0.4,0);scene.rootNode.addChildNode(sun)
+                let ambient=SCNNode();ambient.light=SCNLight();ambient.light?.type = .ambient;ambient.light?.intensity=550;scene.rootNode.addChildNode(ambient)
+                let renderer=SCNRenderer(device:device,options:nil);renderer.scene=scene;renderer.pointOfView=camera
+                let image=renderer.snapshot(atTime:0,with:CGSize(width:500,height:400),antialiasingMode:.multisampling4X)
+                rendered.append(try XCTUnwrap(image.pngData()))
+                images.append(image)
+            }
+        let atlas=UIGraphicsImageRenderer(size:CGSize(width:1000,height:850),format:format).image { context in
+            UIColor(white:0.06,alpha:1).setFill();context.fill(CGRect(x:0,y:0,width:1000,height:850))
+            for (index,image) in images.enumerated() {
+                let variant=variants[index],x=CGFloat(index%2)*500,y=CGFloat(index/2)*425
+                image.draw(at:CGPoint(x:x,y:y))
+                ((variant.0+" · "+variant.1+" · "+String(variant.2)) as NSString).draw(at:CGPoint(x:x+10,y:y+400),withAttributes:[.font:UIFont.systemFont(ofSize:16),.foregroundColor:UIColor.white])
+            }
+        }
+        XCTAssertNotEqual(rendered[0],rendered[1]);XCTAssertNotEqual(rendered[2],rendered[3])
+        let attachment=XCTAttachment(image:atlas);attachment.name="Animated-characters-rev26";attachment.lifetime = .keepAlways;add(attachment)
+    }
+    func testPalmRecallOnlyReframesOffscreenWindowOnceUntilHandCloses() {
+        var recall=SpatialPalmRecall()
+        for tick in 0...9 { XCTAssertNil(recall.update(open:true,target:"panel",overInterface:false,time:Double(tick)/10)) }
+        XCTAssertEqual(recall.update(open:true,target:"panel",overInterface:false,time:1.01),"panel")
+        XCTAssertNil(recall.update(open:true,target:nil,overInterface:false,time:1.1))
+        XCTAssertTrue(recall.hasFired)
+        XCTAssertNil(recall.update(open:false,target:nil,overInterface:false,time:1.2))
+        XCTAssertFalse(recall.hasFired)
+        for tick in 0...15 { XCTAssertNil(recall.update(open:true,target:"panel",overInterface:true,time:2+Double(tick)/10)) }
+        XCTAssertEqual(recall.progress,0)
+        XCTAssertNil(recall.update(open:true,target:"panel",overInterface:false,time:5))
+        XCTAssertNil(recall.update(open:true,target:"panel",overInterface:false,time:6)) // lost hand resets dwell
+    }
+    func testPalmResizeCanUseApparentHandSizeWithoutLiDAR() throws {
+        var calibration=SpatialPalmCalibration()
+        XCTAssertEqual(try XCTUnwrap(calibration.estimate(target:"panel",span:0.2,measured:nil)),0.5,accuracy:0.001)
+        XCTAssertEqual(try XCTUnwrap(calibration.estimate(target:"panel",span:0.4,measured:nil)),0.25,accuracy:0.001)
+        XCTAssertEqual(try XCTUnwrap(calibration.estimate(target:"panel",span:0.1,measured:nil)),1,accuracy:0.001)
+        XCTAssertNil(calibration.estimate(target:nil,span:0.1,measured:nil))
+        XCTAssertEqual(try XCTUnwrap(calibration.estimate(target:"desktop",span:0.15,measured:0.7)),0.7,accuracy:0.001)
+    }
+    func testNewMapKeepsBackupAndRestoringInvalidMapCannotReplaceCurrent() throws {
+        let dir=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at:dir) }
+        let file=dir.appendingPathComponent("home.json")
+        let room=SpatialRoom(id:UUID(),name:"Quarto",origin:SpatialArchive.values(matrix_identity_float4x4))
+        let archive=SpatialArchive(world:UUID(),rooms:[room],objects:[],panel:nil,map:Data([1,2,3]),saved:Date())
+        try archive.write(to:file)
+        try SpatialArchive.activate(nil,at:file)
+        XCTAssertFalse(FileManager.default.fileExists(atPath:file.path))
+        let backup=try XCTUnwrap(FileManager.default.contentsOfDirectory(at:dir,includingPropertiesForKeys:nil).first)
+        XCTAssertEqual(try SpatialArchive.load(from:backup)?.world,archive.world)
+        try SpatialArchive.activate(backup,at:file)
+        XCTAssertEqual(try SpatialArchive.load(from:file)?.world,archive.world)
+        let bad=dir.appendingPathComponent("bad.json");try Data("{}".utf8).write(to:bad)
+        XCTAssertThrowsError(try SpatialArchive.activate(bad,at:file))
+        XCTAssertEqual(try SpatialArchive.load(from:file)?.world,archive.world)
+    }
+    @MainActor func testCharactersHaveIndependentSkeletonsAndRealAnimationTracks() throws {
+        for id in SpatialRig.identifiers {
+            let a=try SpatialAssets.load(id),b=try SpatialAssets.load(id)
+            let jointA=try XCTUnwrap(a.childNode(withName:"rig-joint-0",recursively:true))
+            let jointB=try XCTUnwrap(b.childNode(withName:"rig-joint-0",recursively:true))
+            XCTAssertFalse(jointA === jointB)
+            var skins=0
+            a.enumerateChildNodes { node,_ in
+                if let skinner=node.skinner { skins+=1;XCTAssertGreaterThan(skinner.bones.count,20);XCTAssertNotNil(skinner.skeleton) }
+            }
+            XCTAssertGreaterThan(skins,0)
+            XCTAssertNotNil(jointA.animation(forKey:"rig-motion"))
+            XCTAssertTrue(SpatialRig.play(a,clip:id == "animated_robot" ? "Wave" : "Run"))
+            XCTAssertFalse(SpatialRig.play(a,clip:"nonexistent"))
+        }
+        XCTAssertEqual(WallARCommand.parse("coloque um robô aqui",inStudio:true),.model("animated_robot"))
+        XCTAssertEqual(WallARCommand.parse("robô dance",inStudio:true),.character("Dance"))
+        XCTAssertNil(WallARCommand.parse("não socar parede",inStudio:true))
+    }
     @MainActor func testResumeRetainsMapAndRequiresRepeatedSurfaceEvidence() {
         let controller=WallARController()
         XCTAssertTrue(controller.sessionShouldAttemptRelocalization(controller.view.session))
@@ -82,7 +171,7 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertNil(gesture.update(target:"box",depth:0.2,time:4))
         XCTAssertNil(gesture.update(target:"box",depth:nil,time:4.1))
         XCTAssertEqual(WallARCommand.parse("puxe a tela do computador",inStudio:true),.desktop)
-        XCTAssertEqual(WallARCommand.parse("coloque um personagem aqui",inStudio:true),.model("demo_human"))
+        XCTAssertEqual(WallARCommand.parse("coloque um personagem aqui",inStudio:true),.model("animated_robot"))
         XCTAssertNil(WallARCommand.parse("não coloque uma cadeira",inStudio:true))
     }
     @MainActor func testMetricDemoModelsHaveFloorOriginsAndRealHeights() throws {
@@ -155,12 +244,12 @@ final class PhoneCommandTests: XCTestCase {
         }
     }
     @MainActor func testTwentyAdditionalModelsRenderActualGeometry() throws {
-        XCTAssertEqual(SpatialAssets.catalog.filter { !$0.id.hasPrefix("demo_") }.count,20)
+        XCTAssertEqual(SpatialAssets.catalog.filter { !$0.id.hasPrefix("demo_") && !$0.id.hasPrefix("animated_") }.count,20)
         XCTAssertEqual(Set(SpatialAssets.catalog.map(\.id)).count,SpatialAssets.catalog.count)
         guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
         let atlas=UIGraphicsImageRenderer(size:CGSize(width:1400,height:1400)).image { ctx in
             UIColor.black.setFill();ctx.fill(CGRect(x:0,y:0,width:1400,height:1400))
-            for (i,item) in SpatialAssets.catalog.filter({ !$0.id.hasPrefix("demo_") }).enumerated() {
+            for (i,item) in SpatialAssets.catalog.filter({ !$0.id.hasPrefix("demo_") && !$0.id.hasPrefix("animated_") }).enumerated() {
                 do {
                     let scene=SCNScene();scene.background.contents=UIColor(white:0.08,alpha:1)
                     let model=try SpatialAssets.load(item.id);scene.rootNode.addChildNode(model)

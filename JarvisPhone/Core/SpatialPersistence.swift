@@ -93,6 +93,27 @@ struct SpatialArchive: Codable {
         try archive.validate()
         return archive
     }
+    static func savedMaps() -> [URL] {
+        let directory=file.deletingLastPathComponent()
+        let entries=(try? FileManager.default.contentsOfDirectory(at:directory,includingPropertiesForKeys:[.contentModificationDateKey])) ?? []
+        return entries.filter { $0.lastPathComponent == "home.json" || ($0.lastPathComponent.hasPrefix("home-") && $0.pathExtension == "json") }
+            .sorted { ((try? $0.resourceValues(forKeys:[.contentModificationDateKey]).contentModificationDate) ?? .distantPast) > ((try? $1.resourceValues(forKeys:[.contentModificationDateKey]).contentModificationDate) ?? .distantPast) }
+    }
+
+    /// Switch only after validating the chosen archive; serialize calls with saves.
+    /// Keep the previous map as an individually restorable file.
+    static func activate(_ source: URL?,at file: URL = Self.file) throws {
+        let archive: SpatialArchive?
+        if let source {
+            guard let saved=try load(from:source) else { throw CocoaError(.fileNoSuchFile) }
+            archive=saved
+        } else { archive=nil }
+        if source != file,FileManager.default.fileExists(atPath:file.path) {
+            let backup=file.deletingLastPathComponent().appendingPathComponent("home-"+UUID().uuidString+".json")
+            try FileManager.default.moveItem(at:file,to:backup)
+        }
+        if source != file,let archive { try archive.write(to:file) }
+    }
 
     func write(to file: URL = Self.file) throws {
         try validate()

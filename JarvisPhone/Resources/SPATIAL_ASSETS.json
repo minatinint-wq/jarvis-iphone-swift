@@ -3640,5 +3640,493 @@
         "bytes": 20316
       }
     ]
+  },
+  {
+    "id": "animated_robot",
+    "title": "Robô expressivo · animado",
+    "author": "Tomás Laulhé / Don McCurdy",
+    "license": "CC0-1.0",
+    "source": "https://raw.githubusercontent.com/mrdoob/three.js/6d91309bfcf9c2779f32dd98b61fcc5415a74912/examples/models/gltf/RobotExpressive/RobotExpressive.glb",
+    "sourceSHA256": "047f5e5fb3bb6d378bd1df16ca6137f2a596c99b3a1b5690b4020c05aaf6f319",
+    "rig": "Spatial_animated_robot_rig.json",
+    "heightMeters": 1.7,
+    "triangles": 3234,
+    "parts": [
+      {
+        "mesh": "Spatial_animated_robot_0.mesh",
+        "skin": "Spatial_animated_robot_0.skin",
+        "roughness": 0.8999999761581421,
+        "metalness": 0.10000000149011612,
+        "baseColor": [
+          0.3737579882144928,
+          0.37130042910575867,
+          0.3349650204181671,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_animated_robot_1.mesh",
+        "skin": "Spatial_animated_robot_1.skin",
+        "roughness": 0.8999999761581421,
+        "metalness": 0.10000000149011612,
+        "baseColor": [
+          0.3737579882144928,
+          0.37130042910575867,
+          0.3349650204181671,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_animated_robot_2.mesh",
+        "skin": "Spatial_animated_robot_2.skin",
+        "roughness": 0.8999999761581421,
+        "metalness": 0.10000000149011612,
+        "baseColor": [
+          0.5903283953666687,
+          0.2913144528865814,
+          0.03833760321140289,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_animated_robot_3.mesh",
+        "skin": "Spatial_animated_robot_3.skin",
+        "roughness": 0.8999999761581421,
+        "metalness": 0.10000000149011612,
+        "baseColor": [
+          0.3737579882144928,
+          0.37130042910575867,
+          0.3349650204181671,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_animated_robot_4.mesh",
+        "skin": "Spatial_animated_robot_4.skin",
+        "roughness": 0.8999999761581421,
+        "metalness": 0.10000000149011612,
+        "baseColor": [
+          0.5903283953666687,
+          0.2913144528865814,
+          0.03833760321140289,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_animated_robot_5.mesh",
+        "skin": "Spatial_animated_robot_5.skin",
+        "roughness": 0.8999999761581421,
+        "metalness": 0.10000000149011612,
+        "baseColor": [
+          0.04624435305595398,
+          0.04624435305595398,
+          0.04624435305595398,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_animated_robot_6.mesh",
+        "skin": "Spatial_animated_robot_6.skin",
+        "roughness": 0.8999999761581421,
+        "metalness": 0.10000000149011612,
+        "baseColor": [
+          0.5903283953666687,
+          0.2913144528865814,
+          0.03833760321140289,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_animated_robot_7.mesh",
+        "skin": "Spatial_animated_robot_7.skin",
+        "roughness": 0.8999999761581421,
+        "metalness": 0.10000000149011612,
+        "baseColor": [
+          0.5903283953666687,
+          0.2913144528865814,
+          0.03833760321140289,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_animated_robot_8.mesh",
+        "skin": "Spatial_animated_robot_8.skin",
+        "roughness": 0.8999999761581421,
+        "metalness": 0.10000000149011612,
+        "baseColor": [
+          0.5903283953666687,
+          0.2913144528865814,
+          0.03833760321140289,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_animated_robot_9.mesh",
+        "skin": "Spatial_animated_robot_9.skin",
+        "roughness": 0.8999999761581421,
+        "metalness": 0.10000000149011612,
+        "baseColor": [
+          0.5903283953666687,
+          0.2913144528865814,
+          0.03833760321140289,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_animated_robot_10.mesh",
+        "skin": "Spatial_animated_robot_10.skin",
+        "roughness": 0.8999999761581421,
+        "metalness": 0.10000000149011612,
+        "baseColor": [
+          0.5903283953666687,
+          0.2913144528865814,
+          0.03833760321140289,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_animated_robot_11.mesh",
+        "skin": "Spatial_animated_robot_11.skin",
+        "roughness": 0.8999999761581421,
+        "metalness": 0.10000000149011612,
+        "baseColor": [
+          0.5903283953666687,
+          0.2913144528865814,
+          0.03833760321140289,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_animated_robot_12.mesh",
+        "skin": "Spatial_animated_robot_12.skin",
+        "roughness": 0.8999999761581421,
+        "metalness": 0.10000000149011612,
+        "baseColor": [
+          0.5903283953666687,
+          0.2913144528865814,
+          0.03833760321140289,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_animated_robot_13.mesh",
+        "skin": "Spatial_animated_robot_13.skin",
+        "roughness": 0.8999999761581421,
+        "metalness": 0.10000000149011612,
+        "baseColor": [
+          0.5903283953666687,
+          0.2913144528865814,
+          0.03833760321140289,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_animated_robot_14.mesh",
+        "skin": "Spatial_animated_robot_14.skin",
+        "roughness": 0.8999999761581421,
+        "metalness": 0.10000000149011612,
+        "baseColor": [
+          0.3737579882144928,
+          0.37130042910575867,
+          0.3349650204181671,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_animated_robot_15.mesh",
+        "skin": "Spatial_animated_robot_15.skin",
+        "roughness": 0.8999999761581421,
+        "metalness": 0.10000000149011612,
+        "baseColor": [
+          0.5903283953666687,
+          0.2913144528865814,
+          0.03833760321140289,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_animated_robot_16.mesh",
+        "skin": "Spatial_animated_robot_16.skin",
+        "roughness": 0.8999999761581421,
+        "metalness": 0.10000000149011612,
+        "baseColor": [
+          0.3737579882144928,
+          0.37130042910575867,
+          0.3349650204181671,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_animated_robot_17.mesh",
+        "skin": "Spatial_animated_robot_17.skin",
+        "roughness": 0.8999999761581421,
+        "metalness": 0.10000000149011612,
+        "baseColor": [
+          0.5903283953666687,
+          0.2913144528865814,
+          0.03833760321140289,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_animated_robot_18.mesh",
+        "skin": "Spatial_animated_robot_18.skin",
+        "roughness": 0.8999999761581421,
+        "metalness": 0.10000000149011612,
+        "baseColor": [
+          0.3737579882144928,
+          0.37130042910575867,
+          0.3349650204181671,
+          1.0
+        ]
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_animated_robot_0.mesh",
+        "bytes": 3468,
+        "sha256": "aa7d2d91a21c6ec1d5c8ebade4645eb6b3f15bdfe8772253e54e6df6b9267ffc"
+      },
+      {
+        "file": "Spatial_animated_robot_0.skin",
+        "bytes": 1920,
+        "sha256": "30ef1ee5de66b066eb3bf6d84e664621edb2d820fff102ab6e3f9f08f3dcc1c5"
+      },
+      {
+        "file": "Spatial_animated_robot_1.mesh",
+        "bytes": 32412,
+        "sha256": "2b6c0a6d8fab0128805da2f67de45127f07ef72ea83e5d87e112fa831e04dbc2"
+      },
+      {
+        "file": "Spatial_animated_robot_1.skin",
+        "bytes": 18000,
+        "sha256": "943e9fca2edc912ed15a621fb3216af9967cd00f18e1fabec6fce3d6662b9b19"
+      },
+      {
+        "file": "Spatial_animated_robot_2.mesh",
+        "bytes": 61572,
+        "sha256": "9ecee835da41585c7419cb43e0bd5fb1a6fc9800f2d25c7f678a9d431d580e83"
+      },
+      {
+        "file": "Spatial_animated_robot_2.skin",
+        "bytes": 34200,
+        "sha256": "4053ca3d2e73ee1232f48e3eb7e471f2801a3711d14fa8c97de5ce5bf0f5dc06"
+      },
+      {
+        "file": "Spatial_animated_robot_3.mesh",
+        "bytes": 16644,
+        "sha256": "32582a92e8ae5ae1fef662a263897439242b06370d85be84caf70495ffb78bf7"
+      },
+      {
+        "file": "Spatial_animated_robot_3.skin",
+        "bytes": 9240,
+        "sha256": "6869a2c2ce72671be152c6d9dbd88638790e913bd42c236d44ca0be4d98b9f21"
+      },
+      {
+        "file": "Spatial_animated_robot_4.mesh",
+        "bytes": 49692,
+        "sha256": "7581c397fc044f24f3acc522e065a976989cfdd6995ee429ac7cec2e7860bb8b"
+      },
+      {
+        "file": "Spatial_animated_robot_4.skin",
+        "bytes": 27600,
+        "sha256": "cbf978d162e0226bf378b84b7219a69dab478eaa428874b130200bc54f22c792"
+      },
+      {
+        "file": "Spatial_animated_robot_5.mesh",
+        "bytes": 21180,
+        "sha256": "7da029b585518e37b0b17386eb2bc3a2a3e126b8abf2b2a7768c2db1c68733de"
+      },
+      {
+        "file": "Spatial_animated_robot_5.skin",
+        "bytes": 11760,
+        "sha256": "5c3f6e0d1542ec0ca31dd6f81d0ff046d27460340d423c53941e8e6d873a1ff4"
+      },
+      {
+        "file": "Spatial_animated_robot_6.mesh",
+        "bytes": 13188,
+        "sha256": "59b1596801e1e562128c792ef5d8e04cfd0b2d6a0e8fab3e1fd58522b8a55d2c"
+      },
+      {
+        "file": "Spatial_animated_robot_6.skin",
+        "bytes": 7320,
+        "sha256": "7241c61a4b8aae91cb91261b0488ff631d21e4754d434801902c66d85f733688"
+      },
+      {
+        "file": "Spatial_animated_robot_7.mesh",
+        "bytes": 11676,
+        "sha256": "4f1352c568710b1438d2b0b72e079659fe850eb1876fa0035c9b0aceaf38014b"
+      },
+      {
+        "file": "Spatial_animated_robot_7.skin",
+        "bytes": 6480,
+        "sha256": "cc5a6493dde54b7c658e6083774adeea6ab3b2515fe57a27fce830d45ffcb1c5"
+      },
+      {
+        "file": "Spatial_animated_robot_8.mesh",
+        "bytes": 13188,
+        "sha256": "85a958b9ba7797017adf4edc9825a394b555a4bfd959f105c0b889ee02160987"
+      },
+      {
+        "file": "Spatial_animated_robot_8.skin",
+        "bytes": 7320,
+        "sha256": "8dfd3a792b39c39583c2726cf1a9e811de673e0c69d5c2b992a837ad54f01eb5"
+      },
+      {
+        "file": "Spatial_animated_robot_9.mesh",
+        "bytes": 11460,
+        "sha256": "1852bfa4cf5dd04c338d300b2ef97e97912c11f01227d45b557596c732e8326c"
+      },
+      {
+        "file": "Spatial_animated_robot_9.skin",
+        "bytes": 6360,
+        "sha256": "c693d20d839c793988195e18fb0ff1bd8b7c40302422364d4449b0ee8ddcdbb9"
+      },
+      {
+        "file": "Spatial_animated_robot_10.mesh",
+        "bytes": 10596,
+        "sha256": "8f6f94679c851feeb65bd4a0bb1f91ca3cfd0ffc9939756adfc91e8a64a6607e"
+      },
+      {
+        "file": "Spatial_animated_robot_10.skin",
+        "bytes": 5880,
+        "sha256": "954307fa8a19ff0a17eaf8ff17118148e40cf15c5a569fa558a8816e39e28149"
+      },
+      {
+        "file": "Spatial_animated_robot_11.mesh",
+        "bytes": 15780,
+        "sha256": "b4a7657f032d5865eea2a3381d33f400b57fe8374fbfa9e174bb73af393e6be1"
+      },
+      {
+        "file": "Spatial_animated_robot_11.skin",
+        "bytes": 8760,
+        "sha256": "d9940ed9fdf13ac45934b90b76f1ce1cbd02ec6f9546d6d8f5cb7370ea7e887f"
+      },
+      {
+        "file": "Spatial_animated_robot_12.mesh",
+        "bytes": 10596,
+        "sha256": "c3375ebf85f1c1023704c490fb6e82eab68d73293bf1005648d8a840b7766e1b"
+      },
+      {
+        "file": "Spatial_animated_robot_12.skin",
+        "bytes": 5880,
+        "sha256": "32c1393e84c96e2bea026c935c02e54733306954f77f5d56ccb1c9238ecb21ce"
+      },
+      {
+        "file": "Spatial_animated_robot_13.mesh",
+        "bytes": 15780,
+        "sha256": "f39f3e8ade971cfc63aac0013e275a30753063cc2e7d6b13a4672594be2fa988"
+      },
+      {
+        "file": "Spatial_animated_robot_13.skin",
+        "bytes": 8760,
+        "sha256": "1a0368117bdaaaf9481b96a383cb69dbb89fc598135017925339b646b3b2211a"
+      },
+      {
+        "file": "Spatial_animated_robot_14.mesh",
+        "bytes": 3468,
+        "sha256": "e4572d71ed7f7fd05184b91755f40f83ba9598cf96c9fe8508593d59b626df5a"
+      },
+      {
+        "file": "Spatial_animated_robot_14.skin",
+        "bytes": 1920,
+        "sha256": "6999f976cc16ee71212e4b1e9f17fa0c3ac90e6331433e96ea3e21bd57e62deb"
+      },
+      {
+        "file": "Spatial_animated_robot_15.mesh",
+        "bytes": 13404,
+        "sha256": "0f8a0784f828f19a63261092f34e34e7e05608d21b3173ed0206beced03897b5"
+      },
+      {
+        "file": "Spatial_animated_robot_15.skin",
+        "bytes": 7440,
+        "sha256": "3804d1e8ab7975aaa71458428f299ca254b11c964101f88e580dec41c238bddc"
+      },
+      {
+        "file": "Spatial_animated_robot_16.mesh",
+        "bytes": 15996,
+        "sha256": "4c07b214ed7292cc6940d0a78a9c5a509427803dac04c939045e480e8e766fa1"
+      },
+      {
+        "file": "Spatial_animated_robot_16.skin",
+        "bytes": 8880,
+        "sha256": "20b2837c456e70b78a1b814c841cab561e17be1033380812a7b20d180b182fd8"
+      },
+      {
+        "file": "Spatial_animated_robot_17.mesh",
+        "bytes": 13404,
+        "sha256": "2e4f49f4da12337f0e06cf4280020f77fec2680d3254b10aad1f7670149c8c80"
+      },
+      {
+        "file": "Spatial_animated_robot_17.skin",
+        "bytes": 7440,
+        "sha256": "f5fa94c6380fec3995a38cbce14d7794158113dcad3a0bb3be539a152aaf4cf8"
+      },
+      {
+        "file": "Spatial_animated_robot_18.mesh",
+        "bytes": 15996,
+        "sha256": "4b4058af61fa1e7b85622f9b81d0a2203b57ca30605514da693333ef97dde3b9"
+      },
+      {
+        "file": "Spatial_animated_robot_18.skin",
+        "bytes": 8880,
+        "sha256": "43882379ca9608800ce72014a64181a1f516f3fdd06ccf0e7ab5e6b4f48bc3a8"
+      },
+      {
+        "file": "Spatial_animated_robot_rig.json",
+        "bytes": 1392454,
+        "sha256": "bbbb1a8287680f21c0efc5d11d7e02b41554d11f23ed98dff3f9f0aa6793d94c"
+      }
+    ],
+    "animationSkinErrorMeters": 7.251217997429632e-07
+  },
+  {
+    "id": "animated_fox",
+    "title": "Raposa · animada",
+    "author": "PixelMannen / tomkranis / AsoboStudio / scurest",
+    "license": "CC-BY-4.0",
+    "source": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/e124e8d8d7330a5372bc2b4d00d39a4a9d7997ea/Models/Fox/glTF-Binary/Fox.glb",
+    "sourceSHA256": "d97044e701822bac5a62696459b27d7b375aada5de8574ed4362edbba94771f7",
+    "rig": "Spatial_animated_fox_rig.json",
+    "heightMeters": 0.45,
+    "triangles": 576,
+    "parts": [
+      {
+        "mesh": "Spatial_animated_fox_0.mesh",
+        "skin": "Spatial_animated_fox_0.skin",
+        "roughness": 0.5799999833106995,
+        "metalness": 0.0,
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "Color": "Spatial_animated_fox_0_Color.texture"
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_animated_fox_0.mesh",
+        "bytes": 62220,
+        "sha256": "ffea472ec51989120e8bba2f7ba931283071142a28443d324b597d413dde063d"
+      },
+      {
+        "file": "Spatial_animated_fox_0.skin",
+        "bytes": 34560,
+        "sha256": "9dcdaa241ad883fc5eb0f1f99225867c59a31f024e35955c32aec1755c75e72a"
+      },
+      {
+        "file": "Spatial_animated_fox_0_Color.texture",
+        "bytes": 58269,
+        "sha256": "78c7c84d76c83af40433c7ce5da731604ed20b6c5d819a6c8d90da15adc1b2bd"
+      },
+      {
+        "file": "Spatial_animated_fox_rig.json",
+        "bytes": 358839,
+        "sha256": "f7d7a372d13d42cf5df51d5eac27644c2a4f8268581a55ab3f363d451f18aca3"
+      }
+    ],
+    "animationSkinErrorMeters": 7.450580596923828e-08
   }
 ]

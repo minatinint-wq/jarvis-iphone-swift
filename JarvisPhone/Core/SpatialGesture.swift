@@ -98,3 +98,39 @@ struct SpatialPalmScale {
         return min(1.2,max(0.8,multiplier))
     }
 }
+
+struct SpatialPalmCalibration {
+    private var target: String?
+    private var span=0.0
+    private var depth=0.5
+    private var metric=false
+    mutating func estimate(target: String?,span: Double?,measured: Double?) -> Double? {
+        guard let target,let span,span.isFinite,span>0.015 else { self=Self();return nil }
+        if self.target != target {
+            self.target=target;self.span=span;depth=measured ?? 0.5;metric=measured != nil
+        }
+        let value=(metric ? measured : nil) ?? depth*self.span/span
+        return min(2,max(0.15,value))
+    }
+}
+
+struct SpatialPalmRecall {
+    private var target: String?
+    private var started=0.0
+    private var lastTime=0.0
+    private var fired=false
+    private(set) var progress=0.0
+    var hasFired: Bool { fired }
+    mutating func update(open: Bool,target: String?,overInterface: Bool,time: Double) -> String? {
+        guard open,time.isFinite else { self=Self();return nil }
+        if fired { return nil }
+        guard !overInterface,let target else { self=Self();return nil }
+        if self.target != target || time-lastTime>0.35 || time<lastTime {
+            self.target=target;started=time;fired=false
+        }
+        lastTime=time
+        progress=min(1,max(0,time-started))
+        guard !fired,time-started>=1 else { return nil }
+        fired=true;return target
+    }
+}

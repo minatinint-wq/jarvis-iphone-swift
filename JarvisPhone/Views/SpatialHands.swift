@@ -12,6 +12,8 @@ struct SpatialHandSample {
     var worldPoint: SIMD3<Float>? = nil
     var palmWorld: SIMD3<Float>? = nil
     var openPalm = false
+    var palmPoint: CGPoint? = nil
+    var palmSpan: Double? = nil
 }
 
 enum SpatialHandMath {
@@ -211,7 +213,10 @@ enum SpatialHandMath {
                 self.hasDepth=world != nil
                 self.smoothedWorld=world.map { value in self.smoothedWorld.map { $0+(value-$0)*Float(alpha) } ?? value }
                 self.smoothedPalm=palmWorld.map { value in self.smoothedPalm.map { $0+(value-$0)*Float(alpha) } ?? value }
-                self.onSample?(SpatialHandSample(point:p,ratio:amount ?? .nan,menuPose:SpatialHandMath.pointing(result,twoFingers:true),pointing:pointing,time:stamp,worldPoint:self.smoothedWorld,palmWorld:self.smoothedPalm,openPalm:SpatialHandMath.openPalm(result)))
+                let palmPoint=palm.map { raw -> CGPoint in let q=raw.applying(transform);return CGPoint(x:q.x*size.width,y:q.y*size.height) }
+                let span:Double?
+                if let a=result[5],let b=result[17] { span=Double(hypot(a.x-b.x,a.y-b.y)/sqrt(max(1,size.width*size.height))) } else { span=nil }
+                self.onSample?(SpatialHandSample(point:p,ratio:amount ?? .nan,menuPose:SpatialHandMath.pointing(result,twoFingers:true),pointing:pointing,time:stamp,worldPoint:self.smoothedWorld,palmWorld:self.smoothedPalm,openPalm:SpatialHandMath.openPalm(result),palmPoint:palmPoint,palmSpan:span))
             }
         }
     }

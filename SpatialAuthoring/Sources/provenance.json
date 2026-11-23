@@ -1,0 +1,16 @@
+[
+  {
+    "id": "robot",
+    "source": "https://raw.githubusercontent.com/mrdoob/three.js/6d91309bfcf9c2779f32dd98b61fcc5415a74912/examples/models/gltf/RobotExpressive/RobotExpressive.glb",
+    "licenseSource": "https://raw.githubusercontent.com/mrdoob/three.js/6d91309bfcf9c2779f32dd98b61fcc5415a74912/examples/models/gltf/RobotExpressive/README.md",
+    "sha256": "047f5e5fb3bb6d378bd1df16ca6137f2a596c99b3a1b5690b4020c05aaf6f319",
+    "bytes": 463988
+  },
+  {
+    "id": "fox",
+    "source": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/e124e8d8d7330a5372bc2b4d00d39a4a9d7997ea/Models/Fox/glTF-Binary/Fox.glb",
+    "licenseSource": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/e124e8d8d7330a5372bc2b4d00d39a4a9d7997ea/Models/Fox/README.md",
+    "sha256": "d97044e701822bac5a62696459b27d7b375aada5de8574ed4362edbba94771f7",
+    "bytes": 162852
+  }
+]

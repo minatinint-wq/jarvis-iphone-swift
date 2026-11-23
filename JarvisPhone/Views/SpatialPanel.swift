@@ -3,6 +3,18 @@ import ARKit
 import SceneKit
 
 enum SpatialPanelGeometry {
+    @MainActor static func framed(_ root: SCNNode,in view: ARSCNView,size: CGSize) -> Bool {
+        guard let frame=view.session.currentFrame else { return false }
+        let delta=SIMD3(frame.camera.transform.columns.3.x,frame.camera.transform.columns.3.y,frame.camera.transform.columns.3.z)-root.simdWorldPosition
+        let normal=SIMD3(root.simdWorldTransform.columns.2.x,root.simdWorldTransform.columns.2.y,root.simdWorldTransform.columns.2.z)
+        guard simd_length(delta)>0.01,simd_dot(simd_normalize(delta),simd_normalize(normal))>0.65 else { return false }
+        let center=view.projectPoint(root.worldPosition),top=view.projectPoint(root.convertPosition(SCNVector3(0,0.1,0),to:nil))
+        guard top.y<center.y,abs(top.x-center.x)<abs(top.y-center.y)*0.6 else { return false }
+        return ([-Float(size.width/2),Float(size.width/2)]).allSatisfy { x in [-Float(size.height/2),Float(size.height/2)].allSatisfy { y in
+            let point=view.projectPoint(root.convertPosition(SCNVector3(x,y,0),to:nil))
+            return point.z>0 && point.z<1 && view.bounds.insetBy(dx:12,dy:12).contains(CGPoint(x:CGFloat(point.x),y:CGFloat(point.y)))
+        }}
+    }
     /// Intersect the card plane directly. Depth-only meshes must never absorb UI input.
     static func localHit(origin:SIMD3<Float>,direction:SIMD3<Float>,transform:simd_float4x4)->SIMD2<Float>? {
         let inverse=simd_inverse(transform),o=inverse*SIMD4(origin,1),d=inverse*SIMD4(direction,0)
@@ -80,6 +92,7 @@ enum SpatialPanelGeometry {
     private var dragging=false
     var isDragging: Bool { dragging }
     private var palmScale=SpatialPalmScale()
+    private var palmCalibration=SpatialPalmCalibration()
     private var swipe = SpatialPageSwipe()
     private var pcOutput = (UserDefaults.standard.string(forKey:"spatialSpotifyOutput") ?? "pc") == "pc"
     var onWeb: ((SpatialModule)->Void)?
@@ -183,6 +196,10 @@ enum SpatialPanelGeometry {
         let a=view.unprojectPoint(SCNVector3(Float(point.x),Float(point.y),0)),b=view.unprojectPoint(SCNVector3(Float(point.x),Float(point.y),1))
         return SpatialPanelGeometry.localHit(origin:SIMD3(a.x,a.y,a.z),direction:SIMD3(b.x-a.x,b.y-a.y,b.z-a.z),transform:root.simdWorldTransform)
     }
+    func contains(_ point: CGPoint) -> Bool { visible && root?.isHidden == false && localHit(point) != nil }
+    var isFramed: Bool {
+        guard visible,let root else { return false };return SpatialPanelGeometry.framed(root,in:view,size:CGSize(width:0.64,height:0.58))
+    }
     private func selectionNode(_ point:CGPoint)->SCNNode? {
         guard let p=localHit(point),let root else { return nil }
         return root.childNodes.first { node in
@@ -202,11 +219,12 @@ enum SpatialPanelGeometry {
     func hand(_ sample:SpatialHandSample?) {
         guard visible,root?.isHidden==false else { handGesture.reset();return }
         let time=sample?.time ?? ProcessInfo.processInfo.systemUptime
-        if let sample,sample.openPalm,let palm=sample.palmWorld,let frame=view.session.currentFrame {
+        if let sample,sample.openPalm,let frame=view.session.currentFrame {
             let camera=SIMD3(frame.camera.transform.columns.3.x,frame.camera.transform.columns.3.y,frame.camera.transform.columns.3.z)
-            let over=localHit(sample.point) != nil
-            if let multiplier=palmScale.update(target:over ? "panel" : nil,depth:Double(simd_distance(camera,palm)),time:time) { resize(multiplier) }
-        } else { palmScale=SpatialPalmScale() }
+            let over=localHit(sample.palmPoint ?? sample.point) != nil
+            let depth=palmCalibration.estimate(target:over ? "panel" : nil,span:sample.palmSpan,measured:sample.palmWorld.map { Double(simd_distance(camera,$0)) })
+            if let multiplier=palmScale.update(target:over ? "panel" : nil,depth:depth,time:time) { resize(multiplier) }
+        } else { palmScale=SpatialPalmScale();palmCalibration=SpatialPalmCalibration() }
         if let sample, sample.menuPose, sample.ratio >= 0.48, !dragging, view.bounds.width > 0, view.bounds.height > 0 {
             handGesture.reset()
             let pos=CGPoint(x:sample.point.x/view.bounds.width,y:sample.point.y/view.bounds.height)

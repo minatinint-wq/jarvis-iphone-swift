@@ -38,7 +38,14 @@ enum WallMeasureMode { case none, outline, opening }
 
 /// Owns one live ARSession. Painted geometry has its own world anchor and frozen
 /// metric UVs, so plane refinement cannot stretch the texture or move its edges.
-@MainActor final class WallARController: NSObject, ObservableObject, ARSessionDelegate {
+@MainActor final class WallARController: NSObject, ObservableObject, ARSessionDelegate, ARCoachingOverlayViewDelegate {
+    @Published var localizationTimedOut=false
+    @Published var recoveryBusy=false
+    @Published var savedMaps:[URL]=[]
+    @Published var lensLabel="1×"
+    private var prefersUltraWide=true
+    private var recoveryTimer:Task<Void,Never>?
+    private let coaching=ARCoachingOverlayView()
     @Published var measureMode = WallMeasureMode.none
     @Published var pointsCount = 0
     @Published var openingsCount = 0
@@ -92,6 +99,8 @@ enum WallMeasureMode { case none, outline, opening }
     var webWindowVisible = false
     var hands:SpatialHands!
     @Published var handStatus="Mostre a mão à câmera traseira."
+    private var palmRecall=SpatialPalmRecall()
+    private var lastWindow="panel"
 
     override init() {
         super.init()
@@ -105,20 +114,38 @@ enum WallMeasureMode { case none, outline, opening }
             guard let self else { return false }
             return !self.panel.isDragging && !self.desktop.isDragging
         }
-        panel.onChange = { [weak self] in self?.spatial.markDirty() }
-        desktop.onChange = { [weak self] in self?.spatial.markDirty() }
+        panel.onChange = { [weak self] in self?.spatial.markDirty();self?.lastWindow="panel" }
+        desktop.onChange = { [weak self] in self?.spatial.markDirty();self?.lastWindow="desktop" }
         hands=SpatialHands(view:view)
         hands.onSample = { [weak self] sample in
             guard let self else { return }
             if self.desktop.inputBlocked { return }
+            let palm=sample?.palmPoint ?? sample?.point
+            let over=palm.map { self.panel.contains($0) || self.desktop.contains($0) } ?? false
+            let candidate: String?
+            if self.lastWindow == "desktop",self.desktop.visible { candidate=self.desktop.isFramed ? nil : "desktop" }
+            else if self.panel.visible { candidate=self.panel.isFramed ? nil : "panel" }
+            else if self.desktop.visible { candidate=self.desktop.isFramed ? nil : "desktop" }
+            else { candidate=nil }
+            if let target=self.palmRecall.update(open:sample?.openPalm == true && self.tracking && !self.spatial.recovering,target:candidate,overInterface:over,time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {
+                if target == "desktop" { self.desktop.recenter() } else { self.panel.reposition() }
+                self.handStatus="Janela reenquadrada. Relaxe a mão para continuar."
+            }
+            if self.palmRecall.progress>0 || self.palmRecall.hasFired {
+                self.hands.showProgress(self.palmRecall.progress);return
+            }
             if self.desktop.hand(sample) { self.hands.showProgress(self.desktop.progress);return }
             if self.panel.visible { self.panel.hand(sample) } else { self.spatial.hand(sample) }
             self.hands.showProgress(self.panel.visible ? self.panel.dwellProgress : self.spatial.dwellProgress)
         }
         hands.onQuality = { [weak self] in self?.handStatus=$0 }
         spatial.attach()
+        spatial.onAttackRequest = { [weak self] in self?.requestWallAttack() }
+        spatial.onImpact = { [weak self] point in self?.showWallImpact(point) }
         view.session.delegate = self
         view.session.delegateQueue = .main
+        coaching.session=view.session;coaching.goal = .tracking;coaching.activatesAutomatically=true;coaching.delegate=self
+        coaching.autoresizingMask=[.flexibleWidth,.flexibleHeight];coaching.frame=view.bounds;view.insertSubview(coaching,at:0)
         view.delegate = performance
         view.preferredFramesPerSecond = 60
         view.antialiasingMode = .multisampling4X
@@ -143,7 +170,10 @@ enum WallMeasureMode { case none, outline, opening }
         guard !stopped else { return }
         guard permission else { status = "Permita a câmera nos Ajustes para pintar em AR."; fatal = true; return }
         do { initialMap = try await spatial.loadMap() }
-        catch { status="Não consegui ler o mapa salvo. Seus dados foram preservados. \(error.localizedDescription)";fatal=true;return }
+        catch {
+            status="Não consegui ler o mapa salvo. Ele foi preservado. Escolha outro mapa ou inicie um novo."
+            localizationTimedOut=true;savedMaps=SpatialArchive.savedMaps()
+        }
         // Decode and upload once, before scanning; no image generation or downloading
         // competes with tracking. Shared PBR textures use metric UVs and mipmaps.
         for f in WallFinish.allCases { materials[f] = WallMaterials.make(f) }
@@ -157,18 +187,18 @@ enum WallMeasureMode { case none, outline, opening }
                 guard let self, !self.stopped else { return }
                 self.prepared = ready
                 self.started = true
-                if self.foreground { self.run() }
+                if self.foreground && !self.localizationTimedOut { self.run() }
             }
         }
     }
 
-    private func run() {
+    private func run(reset: Bool = false) {
         guard foreground, !stopped, !fatal else { return }
         let config = ARWorldTrackingConfiguration()
         config.planeDetection = [.horizontal,.vertical]
         config.sceneReconstruction = .meshWithClassification
         config.environmentTexturing = .automatic
-        if !mapStarted { config.initialWorldMap=initialMap;mapStarted=true }
+        if !mapStarted || reset { config.initialWorldMap=initialMap;mapStarted=true }
         if ARWorldTrackingConfiguration.supportsFrameSemantics(.smoothedSceneDepth) {
             config.frameSemantics.insert(.smoothedSceneDepth)
         }
@@ -176,16 +206,73 @@ enum WallMeasureMode { case none, outline, opening }
             config.frameSemantics.insert(.personSegmentationWithDepth)
         }
         // Prefer moderate camera resolution at 60 Hz rather than 4K capture + AI.
-        let formats = ARWorldTrackingConfiguration.supportedVideoFormats.filter { $0.framesPerSecond == 60 }
-        if let format = formats.min(by: { $0.imageResolution.width < $1.imageResolution.width }) { config.videoFormat = format }
-        view.session.run(config)
+        let available=ARWorldTrackingConfiguration.supportedVideoFormats
+        let ultra=available.filter { $0.captureDevicePosition == .back && $0.captureDeviceType == .builtInUltraWideCamera }
+        let candidates=prefersUltraWide && !ultra.isEmpty ? ultra : available.filter { $0.captureDeviceType == .builtInWideAngleCamera }
+        let fast=candidates.filter { $0.framesPerSecond == 60 }
+        if let format=(fast.isEmpty ? candidates : fast).min(by:{$0.imageResolution.width<$1.imageResolution.width}) {
+            config.videoFormat=format;lensLabel=format.captureDeviceType == .builtInUltraWideCamera ? "0,5×" : "1×"
+        }
+        if prefersUltraWide && ultra.isEmpty { notice="A câmera 0,5× não foi oferecida pelo ARKit nesta configuração. A sessão usa \(lensLabel)." }
+        view.session.run(config,options:reset ? [.resetTracking,.removeExistingAnchors] : [])
         view.isPlaying = true
+        armRecoveryTimer()
+    }
+
+    func selectLens(ultra: Bool) {
+        guard !recoveryBusy else { return }
+        if ultra && !ARWorldTrackingConfiguration.supportedVideoFormats.contains(where:{$0.captureDeviceType == .builtInUltraWideCamera && $0.captureDevicePosition == .back}) {
+            notice="O iOS não disponibilizou 0,5× para esta sessão AR com LiDAR.";return
+        }
+        prefersUltraWide=ultra;spatial.stopMoving();hands.reset();spatial.requireSurfaceConfirmation();run()
+    }
+
+    private func armRecoveryTimer() {
+        guard recoveryTimer == nil,(!tracking || spatial.recovering) else { return }
+        recoveryTimer=Task { [weak self] in
+            try? await Task.sleep(for:.seconds(20))
+            guard !Task.isCancelled,let self,!self.stopped,(!self.tracking || self.spatial.recovering) else { return }
+            self.localizationTimedOut=true;self.status="O mapa ainda não foi reencontrado. Tente o mapa salvo ou inicie outro mapeamento."
+            self.savedMaps=await Task.detached { SpatialArchive.savedMaps() }.value
+            self.recoveryTimer=nil
+        }
+    }
+
+    func changeMap(restore source: URL?) {
+        guard started,!recoveryBusy else { return };recoveryBusy=true;localizationTimedOut=false
+        recoveryTimer?.cancel();recoveryTimer=nil
+        spatial.stopMoving();view.session.pause();tracking=false;_ = gate.update(normal:false,at:0);setVisible(false);desktop.setTracking(false)
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await self.spatial.prepareMapChange(restore:source)
+                guard !self.stopped else { self.spatial.finishMapChange();return }
+                self.panel.close(recordChange:false);self.desktop.close(recordChange:false);self.clear(silent:true)
+                self.spatial.resetLiveScene(newWorld:source == nil)
+                self.occluders.values.forEach { $0.removeFromParentNode() };self.occluders.removeAll();self.planes.removeAll();self.meshUpdated.removeAll()
+                self.initialMap=source == nil ? nil : try await self.spatial.loadMap()
+                self.mapStarted=false;self.fatal=false;self.recoveryBusy=false;self.spatial.finishMapChange()
+                self.status=source == nil ? "Novo mapeamento. Mostre piso, cantos e detalhes das paredes." : "Reconhecendo o mapa salvo. Volte ao ambiente onde ele foi gravado."
+                if !self.stopped { self.run(reset:true) }
+            } catch {
+                self.recoveryBusy=false;self.spatial.finishMapChange();self.localizationTimedOut=true
+                self.status="Não consegui restaurar esse mapa. \(error.localizedDescription)"
+            }
+            self.savedMaps=await Task.detached { SpatialArchive.savedMaps() }.value
+        }
+    }
+
+    func coachingOverlayViewDidRequestSessionReset(_ coachingOverlayView: ARCoachingOverlayView) {
+        localizationTimedOut=true;coachingOverlayView.setActive(false,animated:true)
+        savedMaps=SpatialArchive.savedMaps()
     }
 
     func setForeground(_ active: Bool) {
         foreground = active
-        if active && started { run() }
+        if active && started && !recoveryBusy && !localizationTimedOut { run() }
         else if !active {
+            recoveryTimer?.cancel();recoveryTimer=nil
+            spatial.stopMoving()
             spatial.saveMap(force:false)
             spatial.requireSurfaceConfirmation()
             desktop.setTracking(false)
@@ -195,6 +282,7 @@ enum WallMeasureMode { case none, outline, opening }
     }
 
     func stop() {
+        recoveryTimer?.cancel();recoveryTimer=nil
         spatial.saveMap(force:false)
         stopped = true
         hands.reset()
@@ -286,6 +374,7 @@ enum WallMeasureMode { case none, outline, opening }
     }
 
     func apply(_ command: WallARCommand) {
+        guard !recoveryBusy else { return }
         switch command {
         case .open: break
         case .select:
@@ -325,6 +414,12 @@ enum WallMeasureMode { case none, outline, opening }
         case .saveMap: spatial.saveMap()
         case .room(let name): spatial.chooseRoom(name)
         case .desktop: desktop.open(tracking:tracking)
+        case .character(let action):
+            if action == "walk" { spatial.walk() }
+            else if action == "stop" { spatial.stopMoving() }
+            else if action == "impact" { requestWallAttack() }
+            else if action == "repair" { repairWall() }
+            else { spatial.animate(action) }
         case .close: break
         }
     }
@@ -352,13 +447,15 @@ enum WallMeasureMode { case none, outline, opening }
     }
 
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
-        guard foreground, !stopped else { return }
+        guard foreground, !stopped,!recoveryBusy else { return }
         let normal: Bool
         switch frame.camera.trackingState { case .normal: normal = true; default: normal = false }
         let good = gate.update(normal:normal, at:frame.timestamp)
+        if good && !spatial.recovering { recoveryTimer?.cancel();recoveryTimer=nil;localizationTimedOut=false }
         spatial.persistenceTick(frame)
         spatial.setVisible(good && !comparing)
         if good && !comparing { spatial.validateSupports(frame) }
+        if good && !comparing { spatial.stepSimulation(frame.timestamp) }
         panel.setTracking(good)
         desktop.setTracking(good && !spatial.recovering)
         hands.update(frame,view:view,enabled:good && !webWindowVisible && (panel.visible || spatial.active || desktop.visible))
@@ -428,11 +525,13 @@ enum WallMeasureMode { case none, outline, opening }
     func sessionShouldAttemptRelocalization(_ session: ARSession) -> Bool { true }
     func session(_ session: ARSession,cameraDidChangeTrackingState camera: ARCamera) {
         switch camera.trackingState {
-        case .normal: break
+        case .normal:
+            if !spatial.recovering { recoveryTimer?.cancel();recoveryTimer=nil;localizationTimedOut=false }
         default:
             spatial.requireSurfaceConfirmation()
             tracking=false;_ = gate.update(normal:false,at:0);setVisible(false)
             status="Relocalizando. Volte ao ambiente anterior e mostre o piso e detalhes das paredes."
+            armRecoveryTimer()
         }
     }
     func session(_ session: ARSession, didFailWithError error: Error) {
@@ -505,6 +604,42 @@ private final class WallRenderMeter: NSObject, ARSCNViewDelegate {
     }
 }
 
+@MainActor private struct SpatialRecoveryControls: View {
+    @ObservedObject var controller: WallARController
+    @State private var confirmNew=false
+    var body: some View {
+        VStack(alignment:.leading,spacing:10) {
+            Label("Recuperar ambiente",systemImage:"map.fill").font(.headline)
+            Text(controller.status).font(.caption)
+            Text("Volte ao local original. Mostre piso, cantos e detalhes das paredes, movendo o celular devagar. Evite apontar só para uma parede lisa.").font(.caption)
+            if controller.recoveryBusy { ProgressView("Preparando mapa…") }
+            else {
+                HStack {
+                    Button("Tentar mapa salvo") { controller.changeMap(restore:SpatialArchive.file) }
+                        .disabled(!FileManager.default.fileExists(atPath:SpatialArchive.file.path))
+                    Button("Novo mapa") { confirmNew=true }
+                }.buttonStyle(.bordered).controlSize(.small)
+                Menu("Restaurar outro mapa (\(controller.savedMaps.count))") {
+                    ForEach(controller.savedMaps,id:\.self) { url in
+                        Button(mapTitle(url)) { controller.changeMap(restore:url) }
+                    }
+                }.disabled(controller.savedMaps.isEmpty)
+            }
+        }.padding(14).frame(maxWidth:.infinity,alignment:.leading)
+        .background(.regularMaterial,in:RoundedRectangle(cornerRadius:16))
+        .confirmationDialog("Iniciar outro ambiente?",isPresented:$confirmNew,titleVisibility:.visible) {
+            Button("Guardar mapa antigo e começar outro") { controller.changeMap(restore:nil) }
+            Button("Cancelar",role:.cancel) {}
+        } message: {
+            Text("O mapa anterior ficará em Restaurar outro mapa. Os objetos dele não serão colocados em coordenadas erradas no novo ambiente.")
+        }
+    }
+    private func mapTitle(_ url: URL) -> String {
+        let date=(try? url.resourceValues(forKeys:[.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+        return (url == SpatialArchive.file ? "Atual · " : "Guardado · ")+date.formatted(date:.abbreviated,time:.shortened)
+    }
+}
+
 private struct WallCameraView: UIViewRepresentable {
     let controller: WallARController
     func makeUIView(context: Context) -> ARSCNView { controller.view }
@@ -525,7 +660,7 @@ private struct WallCameraView: UIViewRepresentable {
     @State private var confirmAction: PhoneAction?
     var body: some View {
         ZStack {
-            WallCameraView(controller:controller).ignoresSafeArea(edges:.bottom).allowsHitTesting(webModule == nil)
+            WallCameraView(controller:controller).ignoresSafeArea(edges:.bottom).allowsHitTesting(webModule == nil && !controller.recoveryBusy)
             if !panelVisible && (!controller.selected || controller.measureMode != .none) {
                 Image(systemName:"plus").font(.title.weight(.ultraLight)).foregroundStyle(.white)
                     .shadow(color:.black,radius:2).allowsHitTesting(false)
@@ -540,15 +675,23 @@ private struct WallCameraView: UIViewRepresentable {
                     Button { controller.panel.open(.dashboard,tracking:controller.tracking) } label: { Image(systemName:"square.grid.2x2") }
                     Button { controller.desktop.open(tracking:controller.tracking) } label: { Image(systemName:"desktopcomputer") }.accessibilityLabel("Abrir tela do PC em AR")
                     Button { controller.panel.reposition() } label: { Image(systemName:"scope") }.accessibilityLabel("Trazer painel para frente")
-                    Text(controller.metrics)
+                    Menu(controller.lensLabel) {
+                        Button("0,5× · ultra-angular") { controller.selectLens(ultra:true) }
+                        Button("1× · principal") { controller.selectLens(ultra:false) }
+                    }
+                    Button { controller.localizationTimedOut.toggle();controller.savedMaps=SpatialArchive.savedMaps() } label: { Image(systemName:"map") }.accessibilityLabel("Recuperar mapa")
                 }.font(.caption.monospaced()).padding(12).background(.black.opacity(0.72),in:RoundedRectangle(cornerRadius:14))
+                Text(controller.metrics).font(.caption2.monospaced()).foregroundStyle(.secondary)
+                if controller.localizationTimedOut || controller.recoveryBusy {
+                    SpatialRecoveryControls(controller:controller)
+                }
                 Spacer()
                 SpatialDesktopControls(desktop:controller.desktop)
                 if panelVisible {
                     VStack(alignment:.leading,spacing:6) {
                         Text(panelStatus).font(.caption).lineLimit(3)
                         Text(controller.handStatus).font(.caption2).foregroundStyle(.cyan)
-                        Text("Aponte por 2 segundos para clicar. Pinça move o painel. Com dois dedos em V, deslize para os lados para virar a página. Mão aberta fica livre.").font(.caption2).foregroundStyle(.secondary)
+                        Text("Indicador por 2 s clica. Pinça move. Palma sobre a janela: aproxime para aumentar, afaste para diminuir. Palma fora por 1 s traz a janela desenquadrada. Dois dedos em V viram a página.").font(.caption2).foregroundStyle(.secondary)
                         HStack {
                             Button("Todos os módulos",systemImage:"list.bullet") { search="";menuSheet = .directory }
                             Button("Menor",systemImage:"minus.magnifyingglass") { controller.panel.resize(0.82) }

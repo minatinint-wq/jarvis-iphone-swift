@@ -38,6 +38,7 @@ enum WallARCommand: Equatable {
     case open, select, finish(WallFinish), undo, clear, compare, close
     case measure, point, opening, approve, theme(SpatialTheme), interact, removeObject, panel(SpatialModule), navigate(String)
     case model(String), resizeObject(Float), moveObject(Float,Float), saveMap, room(String), desktop
+    case character(String)
 
     /// Only navigation-like speech enters the spatial interpreter; ordinary tools stay available.
     static func needsInterpretation(_ input: String) -> Bool {
@@ -59,7 +60,9 @@ enum WallARCommand: Equatable {
             if ["salvar mapa","salva o mapa","salvar ambiente","salva os objetos"].contains(s) { return .saveMap }
             if ["este e o quarto","estou no quarto","ambiente quarto"].contains(s) { return .room("Quarto") }
             if ["esta e a sala","estou na sala","ambiente sala"].contains(s) { return .room("Sala") }
-            let models:[String:String] = ["personagem":"demo_human","humanoide":"demo_human","caixa":"demo_box","cadeira":"demo_chair","mesa":"demo_table"]
+            let actions=["robo acene":"Wave","robo dance":"Dance","robo ande":"walk","robo pare":"stop","testar impacto":"impact","socar parede":"impact","reparar parede":"repair"]
+            if let action=actions[s] { return .character(action) }
+            let models:[String:String] = ["personagem":"animated_robot","robo":"animated_robot","raposa":"animated_fox","humanoide":"demo_human","caixa":"demo_box","cadeira":"demo_chair","mesa":"demo_table"]
             if s.range(of:#"^(?:coloca|coloque|cria|crie|adiciona|adicione)\b"#,options:.regularExpression) != nil,
                let model=s.split(separator:" ").compactMap({ models[String($0)] }).first { return .model(model) }
             if ["aumente esse objeto","aumenta esse objeto","aumentar objeto"].contains(s) { return .resizeObject(1.15) }

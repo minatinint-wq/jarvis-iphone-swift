@@ -38,6 +38,7 @@ enum SpatialTheme: String, CaseIterable {
               let all=try JSONSerialization.jsonObject(with:Data(contentsOf:manifest)) as? [[String:Any]],
               let spec=all.first(where:{$0["id"] as? String == id}) else { throw CocoaError(.fileNoSuchFile) }
         let node:SCNNode
+        if spec["rig"] != nil { return try SpatialRig.load(id:id,entry:spec) }
         if let parts=spec["parts"] as? [[String:Any]] {
             node=SCNNode()
             for part in parts { node.addChildNode(try partNode(part,mesh:part["mesh"] as? String ?? "")) }
@@ -45,7 +46,7 @@ enum SpatialTheme: String, CaseIterable {
         if cache.count>=3 { cache.removeAll() }
         cache[id]=node;return node.clone()
     }
-    private static func partNode(_ spec:[String:Any],mesh:String) throws -> SCNNode {
+    static func partNode(_ spec:[String:Any],mesh:String) throws -> SCNNode {
         guard let url=Bundle.main.url(forResource:mesh,withExtension:nil) else { throw CocoaError(.fileNoSuchFile) }
         let data=try Data(contentsOf:url)
         guard data.count>=12, String(data:data.prefix(4),encoding:.ascii)=="JSP1" else { throw CocoaError(.fileReadCorruptFile) }
@@ -80,7 +81,7 @@ enum SpatialTheme: String, CaseIterable {
         mat.normal.intensity=0.7; geometry.materials=[mat]
         return SCNNode(geometry:geometry)
     }
-    static func clear() { cache.removeAll() }
+    static func clear() { cache.removeAll();SpatialRig.clear() }
     static func composition(_ theme: SpatialTheme) throws -> SCNNode {
         let root=SCNNode()
         func add(_ id: String, size: Float, x: Float, z: Float) throws -> SCNNode {
@@ -165,6 +166,73 @@ enum SpatialTheme: String, CaseIterable {
     private var handOffset=SIMD3<Float>.zero
     private var handDepth:Float=0
     private var palmScale=SpatialPalmScale()
+    private struct CharacterMotion { var destination: SIMD3<Float>;var impact: SIMD3<Float>?;var speed: Float }
+    private var motions: [UUID:CharacterMotion] = [:]
+    private var simulationTime: TimeInterval?
+    var onImpact: ((SIMD3<Float>) -> Void)?
+    var onAttackRequest: (() -> Void)?
+    var characterSelected: Bool { selected.flatMap { objects[$0] }.flatMap { SpatialRig.character(in:$0) } != nil }
+    var selectedCharacterID: String? { selected.flatMap { objects[$0] }.flatMap { SpatialRig.character(in:$0)?.1 } }
+    var selectedCharacterPosition: SIMD3<Float>? { selected.flatMap { objects[$0]?.simdWorldPosition } }
+
+    func animate(_ action: String) {
+        guard let id=selected,let root=objects[id],let (_,model)=SpatialRig.character(in:root) else { status="Selecione um personagem animado.";return }
+        stopMoving()
+        let clip=model == "animated_fox" && action == "Idle" ? "Survey" : action
+        if SpatialRig.play(root,clip:clip) { status="\(clip) · animação do personagem." }
+    }
+
+    func walk(to point: SIMD3<Float>? = nil,impact: SIMD3<Float>? = nil,running: Bool = false) {
+        guard visibility,let id=selected,let root=objects[id],!root.isHidden,let (_,model)=SpatialRig.character(in:root) else { status="Selecione um personagem com apoio confirmado.";return }
+        guard impact == nil || model == "animated_robot" else { status="Selecione o robô para testar o impacto.";return }
+        let support=planes.values.first { $0.alignment == .horizontal && ($0.classification == .floor || $0.classification == .table) && fits(SIMD4(root.simdPosition,1),radius:radius(id)*root.simdScale.x,on:$0,ignoring:id) }
+        guard let support else { status="Mostre mais da superfície livre antes de movimentar o personagem.";return }
+        stopMoving();supports[id]=support.identifier
+        let forward=simd_normalize(SIMD3(root.simdTransform.columns.2.x,0,root.simdTransform.columns.2.z))
+        let goal=point ?? root.simdPosition+forward*0.75
+        let direction=SIMD3(goal.x-root.simdPosition.x,0,goal.z-root.simdPosition.z)
+        guard simd_length(direction)>0.05 else { return }
+        root.eulerAngles.y=atan2(direction.x,direction.z)
+        motions[id]=CharacterMotion(destination:SIMD3(goal.x,root.simdPosition.y,goal.z),impact:impact,speed:running ? 0.55 : 0.30)
+        let clip=model == "animated_robot" ? (running ? "Running" : "Walking") : (running ? "Run" : "Walk")
+        _=SpatialRig.play(root,clip:clip);status=impact == nil ? "Personagem caminhando pela área medida." : "Robô aproximando-se do ponto marcado na parede."
+    }
+
+    func stepSimulation(_ time: TimeInterval) {
+        let delta=Float(min(0.05,max(0,time-(simulationTime ?? time))));simulationTime=time
+        guard visibility,!thermalPaused,delta>0 else { return }
+        for (id,motion) in Array(motions) {
+            guard let root=objects[id],!root.isHidden,let supportID=supports[id],let support=planes[supportID] else { finishMotion(id);continue }
+            let offset=motion.destination-root.simdPosition,distance=simd_length(offset)
+            let stopDistance: Float=motion.impact == nil ? 0.04 : 0.55
+            if distance<=stopDistance {
+                finishMotion(id)
+                if let impact=motion.impact {
+                    _=SpatialRig.play(root,clip:"Punch")
+                    root.runAction(.sequence([.wait(duration:0.32),.run { [weak self] _ in
+                        Task { @MainActor in self?.onImpact?(impact) }
+                    }]),forKey:"wall-impact")
+                    status="Impacto virtual no ponto marcado."
+                }
+                continue
+            }
+            let next=root.simdPosition+offset/distance*min(motion.speed*delta,max(0,distance-stopDistance))
+            guard fits(SIMD4(next,1),radius:radius(id)*root.simdScale.x,on:support,ignoring:id) else { finishMotion(id);status="Movimento interrompido pela borda ou por um obstáculo medido.";continue }
+            root.simdPosition=next
+        }
+    }
+
+    private func finishMotion(_ id: UUID) {
+        guard motions.removeValue(forKey:id) != nil,let root=objects[id] else { return }
+        reanchor(id)
+        let model=SpatialRig.character(in:root)?.1
+        _=SpatialRig.play(root,clip:model == "animated_fox" ? "Survey" : "Idle")
+    }
+
+    func stopMoving() {
+        for id in Array(motions.keys) { finishMotion(id) }
+        for root in objects.values { root.removeAction(forKey:"wall-impact") }
+    }
     @Published var persistenceStatus = "Mapa ainda não salvo."
     @Published var roomName = "Ambiente 1"
     private var worldID = UUID()
@@ -173,6 +241,8 @@ enum SpatialTheme: String, CaseIterable {
     private var restored: [UUID:SpatialObjectRecord] = [:]
     private var revision = 0
     private var saving = false
+    private var persistenceEpoch=0
+    private var changingMap=false
     private var lastSavedRevision = -1
     private var lastSaveAttempt: TimeInterval = -.infinity
     private var currentRoom: UUID?
@@ -296,16 +366,19 @@ enum SpatialTheme: String, CaseIterable {
     }
 
     func saveMap(force: Bool = true) {
-        guard !saving,!recovering,handDragging == nil,(canSaveWindows?() ?? true),
+        if force { stopMoving() }
+        guard !changingMap,!saving,!recovering,handDragging == nil,(canSaveWindows?() ?? true),
+              motions.isEmpty,
               objects.isEmpty || supportProofs.values.contains(where:{$0.confirmed}),let frame=view.session.currentFrame,
               case .normal=frame.camera.trackingState,frame.worldMappingStatus == .mapped || frame.worldMappingStatus == .extending else {
             if force { persistenceStatus="Para salvar, termine o gesto e mostre mais detalhes do ambiente até o mapa estabilizar." };return
         }
         guard force || revision != lastSavedRevision else { return }
         lastSaveAttempt=frame.timestamp;saving=true
-        let savedRevision=revision, snapshot=Array(records.values), roomSnapshot=rooms, world=worldID, panel=panelSnapshot?(),desktop=desktopSnapshot?()
+        let epoch=persistenceEpoch,savedRevision=revision, snapshot=Array(records.values), roomSnapshot=rooms, world=worldID, panel=panelSnapshot?(),desktop=desktopSnapshot?()
         view.session.getCurrentWorldMap { [self] map,error in
             Task { @MainActor in
+                guard epoch == self.persistenceEpoch else { return }
                 guard let map,error == nil,self.revision == savedRevision,
                       snapshot.allSatisfy({ record in map.anchors.contains { $0.identifier == record.anchor } }),
                       panel.map({ p in map.anchors.contains { $0.identifier == p.anchor } }) ?? true,
@@ -317,12 +390,38 @@ enum SpatialTheme: String, CaseIterable {
                         let bytes=try NSKeyedArchiver.archivedData(withRootObject:map,requiringSecureCoding:true)
                         let archive=SpatialArchive(world:world,rooms:roomSnapshot,objects:snapshot,panel:panel,desktop:desktop,map:bytes,saved:Date())
                         try archive.write()
-                        Task { @MainActor in self.saving=false;self.lastSavedRevision=savedRevision;self.persistenceStatus="Salvo no iPhone: \(snapshot.count) objetos e \(roomSnapshot.count) ambientes." }
+                        Task { @MainActor in guard epoch == self.persistenceEpoch else { return };self.saving=false;self.lastSavedRevision=savedRevision;self.persistenceStatus="Salvo no iPhone: \(snapshot.count) objetos e \(roomSnapshot.count) ambientes." }
                     } catch {
-                        Task { @MainActor in self.saving=false;self.persistenceStatus="Falha ao salvar: \(error.localizedDescription)" }
+                        Task { @MainActor in guard epoch == self.persistenceEpoch else { return };self.saving=false;self.persistenceStatus="Falha ao salvar: \(error.localizedDescription)" }
                     }
                 }
             }
+        }
+    }
+
+    func prepareMapChange(restore source: URL? = nil) async throws {
+        persistenceEpoch+=1;saving=false;changingMap=true
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void,Error>) in
+            storageQueue.async {
+                do {
+                    try SpatialArchive.activate(source)
+                    continuation.resume()
+                } catch { continuation.resume(throwing:error) }
+            }
+        }
+    }
+    func finishMapChange() { changingMap=false }
+
+    func resetLiveScene(newWorld: Bool) {
+        stopMoving();player?.stop();playingID=nil
+        objects.values.forEach { $0.removeFromParentNode() }
+        objects.removeAll();anchors.removeAll();supports.removeAll();planes.removeAll();radii.removeAll();records.removeAll();restored.removeAll();supportProofs.removeAll()
+        restoredPanel=nil;restoredDesktop=nil;selected=nil;hasSelection=false;objectCount=0;placing=false;visibility=false;active=false
+        handGesture.reset();handDragging=nil;motions.removeAll();simulationTime=nil
+        if newWorld {
+            worldID=UUID();rooms=[SpatialRoom(id:UUID(),name:"Ambiente 1",origin:SpatialArchive.values(matrix_identity_float4x4))]
+            currentRoom=rooms[0].id;roomName=rooms[0].name;revision=0;lastSavedRevision = -1
+            persistenceStatus="Novo mapa iniciado. O mapa anterior foi preservado."
         }
     }
 
@@ -385,7 +484,7 @@ enum SpatialTheme: String, CaseIterable {
             pose.columns.3=SIMD4(position,1)
             records[id]?.supportTransform=SpatialArchive.values(simd_inverse(origin)*pose)
         }
-        if records[id]?.model == SpatialDemo.human.rawValue { records[id]?.kind="character" }
+        if records[id]?.model == SpatialDemo.human.rawValue || SpatialRig.identifiers.contains(records[id]?.model ?? "") { records[id]?.kind="character" }
         else if records[id]?.model.hasPrefix("theme:") == true { records[id]?.kind="scene" }
         revision+=1
     }
@@ -415,16 +514,24 @@ enum SpatialTheme: String, CaseIterable {
     func setModel(_ id:String) {
         guard !recovering,SpatialAssets.catalog.contains(where:{$0.id==id}) || SpatialDemo.allCases.contains(where:{$0.rawValue==id}) else { return }
         active=true;selectedModel=id;selected=nil;hasSelection=false;placing=true
-        status=SpatialDemo(rawValue:id).map { "\($0.title): toque em uma área livre do piso." } ?? "\(SpatialAssets.catalog.first(where:{$0.id==id})?.title ?? id): toque no piso ou numa mesa. Tamanho inicial: até 30 cm."
+        if SpatialRig.identifiers.contains(id) { status="\(SpatialAssets.catalog.first(where:{$0.id==id})?.title ?? id): toque em uma área livre do piso. Animação e controles disponíveis após selecionar." }
+        else { status=SpatialDemo(rawValue:id).map { "\($0.title): toque em uma área livre do piso." } ?? "\(SpatialAssets.catalog.first(where:{$0.id==id})?.title ?? id): toque no piso ou numa mesa. Tamanho inicial: até 30 cm." }
     }
     private func content() throws -> SCNNode {
         guard let selectedModel else { return try SpatialAssets.composition(theme) }
         if let demo=SpatialDemo(rawValue:selectedModel) { return try demo.make() }
         let holder=SCNNode();holder.name="catalogObject"
-        let model=try SpatialAssets.load(selectedModel);model.scale=SCNVector3(0.30,0.30,0.30);holder.addChildNode(model)
+        let model=try SpatialAssets.load(selectedModel)
+        if !SpatialRig.identifiers.contains(selectedModel) { model.scale=SCNVector3(0.30,0.30,0.30) }
+        holder.addChildNode(model)
         return holder
     }
     private func radius(_ id:UUID)->Float { radii[id] ?? 0.48 }
+    private func footprint(_ model: String?) -> Float {
+        if model == "animated_robot" { return 0.42 }
+        if model == "animated_fox" { return 0.32 }
+        return model.flatMap { SpatialDemo(rawValue:$0)?.radius } ?? (model == nil || model?.hasPrefix("theme:") == true ? 0.48 : 0.24)
+    }
     private func triangles(_ node:SCNNode)->Int {
         (node.geometry?.elements.reduce(0,{$0+$1.primitiveCount}) ?? 0)+node.childNodes.reduce(0,{$0+triangles($1)})
     }
@@ -443,15 +550,15 @@ enum SpatialTheme: String, CaseIterable {
         }
         guard placing else { status="Toque em Adicionar para colocar outro conjunto."; return }
         guard objects.count<6 else { status="Limite de seis conjuntos para manter o desempenho."; return }
-        let footprint=selectedModel.flatMap { SpatialDemo(rawValue:$0)?.radius } ?? (selectedModel == nil ? 0.48 : 0.24)
-        guard let placement=placement(point,radius:footprint,ignoring:nil) else { return }
+        let placementRadius=footprint(selectedModel)
+        guard let placement=placement(point,radius:placementRadius,ignoring:nil) else { return }
         do {
             let content=try content(), root=SCNNode()
             guard triangles(content)+objects.values.reduce(0,{ $0+triangles($1) })<=350000 else { status="Remova um objeto antes de adicionar outro modelo detalhado.";return }
             let id=UUID(),anchor=ARAnchor(name:"JarvisObject:"+id.uuidString,transform:placement.0)
             root.simdTransform=anchor.transform;root.addChildNode(content);root.isHidden = !visibility
             view.scene.rootNode.addChildNode(root);view.session.add(anchor:anchor)
-            objects[id]=root;anchors[id]=anchor;supports[id]=placement.1;radii[id]=footprint
+            objects[id]=root;anchors[id]=anchor;supports[id]=placement.1;radii[id]=placementRadius
             supportProofs[id]=SpatialSupportProof(confirmed:true)
             remember(id,model:selectedModel ?? "theme:"+theme.rawValue)
             selected=id;objectCount=objects.count;hasSelection=true;placing=false;markSelection()
@@ -584,7 +691,11 @@ enum SpatialTheme: String, CaseIterable {
     func interact() {
         guard visibility, let id=selected,let root=objects[id] else { return }
         UIImpactFeedbackGenerator(style:.medium).impactOccurred()
-        if let car=root.childNode(withName:"movingCar",recursively:true) {
+        if let (_,model)=SpatialRig.character(in:root) {
+            stopMoving()
+            let clip=model == "animated_robot" ? "Wave" : "Survey"
+            if SpatialRig.play(root,clip:clip) { status=model == "animated_robot" ? "Robô acenando. Use os controles de animação." : "Raposa observando o ambiente." }
+        } else if let car=root.childNode(withName:"movingCar",recursively:true) {
             if car.action(forKey:"drive") != nil { car.removeAction(forKey:"drive");car.position=SCNVector3(0,0.005,0);status="Carro parado." }
             else { car.runAction(.repeatForever(.sequence([.moveBy(x:0,y:0,z:0.12,duration:1.2),.moveBy(x:0,y:0,z:-0.12,duration:1.2)])),forKey:"drive");status="Carro em movimento dentro da base." }
         } else if let glow=root.childNode(withName:"roomLight",recursively:true) {
@@ -623,6 +734,7 @@ enum SpatialTheme: String, CaseIterable {
     }
     func removeSelected() {
         guard let id=selected else { return }
+        motions.removeValue(forKey:id)
         if playingID==id { player?.stop();playingID=nil }
         objects.removeValue(forKey:id)?.removeFromParentNode();supports.removeValue(forKey:id);radii.removeValue(forKey:id)
         records.removeValue(forKey:id);revision+=1
@@ -632,7 +744,7 @@ enum SpatialTheme: String, CaseIterable {
     }
     func update(_ anchor: ARAnchor) {
         if let plane=anchor as? ARPlaneAnchor { planes[plane.identifier]=plane }
-        if let id=anchors.first(where:{$0.value.identifier==anchor.identifier})?.key,id != handDragging,let root=objects[id] {
+        if let id=anchors.first(where:{$0.value.identifier==anchor.identifier})?.key,id != handDragging,motions[id] == nil,let root=objects[id] {
             let scale=root.simdScale;root.simdTransform=anchor.transform;root.simdScale=scale;anchors[id]=anchor
         }
         guard let name=anchor.name,name.hasPrefix("JarvisObject:"),let id=UUID(uuidString:String(name.dropFirst("JarvisObject:".count))),
@@ -641,9 +753,9 @@ enum SpatialTheme: String, CaseIterable {
             let node:SCNNode
             if record.model.hasPrefix("theme:"),let value=SpatialTheme(rawValue:String(record.model.dropFirst(6))) { node=try SpatialAssets.composition(value) }
             else if let demo=SpatialDemo(rawValue:record.model) { node=try demo.make() }
-            else { let holder=SCNNode();let mesh=try SpatialAssets.load(record.model);mesh.simdScale=SIMD3(repeating:0.3);holder.addChildNode(mesh);node=holder }
+            else { let holder=SCNNode();let mesh=try SpatialAssets.load(record.model);if !SpatialRig.identifiers.contains(record.model) { mesh.simdScale=SIMD3(repeating:0.3) };holder.addChildNode(mesh);node=holder }
             let root=SCNNode();root.addChildNode(node);root.simdTransform=anchor.transform;root.simdScale=SIMD3(repeating:record.scale);root.isHidden=true
-            objects[id]=root;anchors[id]=anchor;radii[id]=SpatialDemo(rawValue:record.model)?.radius ?? (record.model.hasPrefix("theme:") ? 0.48 : 0.24)
+            objects[id]=root;anchors[id]=anchor;radii[id]=footprint(record.model)
             view.scene.rootNode.addChildNode(root);restored.removeValue(forKey:id);objectCount=objects.count
             if restored.isEmpty { persistenceStatus="Âncoras recuperadas. Aguardando rastreamento estável para exibir." }
         } catch { persistenceStatus="Modelo salvo indisponível: \(record.model). Dados preservados." }
@@ -653,6 +765,7 @@ enum SpatialTheme: String, CaseIterable {
         let allowed=value && !recovering
         guard allowed != visibility else { return }
         if !allowed { if let id=handDragging { reanchor(id);handDragging=nil };handGesture.reset();palmScale=SpatialPalmScale() }
+        if !allowed { stopMoving() }
         visibility=allowed
         for (id,node) in objects { node.isHidden = !allowed || supportProofs[id]?.confirmed != true }
         if !allowed { player?.pause() }
@@ -664,6 +777,7 @@ enum SpatialTheme: String, CaseIterable {
         objects.values.forEach { $0.isPaused=paused }
     }
     func stop() {
+        stopMoving();onImpact=nil;onAttackRequest=nil
         supportProofs.removeAll()
         player?.stop();player=nil
         objects.values.forEach { $0.removeFromParentNode() };objects.removeAll();anchors.removeAll();planes.removeAll();radii.removeAll();SpatialAssets.clear()
@@ -698,10 +812,28 @@ struct SpatialControls: View {
             }
             Text(world.status).font(.caption).fixedSize(horizontal:false,vertical:true)
             HStack {
+                Button("Robô animado") { world.setModel("animated_robot") }
+                Button("Raposa animada") { world.setModel("animated_fox") }
+            }.font(.caption).buttonStyle(.bordered)
+            HStack {
                 Button("Adicionar",systemImage:"plus") { world.addAnother() }.disabled(world.objectCount>=6)
                 Button("Interagir",systemImage:"hand.tap") { world.interact() }.disabled(!world.hasSelection)
                 Button("Remover",systemImage:"trash") { world.removeSelected() }.disabled(!world.hasSelection)
             }.buttonStyle(.bordered).controlSize(.small)
+            if world.characterSelected {
+                ScrollView(.horizontal,showsIndicators:false) { HStack {
+                    if world.selectedCharacterID == "animated_robot" {
+                        Button("Acenar") { world.animate("Wave") }
+                        Button("Dançar") { world.animate("Dance") }
+                        Button("Impacto na parede") { world.onAttackRequest?() }
+                    } else {
+                        Button("Observar") { world.animate("Survey") }
+                        Button("Correr") { world.walk(running:true) }
+                    }
+                    Button("Andar") { world.walk() }
+                    Button("Parar") { world.stopMoving() }
+                }}.font(.caption).buttonStyle(.bordered)
+            }
             HStack {
                 Button("Quarto") { world.chooseRoom("Quarto") }
                 Button("Sala") { world.chooseRoom("Sala") }

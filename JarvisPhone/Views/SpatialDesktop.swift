@@ -26,6 +26,7 @@ struct SpatialDesktopRecord: Codable {
     private var loop: Task<Void,Never>?
     private var gesture=SpatialGesture()
     private var palmScale=SpatialPalmScale()
+    private var palmCalibration=SpatialPalmCalibration()
     private var dragging=false
     var isDragging: Bool { dragging }
     private var offset=SIMD3<Float>.zero
@@ -82,6 +83,20 @@ struct SpatialDesktopRecord: Codable {
     func snapshot() -> SpatialDesktopRecord? {
         guard visible,!dragging,let anchor,let root else { return nil }
         return SpatialDesktopRecord(anchor:anchor.identifier,scale:root.simdScale.x)
+    }
+    func contains(_ point: CGPoint) -> Bool { visible && tracking && local(point) != nil }
+    var isFramed: Bool {
+        guard visible,let root,let screen else { return false };return SpatialPanelGeometry.framed(root,in:view,size:CGSize(width:0.64,height:screen.height))
+    }
+    func recenter() {
+        guard visible,tracking,!dragging,let root,let frame=view.session.currentFrame else { return }
+        let orientation=view.window?.windowScene?.interfaceOrientation ?? .portrait
+        let viewMatrix=frame.camera.viewMatrix(for:orientation),camera=simd_inverse(viewMatrix)
+        guard let pose=SpatialPanelGeometry.upright(camera:camera,distance:0.65) else { return }
+        let scale=SpatialPanelGeometry.fittedScale(transform:pose,view:viewMatrix,projection:frame.camera.projectionMatrix(for:orientation,viewportSize:view.bounds.size,zNear:0.01,zFar:20),viewport:view.bounds.size) ?? 0.5
+        if let anchor { view.session.remove(anchor:anchor) }
+        root.simdTransform=pose;root.simdScale=SIMD3(repeating:scale)
+        let next=ARAnchor(name:"JarvisDesktop",transform:pose);anchor=next;view.session.add(anchor:next);onChange?()
     }
 
     func update(_ anchor: ARAnchor) {
@@ -149,14 +164,15 @@ struct SpatialDesktopRecord: Codable {
 
     @discardableResult func hand(_ sample: SpatialHandSample?) -> Bool {
         guard visible,tracking,!inputBlocked,let root else { return false }
-        let target=sample.flatMap { local($0.point) }
+        let target=sample.flatMap { local($0.openPalm ? ($0.palmPoint ?? $0.point) : $0.point) }
         guard target != nil || dragging else { _=gesture.update(ratio:.nan,pointing:false,target:nil,time:ProcessInfo.processInfo.systemUptime);return false }
-        if let sample,sample.openPalm,let palm=sample.palmWorld,let frame=view.session.currentFrame {
+        if let sample,sample.openPalm,let frame=view.session.currentFrame {
             let camera=SIMD3(frame.camera.transform.columns.3.x,frame.camera.transform.columns.3.y,frame.camera.transform.columns.3.z)
-            if let factor=palmScale.update(target:"desktop",depth:Double(simd_distance(camera,palm)),time:sample.time) {
+            let depth=palmCalibration.estimate(target:"desktop",span:sample.palmSpan,measured:sample.palmWorld.map { Double(simd_distance(camera,$0)) })
+            if let factor=palmScale.update(target:"desktop",depth:depth,time:sample.time) {
                 root.simdScale=SIMD3(repeating:min(2,max(0.25,root.simdScale.x*factor)));onChange?()
             }
-        } else { palmScale=SpatialPalmScale() }
+        } else { palmScale=SpatialPalmScale();palmCalibration=SpatialPalmCalibration() }
         for event in gesture.update(ratio:sample?.ratio ?? .nan,pointing:sample?.pointing == true,target:target != nil ? "desktop" : nil,time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {
             switch event {
             case .press:
@@ -206,6 +222,7 @@ struct SpatialDesktopControls: View {
                     Spacer()
                     Button("Fechar PC") { desktop.close() }.font(.caption)
                 }
+                Text("Indicador por 2 s: clicar. Pinça: mover. Palma sobre a tela: aproxime para ampliar, afaste para reduzir. Palma fora por 1 s: reenquadrar se estiver fora da visão.").font(.caption2).foregroundStyle(.cyan)
                 HStack {
                     TextField("Texto para o PC",text:$text).textFieldStyle(.roundedBorder).focused($typing)
                     Button("Digitar") {

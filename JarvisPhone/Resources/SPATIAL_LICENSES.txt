@@ -223,3 +223,12 @@ use the Mark in any other context based on the usage here.
 
 UX3D reserves the right to remove the Mark or unilaterally
 change the terms of use.
+
+
+ANIMATED CHARACTERS
+RobotExpressive — Tomás Laulhé, modifications Don McCurdy, CC0 1.0.
+https://raw.githubusercontent.com/mrdoob/three.js/6d91309bfcf9c2779f32dd98b61fcc5415a74912/examples/models/gltf/RobotExpressive/README.md
+Fox — model PixelMannen (CC0), rigging/animation tomkranis (CC BY 4.0), glTF conversion AsoboStudio and scurest (CC BY 4.0).
+https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/e124e8d8d7330a5372bc2b4d00d39a4a9d7997ea/Models/Fox/README.md
+https://creativecommons.org/licenses/by/4.0/legalcode
+Changes: unit normalization, native geometry/rig conversion and animation sampling for SceneKit.
