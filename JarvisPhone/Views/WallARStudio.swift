@@ -85,12 +85,20 @@ enum WallMeasureMode { case none, outline, opening }
     private var performance = WallRenderMeter()
     private var lastFeedback: TimeInterval = 0
     var onFeedback: ((String) -> Void)?
+    var hands:SpatialHands!
+    @Published var handStatus="Mostre a mão à câmera traseira."
 
     override init() {
         super.init()
         view.scene = SCNScene()
         panel=SpatialPanel(view:view)
         spatial = SpatialWorld(view:view)
+        hands=SpatialHands(view:view)
+        hands.onSample = { [weak self] sample in
+            guard let self else { return }
+            if self.panel.visible { self.panel.hand(sample) } else { self.spatial.hand(sample) }
+        }
+        hands.onQuality = { [weak self] in self?.handStatus=$0 }
         spatial.attach()
         view.session.delegate = self
         view.session.delegateQueue = .main
@@ -164,6 +172,7 @@ enum WallMeasureMode { case none, outline, opening }
 
     func stop() {
         stopped = true
+        hands.reset()
         view.session.pause(); view.isPlaying = false
         view.session.delegate = nil; view.delegate = nil
         onFeedback = nil
@@ -305,6 +314,7 @@ enum WallMeasureMode { case none, outline, opening }
         painted?.isHidden = !visible
         spatial.setVisible(visible)
         panel.setTracking(visible)
+        if !visible { hands.reset() }
     }
 
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
@@ -312,6 +322,7 @@ enum WallMeasureMode { case none, outline, opening }
         let normal: Bool
         switch frame.camera.trackingState { case .normal: normal = true; default: normal = false }
         let good = gate.update(normal:normal, at:frame.timestamp)
+        hands.update(frame,view:view,enabled:good && (panel.visible || spatial.active))
         if tracking != good {
             tracking = good; setVisible(good && !comparing)
             status = good ? (selected ? "Parede fixada. Pode mudar o material por voz." : "Toque na parede ou diga “essa parede”.") : "Recuperando posição. Mova devagar e mostre detalhes do ambiente."
@@ -468,7 +479,8 @@ private struct WallCameraView: UIViewRepresentable {
                 if panelVisible {
                     VStack(alignment:.leading,spacing:6) {
                         Text(panelStatus).font(.caption).lineLimit(3)
-                        Text("Toque nos cartões · peça outro módulo por voz · ⊙ traz o painel para frente.").font(.caption2).foregroundStyle(.cyan)
+                        Text(controller.handStatus).font(.caption2).foregroundStyle(.cyan)
+                        Text("Pinça curta: clicar · segurar: arrastar · avance o indicador para clicar quando o LiDAR confirmar a mão.").font(.caption2).foregroundStyle(.secondary)
                     }.padding(12).frame(maxWidth:.infinity,alignment:.leading).background(.black.opacity(0.8),in:RoundedRectangle(cornerRadius:14))
                 } else {
                 VStack(alignment:.leading,spacing:12) {

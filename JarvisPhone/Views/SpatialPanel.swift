@@ -13,11 +13,19 @@ import SceneKit
     private var root: SCNNode?
     private var actions: [String:SpatialPanelAction]=[:]
     private var playlists: [(id:String,name:String)]=[]
+    private var tracks: [(id:String,name:String)]=[]
+    private var selectedPlaylist: (id:String,name:String)?
+    private var selectedTrack: (id:String,name:String)?
     private var offset=0
     private var hasNext=false
     private var pending: String?
     private var timeout: Task<Void,Never>?
     private var lastTap: TimeInterval=0
+    private var handGesture=SpatialGesture()
+    private weak var hovered:SCNNode?
+    private var dragOffset=SIMD3<Float>.zero
+    private var dragDepth:Float=0
+    private var dragging=false
     var onAction: ((SpatialPanelAction)->Void)?
     var onSpotify: (([String:Any])->Void)?
     init(view: ARSCNView) { self.view=view }
@@ -29,7 +37,7 @@ import SceneKit
         guard root != nil else { return }
         visible=true;root?.isHidden=false;status="\(destination.title) · escolha uma ação."
         render()
-        if destination == .spotify { request("library") }
+        if destination == .spotify { refreshPage() }
     }
     func reposition() {
         guard let frame=view.session.currentFrame else { return }
@@ -58,6 +66,7 @@ import SceneKit
     }
     func setTracking(_ good: Bool) { root?.isHidden = !good || !visible }
     func close() {
+        handGesture.reset();dragging=false;hovered=nil
         timeout?.cancel();pending=nil;visible=false
         if let anchor { view.session.remove(anchor:anchor) };anchor=nil
         root?.removeFromParentNode();root=nil;actions.removeAll()
@@ -74,22 +83,74 @@ import SceneKit
         }
         return false
     }
+    func hand(_ sample:SpatialHandSample?) {
+        guard visible,root?.isHidden==false else { handGesture.reset();return }
+        let time=sample?.time ?? ProcessInfo.processInfo.systemUptime
+        let result=sample.flatMap { view.hitTest($0.point,options:[.searchMode:SCNHitTestSearchMode.closest.rawValue]).first }
+        let node=result?.node
+        let target=node?.name.flatMap { actions[$0] == nil ? nil : $0 }
+        if hovered !== node {
+            hovered?.scale=SCNVector3(1,1,1);hovered=target == nil ? nil : node;hovered?.scale=SCNVector3(1.025,1.025,1)
+        }
+        let normal=root.map { SIMD3<Float>($0.simdWorldTransform.columns.2.x,$0.simdWorldTransform.columns.2.y,$0.simdWorldTransform.columns.2.z) }
+        let push=sample?.world.flatMap { p in normal.map { Double(-simd_dot(p,simd_normalize($0))) } }
+        for event in handGesture.update(point:sample?.point,ratio:sample?.ratio ?? 1,target:target,push:push,time:time) {
+            switch event {
+            case .press:
+                guard let root,let sample else { continue }
+                dragDepth=view.projectPoint(root.worldPosition).z
+                let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),dragDepth))
+                dragOffset=root.simdWorldPosition-SIMD3(p.x,p.y,p.z);dragging=false
+            case .drag:
+                guard let root,let sample else { continue }
+                if !dragging { if let anchor { view.session.remove(anchor:anchor) };anchor=nil;dragging=true }
+                let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),dragDepth))
+                let destination=SIMD3(p.x,p.y,p.z)+dragOffset
+                if let frame=view.session.currentFrame,let query=view.raycastQuery(from:sample.point,allowing:.existingPlaneGeometry,alignment:.any),let hit=view.session.raycast(query).first {
+                    let camera=SIMD3(frame.camera.transform.columns.3.x,frame.camera.transform.columns.3.y,frame.camera.transform.columns.3.z)
+                    let obstacle=SIMD3(hit.worldTransform.columns.3.x,hit.worldTransform.columns.3.y,hit.worldTransform.columns.3.z)
+                    if simd_distance(camera,destination)>simd_distance(camera,obstacle)-0.1 { continue }
+                }
+                root.simdWorldPosition=destination
+            case .release(let id,let click):
+                if dragging { finishDrag() } else if click,let action=actions[id] { UIImpactFeedbackGenerator(style:.light).impactOccurred();activate(action) }
+            case .poke(let id):
+                if let action=actions[id] { UIImpactFeedbackGenerator(style:.light).impactOccurred();activate(action) }
+            case .cancel: if dragging { finishDrag() }
+            }
+        }
+    }
+    private func finishDrag() {
+        guard let root else { return };dragging=false
+        var transform=root.simdWorldTransform
+        for i in 0..<3 { let c=transform[i];let v=simd_normalize(SIMD3<Float>(c.x,c.y,c.z));transform[i]=SIMD4(v.x,v.y,v.z,0) }
+        let next=ARAnchor(name:"JarvisControlPanel",transform:transform);anchor=next;view.session.add(anchor:next)
+    }
     private func activate(_ action: SpatialPanelAction) {
         switch action {
         case .module(let target): open(target,tracking:true)
         case .close: close()
         case .reposition: reposition()
-        case .page(let delta): offset=max(0,offset+delta);request("library")
-        case .refresh: request("library")
+        case .playlist(let id,let name):
+            guard pending==nil else { return };selectedPlaylist=(id,name);selectedTrack=nil;tracks=[];offset=0;hasNext=false;request("tracks",playlist:id)
+        case .track(let id,let name): selectedTrack=(id,name);status="Selecionada: \(name). Aperte Play.";render()
+        case .library: guard pending==nil else { return };selectedPlaylist=nil;selectedTrack=nil;tracks=[];offset=0;request("library")
+        case .playSelection:
+            if let selectedTrack,let selectedPlaylist { request("play_track",playlist:selectedPlaylist.id,track:selectedTrack.id) }
+            else { request("resume") }
+        case .page(let delta): guard pending==nil else { return };offset=max(0,offset+delta);refreshPage()
+        case .refresh: refreshPage()
         case .spotify(let action,let playlist): request(action,playlist:playlist)
         default: onAction?(action)
         }
     }
-    func request(_ action: String, playlist: String? = nil) {
+    private func refreshPage() { request(selectedPlaylist == nil ? "library" : "tracks",playlist:selectedPlaylist?.id) }
+    func request(_ action: String, playlist: String? = nil, track:String? = nil) {
         guard pending==nil else { status="Aguarde a confirmação do pedido anterior.";render();return }
         let id=UUID().uuidString;pending=id;status="Consultando o Spotify…";render()
         var job: [String:Any]=["requestId":id,"action":action,"offset":offset]
         if let playlist { job["playlistId"]=playlist }
+        if let track { job["trackId"]=track }
         onSpotify?(job)
         timeout?.cancel();timeout=Task { [weak self] in
             try? await Task.sleep(for:.seconds(30))
@@ -108,6 +169,14 @@ import SceneKit
             offset=result["offset"] as? Int ?? 0;hasNext=result["hasNext"] as? Bool ?? false
             if playlists.isEmpty { status="Nenhuma playlist nesta página. \(status)" }
         }
+        if let rows=result["tracks"] as? [[String:Any]],result["playlistId"] as? String == selectedPlaylist?.id {
+            tracks=rows.compactMap { row in
+                guard let id=row["id"] as? String,let name=row["name"] as? String else { return nil }
+                return (id,name+" · "+(row["artist"] as? String ?? ""))
+            }
+            offset=result["offset"] as? Int ?? 0;hasNext=result["hasNext"] as? Bool ?? false
+            if tracks.isEmpty { status="Sem faixas disponíveis nesta página. \(status)" }
+        }
         render()
     }
     func showResult(_ text: String) { guard visible else { return };status=String(text.prefix(190));render() }
@@ -125,8 +194,11 @@ import SceneKit
         case .dashboard:
             return SpatialModule.allCases.filter{$0 != .dashboard}.map { ($0.title,$0.symbol,.module($0)) }
         case .spotify:
-            var rows: [(String,String,SpatialPanelAction)]=playlists.map { ($0.name,"music.note.list",.spotify("play",$0.id)) }
-            rows += [("Pausar","pause.fill",.spotify("pause",nil)),("Próxima","forward.end.fill",.spotify("next",nil)),("Anterior","backward.end.fill",.spotify("previous",nil)),("Atualizar","arrow.clockwise",.refresh)]
+            var rows: [(String,String,SpatialPanelAction)]=selectedPlaylist == nil
+                ? playlists.map { ($0.name,"music.note.list",.playlist($0.id,$0.name)) }
+                : tracks.map { ($0.name,$0.id==selectedTrack?.id ? "checkmark.circle.fill" : "music.note",.track($0.id,$0.name)) }
+            rows += [(selectedTrack == nil ? "Play / retomar" : "Play: "+selectedTrack!.name,"play.fill",.playSelection),("Pausar","pause.fill",.spotify("pause",nil)),("Próxima","forward.end.fill",.spotify("next",nil)),("Anterior","backward.end.fill",.spotify("previous",nil))]
+            rows.append(selectedPlaylist == nil ? ("Atualizar","arrow.clockwise",.refresh) : ("Minhas playlists","chevron.left",.library))
             if offset>0 { rows.append(("Página anterior","chevron.left",.page(-6))) }
             if hasNext { rows.append(("Mais playlists","chevron.right",.page(6))) }
             return rows
@@ -135,7 +207,7 @@ import SceneKit
         case .home:
             return [("Acender luz","lightbulb",.command("ligue a luz")),("Apagar luz","lightbulb.slash",.command("apague a luz")),("Lâmpada 25%","sun.min",.command("brilho da lâmpada em 25%")),("Lâmpada 75%","sun.max",.command("brilho da lâmpada em 75%")),("Luz azul","circle.fill",.command("deixe a lâmpada azul em 50%")),("Luz quente","sun.haze",.command("deixe a lâmpada branco quente em 50%")),("Ligar cafeteira","cup.and.saucer",.command("ligue a cafeteira")),("Desligar cafeteira","power",.command("desligue a cafeteira")),("Consultar aparelhos","list.bullet",.command("liste meus dispositivos da casa"))]
         case .camera:
-            return [("O que estou vendo?","viewfinder",.command("o que estou vendo")),("Visão contínua","video",.command("ativar visão contínua")),("Traduzir câmera","character.bubble",.studio("translate"))]
+            return [("O que estou vendo?","viewfinder",.command("o que estou vendo")),("Visão contínua","video",.command("ativar visão ao vivo")),("Traduzir câmera","character.bubble",.studio("translate"))]
         case .creation:
             return [("Desenhar","pencil.tip",.studio("sketch")),("Gerar imagem por voz","photo",.command("gere uma imagem")),("Objetos e cenários","cube",.module(.scenes))]
         case .scenes:
@@ -149,6 +221,7 @@ import SceneKit
         }
     }
     private func render() {
+        hovered=nil
         guard let root else { return };root.childNodes.forEach { $0.removeFromParentNode() };actions.removeAll()
         let rows=items(), columns=2, rowCount=max(1,(rows.count+columns-1)/columns)
         let width:CGFloat=0.76, height:CGFloat=0.24+CGFloat(rowCount)*0.087
@@ -175,7 +248,7 @@ import SceneKit
         back.geometry?.firstMaterial?.diffuse.contents=UIColor(red:0.018,green:0.04,blue:0.06,alpha:1);back.geometry?.firstMaterial?.lightingModel = .constant
         root.addChildNode(back)
         let top=Float(height/2)
-        plate(module.title,module.symbol,width:width-0.17,height:0.065,x:-0.08,y:top-0.04,color:.clear,action:.module(.dashboard))
+        plate(selectedPlaylist != nil && module == .spotify ? selectedPlaylist!.name : module.title,module.symbol,width:width-0.17,height:0.065,x:-0.08,y:top-0.04,color:.clear,action:.module(.dashboard))
         plate("","xmark",width:0.07,height:0.065,x:0.33,y:top-0.04,color:.clear,action:.close)
         for (i,row) in rows.enumerated() {
             plate(row.0,row.1,width:0.36,height:0.075,x:i%2==0 ? -0.19 : 0.19,y:top-0.13-Float(i/2)*0.087,

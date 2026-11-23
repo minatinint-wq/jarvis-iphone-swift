@@ -7,6 +7,29 @@ import ARKit
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    func testSpatialGestureRequiresDeliberatePressAndReleaseAndCancelsOcclusion() {
+        var gate=SpatialGesture();let p=CGPoint(x:100,y:100)
+        func input(_ ratio:Double,_ time:Double,_ point:CGPoint?=CGPoint(x:100,y:100))->[SpatialGesture.Event] { gate.update(point:point,ratio:ratio,target:"play",push:nil,time:time) }
+        XCTAssertTrue(input(0.1,1).isEmpty) // appearing already pinched cannot click
+        _=input(1,1.1);_=input(1,1.2);_=input(0.1,1.3)
+        XCTAssertEqual(input(0.1,1.4),[.press("play")])
+        _=input(1,1.5);XCTAssertEqual(input(1,1.6),[.release("play",true)])
+        for i in 0..<10 { XCTAssertTrue(input(1,1.7+Double(i)*0.07).isEmpty) }
+        _=input(0.1,2.4);_=input(0.1,2.5)
+        XCTAssertEqual(input(0.1,2.6,nil),[.cancel])
+        XCTAssertTrue(input(1,2.7,p).isEmpty)
+    }
+    func testSpatialGestureHoldDragsWithoutClickAndPokeNeedsRetraction() {
+        var gate=SpatialGesture();let p=CGPoint(x:100,y:100)
+        func input(_ r:Double,_ t:Double,_ push:Double?=nil)->[SpatialGesture.Event] { gate.update(point:p,ratio:r,target:"card",push:push,time:t) }
+        _=input(1,1);_=input(1,1.1);_=input(0.1,1.2);_=input(0.1,1.3)
+        _=input(0.1,1.4);_=input(0.1,1.5);_=input(0.1,1.6)
+        XCTAssertEqual(input(0.1,1.75),[.drag("card")])
+        _=input(1,1.8);XCTAssertEqual(input(1,1.9),[.release("card",false)])
+        gate.reset();_=input(1,3,0);_=input(1,3.1,0);_=input(1,3.2,0)
+        XCTAssertEqual(input(1,3.3,0.04),[.poke("card")])
+        for i in 1...30 { XCTAssertTrue(input(1,3.3+Double(i)*0.1,0.05).isEmpty) }
+    }
     @MainActor func testSpatialDashboardRendersRealModuleCards() throws {
         guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
         let view=ARSCNView(frame:.zero);view.scene=SCNScene();view.scene.background.contents=UIColor(white:0.07,alpha:1)

@@ -697,7 +697,7 @@ import ActivityKit
     func runSpatialCommand(_ text: String) async {
         quietUntilCalled=false
         let value=PhoneIntentPhrases.normalized(text)
-        if value.contains("vendo") || value.contains("visao continua") || value.contains("gere uma imagem") { studioMode=nil }
+        if value.contains("vendo") || value.contains("visao continua") || value.contains("visao ao vivo") || value.contains("gere uma imagem") { studioMode=nil;await Task.yield() }
         await say(text,fromSpatialPanel:true)
     }
     func say(_ text:String, fromSpatialPanel: Bool = false) async {

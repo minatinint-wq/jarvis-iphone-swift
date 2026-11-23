@@ -106,6 +106,8 @@ enum SpatialTheme: String, CaseIterable {
     private var initialScale: Float=1
     private var initialAngle: Float=0
     private var thermalPaused=false
+    private var handGesture=SpatialGesture()
+    private var handDragging:UUID?
     init(view: ARSCNView) { self.view=view; super.init() }
     func attach() {
         view.addGestureRecognizer(UIPanGestureRecognizer(target:self,action:#selector(pan(_:))))
@@ -145,13 +147,30 @@ enum SpatialTheme: String, CaseIterable {
         } catch { status="Falha ao abrir o modelo local: \(error.localizedDescription)" }
     }
     private func hit(_ point: CGPoint) -> UUID? {
-        for result in view.hitTest(point,options:[.searchMode:SCNHitTestSearchMode.all.rawValue]) {
+        for result in view.hitTest(point,options:[.searchMode:SCNHitTestSearchMode.closest.rawValue]) {
             var node: SCNNode?=result.node
             while let current=node {
                 if let id=objects.first(where:{$0.value===current})?.key { return id };node=current.parent
             }
         }
         return nil
+    }
+    func hand(_ sample:SpatialHandSample?) {
+        guard active,visibility,!placing else { handGesture.reset();return }
+        let id=sample.flatMap { hit($0.point) }
+        for event in handGesture.update(point:sample?.point,ratio:sample?.ratio ?? 1,target:id?.uuidString,push:nil,time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {
+            switch event {
+            case .press(let key):selected=UUID(uuidString:key);hasSelection=selected != nil;markSelection()
+            case .drag(let key):
+                guard let id=UUID(uuidString:key),let node=objects[id],let sample,
+                      let location=placement(sample.point,radius:0.48*node.simdScale.x,ignoring:id) else { continue }
+                handDragging=id;node.simdPosition=SIMD3(location.0.columns.3.x,location.0.columns.3.y,location.0.columns.3.z);supports[id]=location.1
+            case .release(_,let click):
+                if let id=handDragging { reanchor(id);handDragging=nil } else if click { interact() }
+            case .cancel:if let id=handDragging { reanchor(id);handDragging=nil }
+            case .poke:break
+            }
+        }
     }
     /// Whole footprint must fit measured support. No placement on an estimated
     /// infinite plane, through walls, in doorways, or on an unmapped passage.

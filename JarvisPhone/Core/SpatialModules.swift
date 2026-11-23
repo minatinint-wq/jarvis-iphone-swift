@@ -52,5 +52,5 @@ enum SpatialModule: String, CaseIterable {
 }
 
 enum SpatialPanelAction {
-    case module(SpatialModule), command(String), studio(String), scene(SpatialTheme), spotify(String,String?), page(Int), refresh, reposition, close
+    case module(SpatialModule), command(String), studio(String), scene(SpatialTheme), spotify(String,String?), playlist(String,String), track(String,String), library, playSelection, page(Int), refresh, reposition, close
 }
