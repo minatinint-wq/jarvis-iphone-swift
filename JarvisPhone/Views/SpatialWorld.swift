@@ -12,7 +12,7 @@ enum SpatialDemo: String, CaseIterable {
     var radius: Float {
         switch self { case .human:return 0.36;case .box:return 0.22;case .chair:return 0.33;case .table:return 0.66;case .panel:return 0.31 }
     }
-    func make() throws -> SCNNode {
+    @MainActor func make() throws -> SCNNode {
         let node = try SpatialAssets.load(rawValue);node.name="catalogObject";return node
     }
 }
