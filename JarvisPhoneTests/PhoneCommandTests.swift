@@ -3,9 +3,25 @@ import SwiftUI
 import AVFoundation
 import SceneKit
 import Metal
+import ARKit
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    @MainActor func testSpatialDashboardRendersRealModuleCards() throws {
+        guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
+        let view=ARSCNView(frame:.zero);view.scene=SCNScene();view.scene.background.contents=UIColor(white:0.07,alpha:1)
+        let panel=SpatialPanel(view:view)
+        let camera=SCNNode();camera.camera=SCNCamera();camera.camera?.usesOrthographicProjection=true;camera.camera?.orthographicScale=0.48
+        camera.position=SCNVector3(0,0,1);view.scene.rootNode.addChildNode(camera)
+        let renderer=SCNRenderer(device:device,options:nil);renderer.scene=view.scene;renderer.pointOfView=camera
+        for module in [SpatialModule.dashboard,.home,.phone] {
+            panel.preview(module)
+            let screenshot=renderer.snapshot(atTime:0,with:CGSize(width:1000,height:900),antialiasingMode:.multisampling4X)
+            let attachment=XCTAttachment(image:screenshot);attachment.name="Spatial-panel-\(module.rawValue)";attachment.lifetime = .keepAlways;add(attachment)
+            XCTAssertNotNil(screenshot.cgImage)
+        }
+        panel.close()
+    }
     func testGeneralSpatialModulesAndOrdinaryCommandsRemainSeparate() {
         for (phrase,target) in [("Jarvis, abrir painel",SpatialModule.dashboard),("abrir módulo Spotify",.spotify),("abrir controles",.phone),("mostrar painel da casa",.home),("abrir módulo câmera",.camera),("abrir módulo criação",.creation),("abrir módulo cenários",.scenes),("abrir módulo instrumentos",.instruments),("abrir módulo libras",.libras),("abrir módulo tradução",.translation),("abrir painel meu dia",.personal)] {
             XCTAssertEqual(WallARCommand.parse(phrase,inStudio:false),.panel(target),phrase)

@@ -112,6 +112,14 @@ import SceneKit
     }
     func showResult(_ text: String) { guard visible else { return };status=String(text.prefix(190));render() }
 
+    #if DEBUG
+    /// Render the actual cards in tests without pretending the simulator has LiDAR.
+    func preview(_ destination: SpatialModule) {
+        close();module=destination;visible=true
+        let node=SCNNode();root=node;view.scene.rootNode.addChildNode(node);render()
+    }
+    #endif
+
     private func items() -> [(String,String,SpatialPanelAction)] {
         switch module {
         case .dashboard:

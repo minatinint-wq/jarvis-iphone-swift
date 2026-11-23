@@ -174,7 +174,7 @@ enum WallMeasureMode { case none, outline, opening }
 
     @objc private func tapped(_ gesture: UITapGestureRecognizer) {
         let point=gesture.location(in:view)
-        if panel.hit(point) { return }
+        if panel.visible { _=panel.hit(point);return }
         if measureMode != .none { addPoint(at:point) }
         else if spatial.active { spatial.tap(point,tracking:tracking) }
         else { select(at:point) }
@@ -447,6 +447,8 @@ private struct WallCameraView: UIViewRepresentable {
     @Environment(\.scenePhase) private var scenePhase
     @State private var help = false
     @State private var objectsTab = false
+    @State private var panelVisible = false
+    @State private var panelStatus = ""
     var body: some View {
         ZStack {
             WallCameraView(controller:controller).ignoresSafeArea(edges:.bottom)
@@ -463,6 +465,12 @@ private struct WallCameraView: UIViewRepresentable {
                     Text(controller.metrics)
                 }.font(.caption.monospaced()).padding(12).background(.black.opacity(0.72),in:RoundedRectangle(cornerRadius:14))
                 Spacer()
+                if panelVisible {
+                    VStack(alignment:.leading,spacing:6) {
+                        Text(panelStatus).font(.caption).lineLimit(3)
+                        Text("Toque nos cartões · peça outro módulo por voz · ⊙ traz o painel para frente.").font(.caption2).foregroundStyle(.cyan)
+                    }.padding(12).frame(maxWidth:.infinity,alignment:.leading).background(.black.opacity(0.8),in:RoundedRectangle(cornerRadius:14))
+                } else {
                 VStack(alignment:.leading,spacing:12) {
                     Picker("Ferramenta",selection:$objectsTab) {
                         Text("Medir e pintar").tag(false)
@@ -509,6 +517,7 @@ private struct WallCameraView: UIViewRepresentable {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }.padding(14).background(.ultraThinMaterial,in:RoundedRectangle(cornerRadius:20))
+                }
             }.padding(12)
         }.background(.black).foregroundStyle(.white)
             .task {
@@ -530,6 +539,8 @@ private struct WallCameraView: UIViewRepresentable {
                 if active { controller.measureMode = .none }
             }
             .onChange(of:model.wallARRequest) { _,_ in consume() }
+            .onReceive(controller.panel.$visible) { panelVisible=$0 }
+            .onReceive(controller.panel.$status) { panelStatus=$0 }
             .onChange(of:model.spatialPanelResponse) { _,data in if let data { controller.panel.receive(data) } }
             .onChange(of:model.message) { _,text in controller.panel.showResult(text) }
             .onChange(of:scenePhase) { _,phase in controller.setForeground(phase == .active) }
