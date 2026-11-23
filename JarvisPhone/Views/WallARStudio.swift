@@ -465,6 +465,9 @@ private struct WallCameraView: UIViewRepresentable {
     @State private var panelVisible = false
     @State private var webModule: SpatialModule?
     @State private var panelStatus = ""
+    @State private var menuSheet: SpatialSheet?
+    @State private var search = ""
+    @State private var confirmAction: PhoneAction?
     var body: some View {
         ZStack {
             WallCameraView(controller:controller).ignoresSafeArea(edges:.bottom).allowsHitTesting(webModule == nil)
@@ -490,6 +493,7 @@ private struct WallCameraView: UIViewRepresentable {
                         Text(controller.handStatus).font(.caption2).foregroundStyle(.cyan)
                         Text("Aponte por 2 segundos para clicar. Pinça move o painel. Com dois dedos em V, deslize para os lados para virar a página. Mão aberta fica livre.").font(.caption2).foregroundStyle(.secondary)
                         HStack {
+                            Button("Todos os módulos",systemImage:"list.bullet") { search="";menuSheet = .directory }
                             Button("Menor",systemImage:"minus.magnifyingglass") { controller.panel.resize(0.82) }
                             Button("Centralizar",systemImage:"scope") { controller.panel.reposition() }
                         }.buttonStyle(.bordered).controlSize(.small)
@@ -556,6 +560,14 @@ private struct WallCameraView: UIViewRepresentable {
                 controller.panel.onSpotify = { job in model.requestSpatialSpotify(job) }
                 controller.panel.onAction = { action in
                     switch action {
+                    case .editor(let sheet): menuSheet=sheet
+                    case .instrument(let instrument):
+                        if model.openStudio("music",instrument:instrument) { controller.panel.close() }
+                    case .wall(let command):
+                        objectsTab=false;controller.panel.close();controller.apply(command)
+                    case .systemAction(let action):
+                        if [.wifiOff,.bluetoothOff,.cellularOff,.lock].contains(action) { confirmAction=action }
+                        else { runPhoneAction(action) }
                     case .activateSpotify: model.showSpotify()
                     case .model(let id): objectsTab=true;controller.spatial.setModel(id);controller.panel.close()
                     case .scene(let theme): objectsTab=true;controller.spatial.setTheme(theme);controller.panel.close()
@@ -567,21 +579,66 @@ private struct WallCameraView: UIViewRepresentable {
                 await controller.start()
                 consume()
             }
+            .sheet(item:$menuSheet) { sheet in
+                switch sheet {
+                case .note: NoteEditor(controller:.shared)
+                case .notes: NotesView(controller:.shared)
+                case .reminder: ReminderEditor(controller:.shared)
+                case .directory:
+                    NavigationStack {
+                        let results=controller.panel.directory(search)
+                        List {
+                            ForEach(results) { result in
+                                Button {
+                                    menuSheet=nil
+                                    controller.panel.open(result.module,tracking:controller.tracking,page:result.page)
+                                } label: {
+                                    VStack(alignment:.leading) {
+                                        Label(result.module.title,systemImage:result.module.symbol)
+                                        if result.title != result.module.title { Text(result.title).font(.caption).foregroundStyle(.secondary) }
+                                    }
+                                }
+                            }
+                            if results.isEmpty { Text("Nenhum módulo ou ação com esse nome.") }
+                        }.navigationTitle("Todos os módulos")
+                        .searchable(text:$search,prompt:"Buscar módulo ou ação")
+                        .toolbar { Button("Fechar") { menuSheet=nil } }
+                    }
+                }
+            }
+            .confirmationDialog("Confirmar no iPhone?",isPresented:Binding(get:{ confirmAction != nil },set:{ if !$0 { confirmAction=nil } }),presenting:confirmAction) { action in
+                Button(action.title) { runPhoneAction(action) }
+                Button("Cancelar",role:.cancel) {}
+            }
+            .onChange(of:menuSheet) { _,_ in syncOverlay() }
+            .onChange(of:confirmAction) { _,_ in syncOverlay() }
             .onChange(of:objectsTab) { _,active in
                 controller.spatial.active=active
                 if active { controller.measureMode = .none }
             }
             .onChange(of:model.wallARRequest) { _,_ in consume() }
             .onChange(of:webModule) { _,target in
-                controller.webWindowVisible=target != nil
-                controller.spatial.panelBlocking=target != nil || panelVisible
+                syncOverlay()
             }
-            .onReceive(controller.panel.$visible) { panelVisible=$0;controller.spatial.panelBlocking=$0 || webModule != nil }
+            .onReceive(controller.panel.$visible) { panelVisible=$0;controller.spatial.panelBlocking=$0 || overlayVisible }
             .onReceive(controller.panel.$status) { panelStatus=$0 }
             .onChange(of:model.spatialPanelResponse) { _,data in if let data { controller.panel.receive(data) } }
             .onChange(of:model.message) { _,text in controller.panel.showResult(text) }
             .onChange(of:scenePhase) { _,phase in controller.setForeground(phase == .active) }
             .onDisappear { controller.stop() }
+    }
+    private var overlayVisible: Bool { webModule != nil || menuSheet != nil || confirmAction != nil }
+    private func syncOverlay() {
+        controller.webWindowVisible=overlayVisible
+        controller.spatial.panelBlocking=overlayVisible || panelVisible
+        if overlayVisible { controller.hands.reset() }
+    }
+    private func runPhoneAction(_ action:PhoneAction) {
+        Task {
+            let phone=PhoneController.shared
+            await phone.run(action)
+            controller.panel.showResult(phone.message)
+        }
     }
     private func consume() {
         guard let request = model.wallARRequest else { return }

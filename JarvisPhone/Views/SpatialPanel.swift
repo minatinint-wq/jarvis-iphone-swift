@@ -86,13 +86,13 @@ enum SpatialPanelGeometry {
     var onSpotify: (([String:Any])->Void)?
     init(view: ARSCNView) { self.view=view }
 
-    func open(_ destination: SpatialModule, tracking: Bool) {
+    func open(_ destination: SpatialModule, tracking: Bool, page: Int = 0) {
         if destination == .youtube || destination == .browser { close(); onWeb?(destination); return }
         contextRevision += 1
         trackingGood=tracking
         guard tracking else { status="Aguarde o mapeamento estabilizar e abra o painel novamente.";return }
         module=destination
-        cardPage=0
+        cardPage=max(0,page)
         if root == nil { reposition() }
         guard root != nil else { return }
         visible=true;root?.isHidden=false;status="\(destination.title) · escolha uma ação."
@@ -276,7 +276,7 @@ enum SpatialPanelGeometry {
         let cards:[[String:String]]=rows.map { row in
             let kind:String
             switch row.2 {
-            case .model,.scene,.module,.playlist,.track,.library,.page,.cardsPage,.dragHandle,.refresh,.reposition,.close:kind="navigation"
+            case .editor,.instrument,.model,.scene,.module,.playlist,.track,.library,.page,.cardsPage,.dragHandle,.refresh,.reposition,.close:kind="navigation"
             default:kind="action"
             }
             return ["title":row.0,"kind":kind]
@@ -349,11 +349,39 @@ enum SpatialPanelGeometry {
     }
     #endif
 
-    private func items() -> [(String,String,SpatialPanelAction)] {
-        switch module {
+    func directory(_ query:String) -> [SpatialDirectoryEntry] {
+        let text=PhoneIntentPhrases.normalized(query)
+        var results:[SpatialDirectoryEntry]=[]
+        for destination in SpatialModule.allCases where destination != .dashboard {
+            if text.isEmpty || PhoneIntentPhrases.normalized(destination.title).contains(text) {
+                results.append(.init(module:destination,title:destination.title,index:nil))
+            }
+            if text.isEmpty { continue }
+            for (index,card) in items(for:destination).enumerated() where PhoneIntentPhrases.normalized(card.0).contains(text) {
+                results.append(.init(module:destination,title:card.0,index:index))
+            }
+        }
+        return results
+    }
+    private func items() -> [(String,String,SpatialPanelAction)] { items(for:module) }
+    private func items(for destination: SpatialModule) -> [(String,String,SpatialPanelAction)] {
+        switch destination {
         case .dashboard:
             return SpatialModule.allCases.filter{$0 != .dashboard}.map { ($0.title,$0.symbol,.module($0)) }
         case .browser,.youtube:return []
+        case .network, .system, .apps:
+            let controls:[PhoneAction]
+            switch destination {
+            case .network: controls=[.wifiOn,.wifiOff,.bluetoothOn,.bluetoothOff,.cellularOn,.cellularOff]
+            case .system: controls=[.lowPower,.lowPowerOff,.rotationLock,.rotationUnlock,.meeting,.endMeeting,.lock,.shortcutCheck]
+            default: controls=[.wallet,.location,.whatsapp,.instagram]
+            }
+            return controls.map { ($0.title,$0.symbol,.systemAction($0)) }
+        case .notebook:
+            return [("Nova nota","square.and.pencil",.editor(.note)),("Minhas notas","note.text",.editor(.notes)),("Criar lembrete","checklist",.editor(.reminder))]
+        case .walls:
+            return [("Marcar parede","ruler",.wall(.measure)),("Adicionar ponto","plus.circle",.wall(.point)),("Excluir porta ou móvel","rectangle.dashed",.wall(.opening)),("Aplicar recorte","checkmark",.wall(.approve)),("Comparar pintura","eye",.wall(.compare))]
+                + WallFinish.allCases.map { ($0.title,"paintbrush",.wall(.finish($0))) }
         case .commands:
             return [("Hora","clock",.command("que horas são")),("Passos hoje","figure.walk",.command("quantos passos hoje")),("Ligar lanterna","flashlight.on.fill",.command("ligue a lanterna do iPhone")),("Desligar lanterna","flashlight.off.fill",.command("desligue a lanterna do iPhone"))]
         case .spotify:
@@ -376,11 +404,11 @@ enum SpatialPanelGeometry {
         case .scenes:
             return SpatialTheme.allCases.map { ($0.title,$0.symbol,.scene($0)) } + SpatialAssets.catalog.map { ($0.title,"cube",.model($0.id)) }
         case .instruments:
-            return [("Harpa","music.note",.command("abrir harpa")),("Violão","guitars",.command("abrir violão")),("Guitarra","guitars.fill",.command("abrir guitarra"))]
+            return StudioInstrument.allCases.map { ($0.rawValue,"music.note",.instrument($0)) }
         case .libras:return [("Abrir reconhecimento","hands.sparkles",.studio("libras"))]
         case .translation:return [("Abrir tradutor","character.bubble",.studio("translate"))]
         case .personal:
-            return [("Hora","clock",.command("que horas são")),("Passos hoje","figure.walk",.command("quantos passos hoje")),("Clima","cloud.sun",.command("como está o tempo aqui")),("Minha agenda","calendar",.command("leia minha agenda de hoje")),("Último e-mail","envelope",.command("leia meu último email"))]
+            return [("Hora","clock",.command("que horas são")),("Passos hoje","figure.walk",.command("quantos passos hoje")),("Clima","cloud.sun",.command("como está o tempo aqui")),("Minha agenda","calendar",.command("leia minha agenda de hoje")),("Último e-mail","envelope",.command("leia meu último email")),("Última prévia recebida","bell",.command("qual a última notificação")),("Previsão de amanhã","cloud.sun",.command("previsão do tempo para amanhã")),("Notas e lembretes","note.text",.module(.notebook))]
         }
     }
     private func transportItems()->[(String,String,SpatialPanelAction)] {

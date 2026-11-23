@@ -1,9 +1,14 @@
 import Foundation
 
 enum SpatialModule: String, CaseIterable {
-    case dashboard, spotify, youtube, browser, commands, phone, home, camera, creation, scenes, instruments, libras, translation, personal
+    case dashboard, spotify, youtube, browser, commands, phone, home, camera, creation, scenes, instruments, libras, translation, personal, network, system, notebook, apps, walls
     var title: String {
         switch self {
+        case .network: return "Rede e conexões"
+        case .system: return "Sistema e foco"
+        case .notebook: return "Notas e lembretes"
+        case .apps: return "Carteira e apps"
+        case .walls: return "Medir e pintar"
         case .dashboard: return "Central JARVIS"
         case .youtube: return "YouTube"
         case .browser: return "Navegador"
@@ -22,6 +27,11 @@ enum SpatialModule: String, CaseIterable {
     }
     var symbol: String {
         switch self {
+        case .network: return "wifi"
+        case .system: return "switch.2"
+        case .notebook: return "note.text"
+        case .apps: return "wallet.pass"
+        case .walls: return "ruler"
         case .dashboard:return "square.grid.2x2"
         case .youtube:return "play.rectangle.fill"
         case .browser:return "globe"
@@ -46,6 +56,8 @@ enum SpatialModule: String, CaseIterable {
         subject=subject.replacingOccurrences(of:#"^(?:modulo|painel|interface|controles?)(?: de| do| da)? "#,with:"",options:.regularExpression)
         subject=subject.replacingOccurrences(of:#" (?:em ar|em realidade aumentada|em realidade virtual|do jarvis|espacial)$"#,with:"",options:.regularExpression)
         let aliases: [SpatialModule:[String]] = [
+            .network:["rede","conexoes","rede e conexoes","wi fi","wifi","bluetooth"],.system:["sistema","foco","sistema e foco"],
+            .notebook:["notas","lembretes","notas e lembretes"],.apps:["apps","aplicativos","carteira e apps"],.walls:["medidas","pintura","medir e pintar"],
             .dashboard:["painel","central","menu","interface","modulos","funcoes","painel principal"],
             .youtube:["youtube","you tube"],.browser:["navegador","internet"],.commands:["comandos","comandos de voz"],
             .spotify:["spotify","musica","musicas","playlists"],
@@ -58,6 +70,20 @@ enum SpatialModule: String, CaseIterable {
     }
 }
 
+struct SpatialDirectoryEntry: Identifiable {
+    let module: SpatialModule
+    let title: String
+    let index: Int?
+    var id: String { module.rawValue + "/" + (index.map { String($0) } ?? "") }
+    var page: Int { (index ?? 0) / 4 }
+}
+
+enum SpatialSheet: String, Identifiable {
+    case directory, note, notes, reminder
+    var id: Self { self }
+}
+
 enum SpatialPanelAction {
+    case systemAction(PhoneAction), editor(SpatialSheet), instrument(StudioInstrument), wall(WallARCommand)
     case switchOutput, activateSpotify, model(String), module(SpatialModule), command(String), studio(String), scene(SpatialTheme), spotify(String,String?), playlist(String,String), track(String,String), library, playSelection, page(Int), cardsPage(Int), dragHandle, refresh, reposition, close
 }

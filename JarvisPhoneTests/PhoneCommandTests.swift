@@ -122,6 +122,18 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertEqual(second.first?["title"],"Controles do iPhone")
         panel.close()
     }
+    @MainActor func testDirectoryFindsModulesAndActionsOnLaterPages() throws {
+        let view=ARSCNView(frame:.zero);view.scene=SCNScene()
+        let panel=SpatialPanel(view:view)
+        XCTAssertEqual(panel.directory("").count,SpatialModule.allCases.count-1)
+        XCTAssertEqual(panel.directory("desligar dados").first?.page,1)
+        XCTAssertEqual(panel.directory("flauta").first?.module,.instruments)
+        XCTAssertEqual(panel.directory("criar lembrete").first?.module,.notebook)
+        XCTAssertEqual(panel.directory("madeira").first?.module,.walls)
+        XCTAssertTrue(panel.directory("bluetooth").count>=2)
+        XCTAssertTrue(panel.directory("xyz123").isEmpty)
+        XCTAssertEqual(SpatialModule.opening("abrir sistema e foco"),.system)
+    }
     func testSpatialAINavigationKeepsOrdinaryToolsOutsideTheInterpreter() {
         for phrase in ["me leva para os controles da casa","voltar às playlists","quero ver os módulos","seleciona a segunda faixa","toca essa","fecha esse painel"] {
             XCTAssertTrue(WallARCommand.needsInterpretation(phrase),phrase)
