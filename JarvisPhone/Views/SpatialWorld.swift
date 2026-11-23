@@ -254,6 +254,28 @@ enum SpatialTheme: String, CaseIterable {
         }
         worldID=archive.world;rooms=archive.rooms;currentRoom=rooms.first?.id;roomName=rooms.first?.name ?? "Ambiente 1"
         records=Dictionary(uniqueKeysWithValues:archive.objects.map { ($0.id,$0) });restored=records
+        // Revision 24 did not store support poses. Recover them from its saved
+        // measured planes, in the original map coordinates, never from the camera.
+        let savedPlanes=map.anchors.compactMap { $0 as? ARPlaneAnchor }
+        for id in Array(records.keys) {
+            guard let record=records[id],record.supportTransform == nil,
+                  let room=rooms.first(where:{$0.id==record.room}),let origin=SpatialArchive.matrix(room.origin),
+                  let local=SpatialArchive.matrix(record.localTransform) else { continue }
+            let point=(origin*local).columns.3
+            let candidates=savedPlanes.filter { plane in
+                let p=simd_inverse(plane.transform)*point
+                guard abs(p.y)<0.10 else { return false }
+                let polygon=plane.geometry.boundaryVertices.map { SIMD2($0.x,$0.z) }
+                if polygon.count>=3 { return MeasuredWall.contains(SIMD2(p.x,p.z),polygon:polygon) }
+                return abs(p.x-plane.center.x)<=plane.extent.x/2 && abs(p.z-plane.center.z)<=plane.extent.z/2
+            }
+            guard let plane=candidates.min(by:{ abs((simd_inverse($0.transform)*point).y)<abs((simd_inverse($1.transform)*point).y) }) else { continue }
+            var pose=plane.transform
+            let p=simd_inverse(pose)*point
+            pose.columns.3=pose*SIMD4(p.x,0,p.z,1)
+            records[id]?.supportTransform=SpatialArchive.values(simd_inverse(origin)*pose)
+        }
+        restored=records
         restoredPanel=archive.panel
         restoredDesktop=archive.desktop
         relocalizationBegan=ProcessInfo.processInfo.systemUptime
