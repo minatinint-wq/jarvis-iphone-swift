@@ -19,6 +19,9 @@ import SceneKit
     private var offset=0
     private var hasNext=false
     private var pending: String?
+    private var contextRevision=0
+    private var trackingGood=false
+    private var navigationContext: (revision:Int, actions:[SpatialPanelAction])?
     private var timeout: Task<Void,Never>?
     private var lastTap: TimeInterval=0
     private var handGesture=SpatialGesture()
@@ -31,6 +34,8 @@ import SceneKit
     init(view: ARSCNView) { self.view=view }
 
     func open(_ destination: SpatialModule, tracking: Bool) {
+        contextRevision += 1
+        trackingGood=tracking
         guard tracking else { status="Aguarde o mapeamento estabilizar e abra o painel novamente.";return }
         module=destination
         if root == nil { reposition() }
@@ -64,8 +69,13 @@ import SceneKit
             anchor=updated;root?.simdTransform=updated.transform;root?.simdScale=scale
         }
     }
-    func setTracking(_ good: Bool) { root?.isHidden = !good || !visible }
+    func setTracking(_ good: Bool) {
+        trackingGood=good
+        if !good { if dragging { finishDrag() };handGesture.reset() }
+        root?.isHidden = !good || !visible
+    }
     func close() {
+        contextRevision += 1;navigationContext=nil
         handGesture.reset();dragging=false;hovered=nil
         timeout?.cancel();pending=nil;visible=false
         if let anchor { view.session.remove(anchor:anchor) };anchor=nil
@@ -127,6 +137,7 @@ import SceneKit
         let next=ARAnchor(name:"JarvisControlPanel",transform:transform);anchor=next;view.session.add(anchor:next)
     }
     private func activate(_ action: SpatialPanelAction) {
+        contextRevision += 1
         switch action {
         case .module(let target): open(target,tracking:true)
         case .close: close()
@@ -145,6 +156,26 @@ import SceneKit
         }
     }
     private func refreshPage() { request(selectedPlaylist == nil ? "library" : "tracks",playlist:selectedPlaylist?.id) }
+    func interpret(_ text:String) {
+        guard pending==nil else { status="Aguarde a confirmação do pedido anterior.";render();return }
+        let rows=items(),id=UUID().uuidString
+        navigationContext=(contextRevision,rows.map{$0.2});pending=id
+        status="Interpretando seu pedido…";render()
+        let cards:[[String:String]]=rows.map { row in
+            let kind:String
+            switch row.2 {
+            case .module,.playlist,.track,.library,.page,.refresh,.reposition,.close:kind="navigation"
+            default:kind="action"
+            }
+            return ["title":row.0,"kind":kind]
+        }
+        onSpotify?(["requestId":id,"action":"navigate","utterance":text,"module":module.rawValue,"items":cards])
+        timeout?.cancel();timeout=Task { [weak self] in
+            try? await Task.sleep(for:.seconds(30))
+            guard !Task.isCancelled,let self,self.pending==id else { return }
+            self.pending=nil;self.navigationContext=nil;self.status="Não recebi a interpretação. Tente novamente.";self.render()
+        }
+    }
     func request(_ action: String, playlist: String? = nil, track:String? = nil) {
         guard pending==nil else { status="Aguarde a confirmação do pedido anterior.";render();return }
         let id=UUID().uuidString;pending=id;status="Consultando o Spotify…";render()
@@ -162,6 +193,21 @@ import SceneKit
         guard let result=(try? JSONSerialization.jsonObject(with:data)) as? [String:Any],
               let id=result["requestId"] as? String,id==pending else { return }
         pending=nil;timeout?.cancel();status=result["message"] as? String ?? "Consulta concluída."
+        if let context=navigationContext {
+            navigationContext=nil
+            guard context.revision==contextRevision else { status="O painel mudou; descartei o pedido anterior.";render();return }
+            guard let navigation=result["navigation"] as? [String:Any],let operation=navigation["operation"] as? String else { render();return }
+            switch operation {
+            case "open":
+                if let value=navigation["module"] as? String,let target=SpatialModule(rawValue:value) { open(target,tracking:trackingGood) }
+            case "activate":
+                guard trackingGood,visible,let slot=navigation["slot"] as? Int,context.actions.indices.contains(slot) else { status="Abra o painel e aguarde o rastreamento antes de selecionar.";render();return }
+                activate(context.actions[slot])
+            case "close":close()
+            default:status="Diga qual módulo ou cartão você quer abrir.";render()
+            }
+            return
+        }
         if let rows=result["playlists"] as? [[String:Any]] {
             playlists=rows.compactMap { row in
                 guard let id=row["id"] as? String,let name=row["name"] as? String else { return nil };return (id,name)

@@ -277,6 +277,7 @@ enum SpatialTheme: String, CaseIterable {
     }
     func remove(_ anchor: ARAnchor) { planes.removeValue(forKey:anchor.identifier) }
     func setVisible(_ value: Bool) {
+        if !value { if let id=handDragging { reanchor(id);handDragging=nil };handGesture.reset() }
         visibility=value;objects.values.forEach { $0.isHidden = !value }
         if !value { player?.pause() }
         else if playingID != nil { player?.play() }

@@ -36,7 +36,14 @@ enum WallFinish: String, CaseIterable, Identifiable {
 
 enum WallARCommand: Equatable {
     case open, select, finish(WallFinish), undo, clear, compare, close
-    case measure, point, opening, approve, theme(SpatialTheme), interact, removeObject, panel(SpatialModule)
+    case measure, point, opening, approve, theme(SpatialTheme), interact, removeObject, panel(SpatialModule), navigate(String)
+
+    /// Only navigation-like speech enters the spatial interpreter; ordinary tools stay available.
+    static func needsInterpretation(_ input: String) -> Bool {
+        let s=PhoneIntentPhrases.normalized(input)
+        guard s.range(of:#"\b(nao|nunca|nem|explique|se eu)\b"#,options:.regularExpression)==nil else { return false }
+        return s.range(of:#"^(?:abre|abra|abrir|mostra|mostre|mostrar|exibe|exiba|exibir|quero ver|quero abrir|me leva|me leve|volta|volte|voltar|vai para|va para|entra|entre|seleciona|selecione|selecionar|escolhe|escolha|fecha|feche|fechar|play|retoma|retome|pausa|pause|proxima faixa|faixa anterior|mais playlists|mais faixas|toca essa|toque essa|toca a selecionada|toque a selecionada)\b"#,options:.regularExpression) != nil
+    }
 
     static func parse(_ input: String, inStudio: Bool) -> Self? {
         let s = PhoneIntentPhrases.normalized(input)

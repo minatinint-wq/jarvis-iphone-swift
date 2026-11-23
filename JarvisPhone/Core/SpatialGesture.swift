@@ -42,7 +42,7 @@ struct SpatialGesture {
                push-base>0.035,push-base<0.12 {
                 lastClick=time;armed=false;opening=0;pushBase=push;pushLatched=true;return [.poke(hit)]
             }
-            if let push,let base=pushBase,push<base { pushBase=push }
+            if !pushLatched,let push,let base=pushBase,push<base { pushBase=push }
         } else if ratio<0.28 {
             closing+=1;opening=0
             if target==nil,armed,closing>=2,let hit,time-hoverSince>0.12,time-lastClick>0.6 {

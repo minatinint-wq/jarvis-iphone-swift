@@ -713,6 +713,11 @@ import ActivityKit
             }
             return
         }
+        if !fromSpatialPanel, studioMode == "wallAR", WallARCommand.needsInterpretation(value) {
+            add(true,value)
+            wallARRequest=WallARRequest(command:.navigate(value))
+            return
+        }
         if let command = Self.visionCommand(value) {
             switch command {
             case .stop: stopVision(); message = "Visão encerrada."

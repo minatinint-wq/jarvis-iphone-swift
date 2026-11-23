@@ -7,6 +7,30 @@ import ARKit
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    func testSpatialAINavigationKeepsOrdinaryToolsOutsideTheInterpreter() {
+        for phrase in ["me leva para os controles da casa","voltar às playlists","quero ver os módulos","seleciona a segunda faixa","toca essa","fecha esse painel"] {
+            XCTAssertTrue(WallARCommand.needsInterpretation(phrase),phrase)
+        }
+        for phrase in ["não abre o Spotify","se eu abrir o painel","ligue a luz","brilho do iPhone em 30%","o que estou vendo","qual a previsão do tempo"] {
+            XCTAssertFalse(WallARCommand.needsInterpretation(phrase),phrase)
+        }
+    }
+    @MainActor func testSpatialAIExecutesOnlyCurrentCardsAndRejectsStaleResults() throws {
+        let view=ARSCNView(frame:.zero);view.scene=SCNScene()
+        let panel=SpatialPanel(view:view);panel.preview(.phone);panel.setTracking(true)
+        var job:[String:Any]=[:];var commands:[String]=[]
+        panel.onSpotify={job=$0};panel.onAction={if case .command(let text)=$0 { commands.append(text) }}
+        func respond(_ slot:Int) throws {
+            panel.receive(try JSONSerialization.data(withJSONObject:["requestId":job["requestId"]!,"navigation":["operation":"activate","slot":slot]]))
+        }
+        panel.interpret("abre a lanterna");try respond(0)
+        XCTAssertEqual(commands,["ligue a lanterna do iPhone"])
+        panel.interpret("abre a lanterna");try respond(900)
+        XCTAssertEqual(commands.count,1)
+        panel.interpret("abre a lanterna");panel.open(.home,tracking:true);try respond(0)
+        XCTAssertEqual(commands.count,1)
+        panel.close()
+    }
     func testSpatialGestureRequiresDeliberatePressAndReleaseAndCancelsOcclusion() {
         var gate=SpatialGesture();let p=CGPoint(x:100,y:100)
         func input(_ ratio:Double,_ time:Double,_ point:CGPoint?=CGPoint(x:100,y:100))->[SpatialGesture.Event] { gate.update(point:point,ratio:ratio,target:"play",push:nil,time:time) }

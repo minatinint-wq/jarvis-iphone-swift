@@ -284,6 +284,7 @@ enum WallMeasureMode { case none, outline, opening }
         case .clear: clear(); feedback("Pintura removida.")
         case .compare: comparing.toggle(); setVisible(tracking && !comparing); status = comparing ? "Parede original." : "Pintura AR." 
         case .panel(let module): panel.open(module,tracking:tracking)
+        case .navigate(let text): panel.interpret(text)
         case .measure: beginOutline()
         case .point: addPoint()
         case .opening: beginOpening()
