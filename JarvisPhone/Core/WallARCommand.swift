@@ -37,7 +37,7 @@ enum WallFinish: String, CaseIterable, Identifiable {
 enum WallARCommand: Equatable {
     case open, select, finish(WallFinish), undo, clear, compare, close
     case measure, point, opening, approve, theme(SpatialTheme), interact, removeObject, panel(SpatialModule), navigate(String)
-    case model(String), resizeObject(Float), moveObject(Float,Float), saveMap, room(String)
+    case model(String), resizeObject(Float), moveObject(Float,Float), saveMap, room(String), desktop
 
     /// Only navigation-like speech enters the spatial interpreter; ordinary tools stay available.
     static func needsInterpretation(_ input: String) -> Bool {
@@ -55,6 +55,7 @@ enum WallARCommand: Equatable {
         if let scene=scenes[s] { return .theme(scene) }
         if ["abre o modo espacial","abre o modo cenarios","cenarios ar","modo espacial"].contains(s) { return .theme(.forest) }
         if inStudio {
+            if ["abrir tela do computador","abre a tela do computador","puxe a tela do computador","puxa a tela do pc","abrir desktop","abrir area de trabalho","abrir computador"].contains(s) { return .desktop }
             if ["salvar mapa","salva o mapa","salvar ambiente","salva os objetos"].contains(s) { return .saveMap }
             if ["este e o quarto","estou no quarto","ambiente quarto"].contains(s) { return .room("Quarto") }
             if ["esta e a sala","estou na sala","ambiente sala"].contains(s) { return .room("Sala") }

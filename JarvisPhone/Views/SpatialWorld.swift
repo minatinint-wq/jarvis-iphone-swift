@@ -179,21 +179,26 @@ enum SpatialTheme: String, CaseIterable {
     private var diagnostics: [[String:Any]] = []
     private var lastDiagnostic: TimeInterval = -.infinity
     var panelSnapshot: (() -> SpatialPanelRecord?)?
+    var desktopSnapshot: (() -> SpatialDesktopRecord?)?
     var restoredPanel: SpatialPanelRecord?
+    var restoredDesktop: SpatialDesktopRecord?
     private let storageQueue = DispatchQueue(label:"jarvis.spatial.persistence",qos:.utility)
-    var recovering: Bool { !restored.isEmpty || restoredPanel != nil }
+    var recovering: Bool { !restored.isEmpty || restoredPanel != nil || restoredDesktop != nil }
+    func markDirty() { revision+=1 }
 
     func loadMap() async throws -> ARWorldMap? {
         let archive = try await Task.detached(priority:.utility) { try SpatialArchive.load() }.value
         guard let archive else { return nil }
         let map = try NSKeyedUnarchiver.unarchivedObject(ofClass:ARWorldMap.self,from:archive.map)
         guard let map, archive.objects.allSatisfy({ record in map.anchors.contains { $0.identifier == record.anchor && $0.name == "JarvisObject:" + record.id.uuidString } }),
-              archive.panel.map({ panel in map.anchors.contains { $0.identifier == panel.anchor && $0.name == "JarvisControlPanel" } }) ?? true else {
+              archive.panel.map({ panel in map.anchors.contains { $0.identifier == panel.anchor && $0.name == "JarvisControlPanel" } }) ?? true,
+              archive.desktop.map({ desktop in map.anchors.contains { $0.identifier == desktop.anchor && $0.name == "JarvisDesktop" } }) ?? true else {
             throw CocoaError(.fileReadCorruptFile)
         }
         worldID=archive.world;rooms=archive.rooms;currentRoom=rooms.first?.id;roomName=rooms.first?.name ?? "Ambiente 1"
         records=Dictionary(uniqueKeysWithValues:archive.objects.map { ($0.id,$0) });restored=records
         restoredPanel=archive.panel
+        restoredDesktop=archive.desktop
         relocalizationBegan=ProcessInfo.processInfo.systemUptime
         revision=0;lastSavedRevision=0
         active = !records.isEmpty
@@ -217,18 +222,19 @@ enum SpatialTheme: String, CaseIterable {
         }
         guard force || revision != lastSavedRevision else { return }
         lastSaveAttempt=frame.timestamp;saving=true
-        let savedRevision=revision, snapshot=Array(records.values), roomSnapshot=rooms, world=worldID, panel=panelSnapshot?()
+        let savedRevision=revision, snapshot=Array(records.values), roomSnapshot=rooms, world=worldID, panel=panelSnapshot?(),desktop=desktopSnapshot?()
         view.session.getCurrentWorldMap { [self] map,error in
             Task { @MainActor in
                 guard let map,error == nil,self.revision == savedRevision,
                       snapshot.allSatisfy({ record in map.anchors.contains { $0.identifier == record.anchor } }),
-                      panel.map({ p in map.anchors.contains { $0.identifier == p.anchor } }) ?? true else {
+                      panel.map({ p in map.anchors.contains { $0.identifier == p.anchor } }) ?? true,
+                      desktop.map({ p in map.anchors.contains { $0.identifier == p.anchor } }) ?? true else {
                     self.saving=false;self.persistenceStatus="Mapa não salvo. Aguarde estabilizar e tente novamente.";return
                 }
                 self.storageQueue.async {
                     do {
                         let bytes=try NSKeyedArchiver.archivedData(withRootObject:map,requiringSecureCoding:true)
-                        let archive=SpatialArchive(world:world,rooms:roomSnapshot,objects:snapshot,panel:panel,map:bytes,saved:Date())
+                        let archive=SpatialArchive(world:world,rooms:roomSnapshot,objects:snapshot,panel:panel,desktop:desktop,map:bytes,saved:Date())
                         try archive.write()
                         Task { @MainActor in self.saving=false;self.lastSavedRevision=savedRevision;self.persistenceStatus="Salvo no iPhone: \(snapshot.count) objetos e \(roomSnapshot.count) ambientes." }
                     } catch {
@@ -240,6 +246,9 @@ enum SpatialTheme: String, CaseIterable {
     }
 
     func persistenceTick(_ frame: ARFrame) {
+        if case .limited(.relocalizing)=frame.camera.trackingState,relocalizationBegan == nil {
+            relocalizationBegan=ProcessInfo.processInfo.systemUptime
+        }
         if frame.timestamp-lastSaveAttempt>30 { saveMap(force:false);lastSaveAttempt=frame.timestamp }
     }
 
@@ -458,7 +467,7 @@ enum SpatialTheme: String, CaseIterable {
     @objc private func pinch(_ gesture: UIPinchGestureRecognizer) {
         guard active,!panelBlocking,visibility, let id=selected,let node=objects[id],let support=supports[id],let plane=planes[support] else { return }
         if gesture.state == .began { initialScale=node.simdScale.x }
-        let scale=min(1.5,max(0.5,initialScale*Float(gesture.scale)))
+        let scale=min(2,max(0.25,initialScale*Float(gesture.scale)))
         guard fits(SIMD4<Float>(node.simdPosition,1),radius:radius(id)*scale,on:plane,ignoring:id) else { status="Esse tamanho ultrapassa a área livre.";return }
         node.simdScale=SIMD3<Float>(repeating:scale)
         if gesture.state == .ended { reanchor(id) }
@@ -527,7 +536,7 @@ enum SpatialTheme: String, CaseIterable {
     }
     func update(_ anchor: ARAnchor) {
         if let plane=anchor as? ARPlaneAnchor { planes[plane.identifier]=plane }
-        if let id=anchors.first(where:{$0.value.identifier==anchor.identifier})?.key,let root=objects[id] {
+        if let id=anchors.first(where:{$0.value.identifier==anchor.identifier})?.key,id != handDragging,let root=objects[id] {
             let scale=root.simdScale;root.simdTransform=anchor.transform;root.simdScale=scale;anchors[id]=anchor
         }
         guard let name=anchor.name,name.hasPrefix("JarvisObject:"),let id=UUID(uuidString:String(name.dropFirst("JarvisObject:".count))),

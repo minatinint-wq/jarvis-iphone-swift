@@ -81,6 +81,7 @@ enum SpatialPanelGeometry {
     private var swipe = SpatialPageSwipe()
     private var pcOutput = (UserDefaults.standard.string(forKey:"spatialSpotifyOutput") ?? "pc") == "pc"
     var onWeb: ((SpatialModule)->Void)?
+    var onChange: (() -> Void)?
     private var needsSpotify = false
     var onAction: ((SpatialPanelAction)->Void)?
     var onSpotify: (([String:Any])->Void)?
@@ -97,6 +98,7 @@ enum SpatialPanelGeometry {
         guard root != nil else { return }
         visible=true;root?.isHidden=false;status="\(destination.title) · escolha uma ação."
         render()
+        onChange?()
         if destination == .spotify { refreshPage() }
     }
     func reposition() {
@@ -121,6 +123,7 @@ enum SpatialPanelGeometry {
         root.simdScale=SIMD3<Float>(repeating:scale)
         self.anchor=anchor;self.root=root;view.scene.rootNode.addChildNode(root);view.session.add(anchor:anchor)
         render()
+        onChange?()
     }
     private func clearSpace(transform:simd_float4x4,scale:Float)->Bool {
         guard let frame=view.session.currentFrame else { return false }
@@ -141,7 +144,7 @@ enum SpatialPanelGeometry {
         let next=min(0.70,max(0.20,root.simdScale.x*multiplier))
         var transform=root.simdWorldTransform
         for i in 0..<3 { let c=transform[i],v=simd_normalize(SIMD3(c.x,c.y,c.z));transform[i]=SIMD4(v.x,v.y,v.z,0) }
-        if clearSpace(transform:transform,scale:next) { root.simdScale=SIMD3(repeating:next) }
+        if clearSpace(transform:transform,scale:next) { root.simdScale=SIMD3(repeating:next);onChange?() }
     }
     func update(_ updated: ARAnchor) {
         if updated.identifier==anchor?.identifier {
@@ -165,7 +168,8 @@ enum SpatialPanelGeometry {
         if !good { swipe=SpatialPageSwipe(); if dragging { finishDrag() };handGesture.reset() }
         root?.isHidden = !good || !visible
     }
-    func close() {
+    func close(recordChange: Bool = true) {
+        if recordChange,root != nil { onChange?() }
         contextRevision += 1;navigationContext=nil
         handGesture.reset();swipe=SpatialPageSwipe();dragging=false;hovered=nil
         timeout?.cancel();pending=nil;visible=false
@@ -255,6 +259,7 @@ enum SpatialPanelGeometry {
         var transform=root.simdWorldTransform
         for i in 0..<3 { let c=transform[i];let v=simd_normalize(SIMD3<Float>(c.x,c.y,c.z));transform[i]=SIMD4(v.x,v.y,v.z,0) }
         let next=ARAnchor(name:"JarvisControlPanel",transform:transform);anchor=next;view.session.add(anchor:next)
+        onChange?()
     }
     private func activate(_ action: SpatialPanelAction) {
         contextRevision += 1

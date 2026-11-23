@@ -31,6 +31,7 @@ struct SpatialArchive: Codable {
     var rooms: [SpatialRoom]
     var objects: [SpatialObjectRecord]
     var panel: SpatialPanelRecord?
+    var desktop: SpatialDesktopRecord? = nil
     var map: Data
     var saved: Date
 
@@ -52,6 +53,9 @@ struct SpatialArchive: Codable {
         }
         if let panel {
             guard panel.scale.isFinite, (0.20...0.70).contains(panel.scale) else { throw CocoaError(.fileReadCorruptFile) }
+        }
+        if let desktop {
+            guard desktop.scale.isFinite,(0.25...2).contains(desktop.scale) else { throw CocoaError(.fileReadCorruptFile) }
         }
     }
 

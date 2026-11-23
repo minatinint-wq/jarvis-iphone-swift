@@ -56,6 +56,7 @@ enum WallMeasureMode { case none, outline, opening }
     var depthPending = false
     var spatial: SpatialWorld!
     var panel: SpatialPanel!
+    var desktop: SpatialDesktop!
     @Published var status = "Mostre a parede, o encontro com o teto e os cantos."
     @Published var selected = false
     @Published var finish = WallFinish.white
@@ -97,10 +98,16 @@ enum WallMeasureMode { case none, outline, opening }
         view.scene = SCNScene()
         panel=SpatialPanel(view:view)
         spatial = SpatialWorld(view:view)
+        desktop=SpatialDesktop(view:view)
         spatial.panelSnapshot = { [weak self] in self?.panel.snapshot() }
+        spatial.desktopSnapshot = { [weak self] in self?.desktop.snapshot() }
+        panel.onChange = { [weak self] in self?.spatial.markDirty() }
+        desktop.onChange = { [weak self] in self?.spatial.markDirty() }
         hands=SpatialHands(view:view)
         hands.onSample = { [weak self] sample in
             guard let self else { return }
+            if self.desktop.inputBlocked { return }
+            if self.desktop.hand(sample) { self.hands.showProgress(self.desktop.progress);return }
             if self.panel.visible { self.panel.hand(sample) } else { self.spatial.hand(sample) }
             self.hands.showProgress(self.panel.visible ? self.panel.dwellProgress : self.spatial.dwellProgress)
         }
@@ -176,6 +183,7 @@ enum WallMeasureMode { case none, outline, opening }
         if active && started { run() }
         else if !active {
             spatial.saveMap(force:false)
+            desktop.setTracking(false)
             view.session.pause(); view.isPlaying = false
             tracking = false; _ = gate.update(normal:false, at:0); setVisible(false)
         }
@@ -188,13 +196,15 @@ enum WallMeasureMode { case none, outline, opening }
         view.session.pause(); view.isPlaying = false
         view.session.delegate = nil; view.delegate = nil
         onFeedback = nil
-        panel.close()
+        panel.close(recordChange:false)
+        desktop.close(recordChange:false)
         spatial.stop()
         materials.removeAll(); occluders.removeAll(); planes.removeAll()
     }
 
     @objc private func tapped(_ gesture: UITapGestureRecognizer) {
         let point=gesture.location(in:view)
+        if desktop.tap(point) { return }
         if panel.visible { _=panel.hit(point);return }
         if measureMode != .none { addPoint(at:point) }
         else if spatial.active { spatial.tap(point,tracking:tracking) }
@@ -309,6 +319,7 @@ enum WallMeasureMode { case none, outline, opening }
         case .moveObject(let x,let z): spatial.moveSelected(x:x,z:z)
         case .saveMap: spatial.saveMap()
         case .room(let name): spatial.chooseRoom(name)
+        case .desktop: desktop.open(tracking:tracking)
         case .close: break
         }
     }
@@ -343,7 +354,8 @@ enum WallMeasureMode { case none, outline, opening }
         spatial.persistenceTick(frame)
         spatial.setVisible(good && !comparing)
         panel.setTracking(good)
-        hands.update(frame,view:view,enabled:good && !webWindowVisible && (panel.visible || spatial.active))
+        desktop.setTracking(good && !spatial.recovering)
+        hands.update(frame,view:view,enabled:good && !webWindowVisible && (panel.visible || spatial.active || desktop.visible))
         if tracking != good {
             tracking = good; setVisible(good && !comparing)
             status = good ? (selected ? "Parede fixada. Pode mudar o material por voz." : "Toque na parede ou diga “essa parede”.") : "Recuperando posição. Mova devagar e mostre detalhes do ambiente."
@@ -381,6 +393,10 @@ enum WallMeasureMode { case none, outline, opening }
                 if approved && (plane.classification == .door || plane.classification == .window) { refreshAutomaticOpenings() }
             }
             panel.update(anchor)
+            desktop.update(anchor)
+            if let saved=spatial.restoredDesktop,saved.anchor==anchor.identifier {
+                desktop.restore(saved,anchor:anchor);spatial.restoredDesktop=nil
+            }
             if let saved=spatial.restoredPanel,saved.anchor==anchor.identifier {
                 panel.restore(saved,anchor:anchor);spatial.restoredPanel=nil
             }
@@ -504,10 +520,12 @@ private struct WallCameraView: UIViewRepresentable {
                     Label(controller.tracking ? "POSIÇÃO ESTÁVEL" : "MAPEANDO",systemImage:controller.tracking ? "viewfinder" : "viewfinder.circle")
                     Spacer()
                     Button { controller.panel.open(.dashboard,tracking:controller.tracking) } label: { Image(systemName:"square.grid.2x2") }
+                    Button { controller.desktop.open(tracking:controller.tracking) } label: { Image(systemName:"desktopcomputer") }.accessibilityLabel("Abrir tela do PC em AR")
                     Button { controller.panel.reposition() } label: { Image(systemName:"scope") }.accessibilityLabel("Trazer painel para frente")
                     Text(controller.metrics)
                 }.font(.caption.monospaced()).padding(12).background(.black.opacity(0.72),in:RoundedRectangle(cornerRadius:14))
                 Spacer()
+                SpatialDesktopControls(desktop:controller.desktop)
                 if panelVisible {
                     VStack(alignment:.leading,spacing:6) {
                         Text(panelStatus).font(.caption).lineLimit(3)
@@ -579,6 +597,7 @@ private struct WallCameraView: UIViewRepresentable {
                     webModule=target
                 }
                 controller.panel.onSpotify = { job in model.requestSpatialSpotify(job) }
+                controller.desktop.send = { job in model.requestDesktop(job) }
                 controller.panel.onAction = { action in
                     switch action {
                     case .editor(let sheet): menuSheet=sheet
@@ -644,6 +663,7 @@ private struct WallCameraView: UIViewRepresentable {
             .onReceive(controller.panel.$visible) { panelVisible=$0;controller.spatial.panelBlocking=$0 || overlayVisible }
             .onReceive(controller.panel.$status) { panelStatus=$0 }
             .onChange(of:model.spatialPanelResponse) { _,data in if let data { controller.panel.receive(data) } }
+            .onChange(of:model.desktopResponse) { _,data in if let data { controller.desktop.receive(data) } }
             .onChange(of:model.message) { _,text in controller.panel.showResult(text) }
             .onChange(of:scenePhase) { _,phase in controller.setForeground(phase == .active) }
             .onDisappear { controller.stop() }

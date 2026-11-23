@@ -10,6 +10,7 @@ struct SpatialGesture {
     private var fired = false
     private var lastTime: Double?
     private var pinchBegan: Double?
+    private var pinchTarget: String?
     private(set) var progress = 0.0
 
     mutating func reset() { self = Self() }
@@ -27,13 +28,13 @@ struct SpatialGesture {
             progress = 0
             fired = false
             if pinched { return held.map { [.drag($0)] } ?? [] }
-            if pinchBegan == nil { pinchBegan=time }
+            if pinchBegan == nil || pinchTarget != target { pinchBegan=time;pinchTarget=target }
             guard time-(pinchBegan ?? time)>=0.12 else { return [] }
             pinched = true
             held = target
             return target.map { [.press($0)] } ?? []
         }
-        pinchBegan=nil
+        pinchBegan=nil;pinchTarget=nil
         if pinched {
             pinched = false
             let active = held != nil

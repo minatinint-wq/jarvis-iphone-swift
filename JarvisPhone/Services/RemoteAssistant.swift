@@ -305,6 +305,7 @@ import ActivityKit
     @Published var cameraAvailable = false
     @Published var studioMode: String? { didSet { updateWake() } }
     @Published var spatialPanelResponse: Data?
+    @Published var desktopResponse: Data?
     @Published var wallARRequest: WallARRequest?
     @Published private(set) var localStudio = false
     @Published private(set) var studioInstrument = StudioInstrument.harp
@@ -592,6 +593,7 @@ import ActivityKit
     }
 
     private func event(_ o:[String:Any]) async {
+        if o["phase"] as? String == "desktop" { desktopResponse=try? JSONSerialization.data(withJSONObject:o);return }
         if o["phase"] as? String == "spatial-panel" {
             spatialPanelResponse=try? JSONSerialization.data(withJSONObject:o);return
         }
@@ -692,6 +694,16 @@ import ActivityKit
         Task {
             do { try await send(packet,sock) }
             catch { spatialPanelResponse=try? JSONSerialization.data(withJSONObject:["requestId":job["requestId"] ?? "","message":"A ponte desconectou antes de confirmar."]) }
+        }
+    }
+    func requestDesktop(_ job: [String:Any]) {
+        guard ready,active,let sock=ws else {
+            desktopResponse=try? JSONSerialization.data(withJSONObject:["requestId":job["requestId"] ?? "","ok":false,"message":"Conecte o iPhone à ponte do PC."]);return
+        }
+        var packet=connectPacket();packet["desktop"]=job
+        Task {
+            do { try await send(packet,sock) }
+            catch { desktopResponse=try? JSONSerialization.data(withJSONObject:["requestId":job["requestId"] ?? "","ok":false,"message":"A conexão com o PC caiu."]) }
         }
     }
     func runSpatialCommand(_ text: String) async {
