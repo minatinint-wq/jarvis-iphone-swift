@@ -76,6 +76,7 @@ enum SpatialPanelGeometry {
     var dwellProgress: Double { handGesture.progress }
     private weak var hovered:SCNNode?
     private var dragOffset=SIMD3<Float>.zero
+    private var dragDepth:Float=0
     private var dragging=false
     private var palmScale=SpatialPalmScale()
     private var swipe = SpatialPageSwipe()
@@ -219,24 +220,22 @@ enum SpatialPanelGeometry {
         }
         let overPanel = sample.flatMap { localHit($0.point) } != nil
         let hit = target ?? (overPanel ? "panel-surface" : nil)
-        let contact = sample?.worldPoint.map { p in
-            guard let root else { return false }
-            let local=simd_inverse(root.simdWorldTransform)*SIMD4(p,1)
-            return abs(local.z)*root.simdScale.x<0.12
-        } ?? false
-        let canClick = contact && (target.flatMap { actions[$0] }.map { action -> Bool in
+        let canClick = target.flatMap { actions[$0] }.map { action -> Bool in
             if case .dragHandle = action { return false }
             return true
-        } ?? false)
-        for event in handGesture.update(ratio:sample?.worldPoint == nil ? .nan : sample!.ratio,pointing:sample?.pointing == true && canClick,target:hit,time:time) {
+        } ?? false
+        for event in handGesture.update(ratio:sample?.ratio ?? .nan,pointing:sample?.pointing == true && canClick,target:hit,time:time) {
             switch event {
             case .press:
-                guard let root,let p=sample?.worldPoint else { continue }
-                dragOffset=root.simdWorldPosition-p;dragging=false
+                guard let root,let sample else { continue }
+                dragDepth=view.projectPoint(root.worldPosition).z
+                let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),dragDepth))
+                dragOffset=root.simdWorldPosition-SIMD3(p.x,p.y,p.z);dragging=false
             case .drag:
-                guard let root,let sample,let p=sample.worldPoint else { continue }
+                guard let root,let sample else { continue }
                 if !dragging { if let anchor { view.session.remove(anchor:anchor) };anchor=nil;dragging=true }
-                let destination=p+dragOffset
+                let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),dragDepth))
+                let destination=SIMD3(p.x,p.y,p.z)+dragOffset
                 if let frame=view.session.currentFrame,let query=view.raycastQuery(from:sample.point,allowing:.existingPlaneGeometry,alignment:.any),let hit=view.session.raycast(query).first {
                     let camera=SIMD3(frame.camera.transform.columns.3.x,frame.camera.transform.columns.3.y,frame.camera.transform.columns.3.z)
                     let obstacle=SIMD3(hit.worldTransform.columns.3.x,hit.worldTransform.columns.3.y,hit.worldTransform.columns.3.z)

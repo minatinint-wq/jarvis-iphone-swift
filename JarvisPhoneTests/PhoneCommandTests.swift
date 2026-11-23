@@ -7,6 +7,18 @@ import ARKit
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    func testPointingWithoutThumbOrDepthCanDwellAndLossStillCancelsPinch() {
+        var gesture=SpatialGesture(),clicks=0
+        for tick in 0...28 {
+            let events=gesture.update(ratio:.nan,pointing:true,target:"desktop",time:Double(tick)*0.1)
+            clicks += events.filter { $0 == .click("desktop") }.count
+        }
+        XCTAssertEqual(clicks,1)
+        _=gesture.update(ratio:1,pointing:false,target:nil,time:2.9)
+        XCTAssertTrue(gesture.update(ratio:0.1,pointing:false,target:"desktop",time:3).isEmpty)
+        XCTAssertEqual(gesture.update(ratio:0.1,pointing:false,target:"desktop",time:3.2),[.press("desktop")])
+        XCTAssertEqual(gesture.update(ratio:.nan,pointing:false,target:nil,time:3.3),[.cancel])
+    }
     func testSpatialArchiveRoundTripRejectsDuplicateIDsAndInvalidTransforms() throws {
         let room=SpatialRoom(id:UUID(),name:"Quarto",origin:SpatialArchive.values(matrix_identity_float4x4))
         var pose=matrix_identity_float4x4;pose.columns.3=SIMD4(1,0,-2,1)

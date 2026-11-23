@@ -364,7 +364,7 @@ enum WallMeasureMode { case none, outline, opening }
         cameraFrames += 1
         if frame.timestamp-lastMetric >= 1 {
             let fps = performance.sample()
-            spatial.recordPerformance(fps:fps,frame:frame)
+            spatial.recordPerformance(fps:fps,frame:frame,handLatencyMS:hands.latencyMS,handFound:hands.hasHand,handDepth:hands.hasDepth)
             metrics = fps > 0 ? "\(fps) FPS · LiDAR · local" : "LiDAR · renderização local"
             lastMetric = frame.timestamp; cameraFrames = 0
             let thermal = ProcessInfo.processInfo.thermalState

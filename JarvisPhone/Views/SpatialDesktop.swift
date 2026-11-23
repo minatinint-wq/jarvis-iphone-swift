@@ -28,6 +28,7 @@ struct SpatialDesktopRecord: Codable {
     private var palmScale=SpatialPalmScale()
     private var dragging=false
     private var offset=SIMD3<Float>.zero
+    private var dragDepth:Float=0
     private var tracking=false
     var progress: Double { gesture.progress }
 
@@ -142,19 +143,25 @@ struct SpatialDesktopRecord: Codable {
         guard visible,tracking,!inputBlocked,let root else { return false }
         let target=sample.flatMap { local($0.point) }
         guard target != nil || dragging else { _=gesture.update(ratio:.nan,pointing:false,target:nil,time:ProcessInfo.processInfo.systemUptime);return false }
-        let contact=sample?.worldPoint.map { abs((simd_inverse(root.simdWorldTransform)*SIMD4($0,1)).z)*root.simdScale.x<0.12 } ?? false
         if let sample,sample.openPalm,let palm=sample.palmWorld,let frame=view.session.currentFrame {
             let camera=SIMD3(frame.camera.transform.columns.3.x,frame.camera.transform.columns.3.y,frame.camera.transform.columns.3.z)
             if let factor=palmScale.update(target:"desktop",depth:Double(simd_distance(camera,palm)),time:sample.time) {
                 root.simdScale=SIMD3(repeating:min(2,max(0.25,root.simdScale.x*factor)));onChange?()
             }
         } else { palmScale=SpatialPalmScale() }
-        for event in gesture.update(ratio:sample?.worldPoint == nil ? .nan : sample!.ratio,pointing:sample?.pointing == true && contact,target:contact ? "desktop" : nil,time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {
+        for event in gesture.update(ratio:sample?.ratio ?? .nan,pointing:sample?.pointing == true,target:target != nil ? "desktop" : nil,time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {
             switch event {
             case .press:
-                if let point=sample?.worldPoint { offset=root.simdWorldPosition-point;dragging=true }
+                if let sample {
+                    dragDepth=view.projectPoint(root.worldPosition).z
+                    let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),dragDepth))
+                    offset=root.simdWorldPosition-SIMD3(p.x,p.y,p.z);dragging=true
+                }
             case .drag:
-                if let point=sample?.worldPoint { root.simdWorldPosition=point+offset }
+                if let sample {
+                    let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),dragDepth))
+                    root.simdWorldPosition=SIMD3(p.x,p.y,p.z)+offset
+                }
             case .release,.cancel: if dragging { finishDrag() }
             case .click:
                 if let point=target { input(["action":"click","x":point.x,"y":point.y]) }

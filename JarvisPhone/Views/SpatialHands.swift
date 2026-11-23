@@ -105,6 +105,9 @@ enum SpatialHandMath {
     private var lastSeen:Double=0
     private var lastRawTip:CGPoint?
     private var lastReport:Double=0
+    private(set) var latencyMS=0.0
+    private(set) var hasHand=false
+    private(set) var hasDepth=false
     private let cursor=UIView(frame:CGRect(x:0,y:0,width:24,height:24))
     private let bones=CAShapeLayer()
     var onSample:((SpatialHandSample?)->Void)?
@@ -185,7 +188,8 @@ enum SpatialHandMath {
                 guard let self else { return };self.busy=false
                 guard self.generation==ticket else { return }
                 let now=ProcessInfo.processInfo.systemUptime
-                guard now-stamp<0.2 else { self.cursor.isHidden=true;self.bones.path=nil;self.onSample?(nil);self.report("Detector atrasado. Gestos pausados até atualizar a mão.");return }
+                self.latencyMS=(now-stamp)*1000;self.hasHand=false;self.hasDepth=false
+                guard now-stamp<0.45 else { self.cursor.isHidden=true;self.bones.path=nil;self.onSample?(nil);self.report("Detector atrasado. Gestos pausados até atualizar a mão.");return }
                 guard result.count==21,let point=result[8],CGRect(origin:.zero,size:size).contains(point) else {
                     if now-self.lastSeen>0.18 { self.cursor.isHidden=true;self.bones.path=nil;self.smoothed=nil }
                     self.report(failed ? "O detector não processou a imagem. Toque nos cartões enquanto ele retoma." : luminance<0.10 ? "Pouca luz na imagem. Mostre indicador e polegar à câmera." : "Indicador ainda não localizado. Afaste um pouco a mão da lente.")
@@ -194,6 +198,7 @@ enum SpatialHandMath {
                 let dt=max(0.001,min(0.15,now-self.lastSeen)),alpha=1-exp(-dt/0.035)
                 let p=self.smoothed.map { CGPoint(x:$0.x+(point.x-$0.x)*alpha,y:$0.y+(point.y-$0.y)*alpha) } ?? point
                 self.smoothed=p;self.lastSeen=now;self.lastRawTip=tip;self.cursor.center=p;self.cursor.isHidden=false
+                self.hasHand=true
                 self.cursor.layer.borderColor=(amount == nil ? UIColor.yellow : amount!<0.28 ? UIColor.orange : .cyan).cgColor
                 let path=UIBezierPath()
                 for chain in [[0,1,2,3,4],[0,5,6,7,8],[0,9,10,11,12],[0,13,14,15,16],[0,17,18,19,20],[5,9,13,17]] {
@@ -201,11 +206,11 @@ enum SpatialHandMath {
                 }
                 self.bones.path=path.cgPath
                 let pointing = SpatialHandMath.pointing(result)
-                self.report(amount == nil ? "Mostre a mão inteira." : amount! < 0.28 ? "Pinça · arrastar" : pointing ? "Indicador · mantenha sobre o alvo" : "Mão livre")
+                self.report(pointing ? "Indicador · mantenha sobre o alvo por 2 segundos" : amount == nil ? "Mostre indicador e polegar para usar pinça." : amount! < 0.28 ? "Pinça · arrastar" : "Mão livre")
                 let world=tip.flatMap { SpatialHandMath.worldPoint($0,frame:frame) },palmWorld=palm.flatMap { SpatialHandMath.worldPoint($0,frame:frame) }
+                self.hasDepth=world != nil
                 self.smoothedWorld=world.map { value in self.smoothedWorld.map { $0+(value-$0)*Float(alpha) } ?? value }
                 self.smoothedPalm=palmWorld.map { value in self.smoothedPalm.map { $0+(value-$0)*Float(alpha) } ?? value }
-                if pointing && world == nil { self.report("Profundidade da ponta incerta. Aproxime a mão do painel e mantenha-a visível.") }
                 self.onSample?(SpatialHandSample(point:p,ratio:amount ?? .nan,menuPose:SpatialHandMath.pointing(result,twoFingers:true),pointing:pointing,time:stamp,worldPoint:self.smoothedWorld,palmWorld:self.smoothedPalm,openPalm:SpatialHandMath.openPalm(result)))
             }
         }

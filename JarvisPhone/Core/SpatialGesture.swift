@@ -17,13 +17,14 @@ struct SpatialGesture {
 
     mutating func update(ratio: Double, pointing: Bool, target: String?, time: Double) -> [Event] {
         let interrupted = lastTime.map { time < $0 || time - $0 > 0.35 } ?? false
-        if interrupted || !ratio.isFinite || !time.isFinite {
+        let invalidPinch = !ratio.isFinite && (!pointing || pinched)
+        if interrupted || invalidPinch || !time.isFinite {
             let active = held != nil
             reset()
-            if active || !ratio.isFinite || !time.isFinite { return active ? [.cancel] : [] }
+            if active || invalidPinch || !time.isFinite { return active ? [.cancel] : [] }
         }
         lastTime = time
-        if ratio < 0.28 || (pinched && ratio < 0.48) {
+        if ratio.isFinite && (ratio < 0.28 || (pinched && ratio < 0.48)) {
             hover = nil
             progress = 0
             fired = false

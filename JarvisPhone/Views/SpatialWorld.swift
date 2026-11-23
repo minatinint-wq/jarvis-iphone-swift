@@ -163,6 +163,7 @@ enum SpatialTheme: String, CaseIterable {
     private var handGesture=SpatialGesture()
     private var handDragging:UUID?
     private var handOffset=SIMD3<Float>.zero
+    private var handDepth:Float=0
     private var palmScale=SpatialPalmScale()
     @Published var persistenceStatus = "Mapa ainda não salvo."
     @Published var roomName = "Ambiente 1"
@@ -253,11 +254,12 @@ enum SpatialTheme: String, CaseIterable {
         if frame.timestamp-lastSaveAttempt>30 { saveMap(force:false);lastSaveAttempt=frame.timestamp }
     }
 
-    func recordPerformance(fps: Int, frame: ARFrame) {
+    func recordPerformance(fps: Int, frame: ARFrame,handLatencyMS: Double,handFound: Bool,handDepth: Bool) {
         guard frame.timestamp-lastDiagnostic>=5 else { return };lastDiagnostic=frame.timestamp
         var entry:[String:Any] = ["date":Date().timeIntervalSince1970,"fps":fps,"objects":objectCount,
                                  "thermal":ProcessInfo.processInfo.thermalState.rawValue,
                                  "mapping":frame.worldMappingStatus.rawValue,"battery":UIDevice.current.batteryLevel]
+        entry["handLatencyMS"]=handLatencyMS;entry["handFound"]=handFound;entry["handDepth"]=handDepth
         var info=mach_task_basic_info(),count=mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size/MemoryLayout<integer_t>.size)
         let result=withUnsafeMutablePointer(to:&info) { pointer in
             pointer.withMemoryRebound(to:integer_t.self,capacity:Int(count)) { task_info(mach_task_self_,task_flavor_t(MACH_TASK_BASIC_INFO),$0,&count) }
@@ -378,23 +380,23 @@ enum SpatialTheme: String, CaseIterable {
     func hand(_ sample:SpatialHandSample?) {
         guard active,!panelBlocking,visibility,!placing,!recovering else { handGesture.reset();palmScale=SpatialPalmScale();return }
         let id=sample.flatMap { hit($0.point) }
-        let contact=sample.flatMap { sample -> Bool? in
-            guard let p=sample.worldPoint,let hit=view.hitTest(sample.point,options:[.categoryBitMask:1,.searchMode:SCNHitTestSearchMode.closest.rawValue]).first else { return nil }
-            let q=hit.worldCoordinates
-            return simd_distance(p,SIMD3(q.x,q.y,q.z))<0.15
-        } ?? false
         if let sample,sample.openPalm,let palm=sample.palmWorld,let selected,selected==id,let frame=view.session.currentFrame {
             let camera=SIMD3(frame.camera.transform.columns.3.x,frame.camera.transform.columns.3.y,frame.camera.transform.columns.3.z)
             if let factor=palmScale.update(target:selected.uuidString,depth:Double(simd_distance(camera,palm)),time:sample.time) { resizeSelected(factor) }
         } else { palmScale=SpatialPalmScale() }
-        for event in handGesture.update(ratio:sample?.worldPoint == nil ? .nan : sample!.ratio,pointing:sample?.pointing == true && contact,target:contact ? id?.uuidString : nil,time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {
+        for event in handGesture.update(ratio:sample?.ratio ?? .nan,pointing:sample?.pointing == true,target:id?.uuidString,time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {
             switch event {
             case .press(let key):
                 selected=UUID(uuidString:key);hasSelection=selected != nil;markSelection()
-                if let selected,let node=objects[selected],let p=sample?.worldPoint { handOffset=node.simdWorldPosition-p }
+                if let selected,let node=objects[selected],let sample {
+                    handDepth=view.projectPoint(node.worldPosition).z
+                    let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),handDepth))
+                    handOffset=node.simdWorldPosition-SIMD3(p.x,p.y,p.z)
+                }
             case .drag(let key):
-                guard let id=UUID(uuidString:key),let node=objects[id],let p=sample?.worldPoint else { continue }
-                handDragging=id;node.simdPosition=p+handOffset
+                guard let id=UUID(uuidString:key),let node=objects[id],let sample else { continue }
+                let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),handDepth))
+                handDragging=id;node.simdPosition=SIMD3(p.x,p.y,p.z)+handOffset
             case .release:
                 if let id=handDragging { reanchor(id);handDragging=nil }
             case .cancel:if let id=handDragging { reanchor(id);handDragging=nil }
