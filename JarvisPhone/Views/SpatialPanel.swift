@@ -78,6 +78,7 @@ enum SpatialPanelGeometry {
     private var dragOffset=SIMD3<Float>.zero
     private var dragDepth:Float=0
     private var dragging=false
+    var isDragging: Bool { dragging }
     private var palmScale=SpatialPalmScale()
     private var swipe = SpatialPageSwipe()
     private var pcOutput = (UserDefaults.standard.string(forKey:"spatialSpotifyOutput") ?? "pc") == "pc"

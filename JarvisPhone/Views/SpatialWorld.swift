@@ -181,6 +181,7 @@ enum SpatialTheme: String, CaseIterable {
     private var lastDiagnostic: TimeInterval = -.infinity
     var panelSnapshot: (() -> SpatialPanelRecord?)?
     var desktopSnapshot: (() -> SpatialDesktopRecord?)?
+    var canSaveWindows: (() -> Bool)?
     var restoredPanel: SpatialPanelRecord?
     var restoredDesktop: SpatialDesktopRecord?
     private let storageQueue = DispatchQueue(label:"jarvis.spatial.persistence",qos:.utility)
@@ -218,7 +219,7 @@ enum SpatialTheme: String, CaseIterable {
     }
 
     func saveMap(force: Bool = true) {
-        guard !saving,!recovering,handDragging == nil,let frame=view.session.currentFrame,
+        guard !saving,!recovering,handDragging == nil,(canSaveWindows?() ?? true),let frame=view.session.currentFrame,
               case .normal=frame.camera.trackingState,frame.worldMappingStatus == .mapped || frame.worldMappingStatus == .extending else {
             if force { persistenceStatus="Para salvar, termine o gesto e mostre mais detalhes do ambiente até o mapa estabilizar." };return
         }

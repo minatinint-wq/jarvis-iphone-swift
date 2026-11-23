@@ -101,6 +101,10 @@ enum WallMeasureMode { case none, outline, opening }
         desktop=SpatialDesktop(view:view)
         spatial.panelSnapshot = { [weak self] in self?.panel.snapshot() }
         spatial.desktopSnapshot = { [weak self] in self?.desktop.snapshot() }
+        spatial.canSaveWindows = { [weak self] in
+            guard let self else { return false }
+            return !self.panel.isDragging && !self.desktop.isDragging
+        }
         panel.onChange = { [weak self] in self?.spatial.markDirty() }
         desktop.onChange = { [weak self] in self?.spatial.markDirty() }
         hands=SpatialHands(view:view)

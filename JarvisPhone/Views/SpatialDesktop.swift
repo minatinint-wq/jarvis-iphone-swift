@@ -27,6 +27,7 @@ struct SpatialDesktopRecord: Codable {
     private var gesture=SpatialGesture()
     private var palmScale=SpatialPalmScale()
     private var dragging=false
+    var isDragging: Bool { dragging }
     private var offset=SIMD3<Float>.zero
     private var dragDepth:Float=0
     private var tracking=false
