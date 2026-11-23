@@ -692,7 +692,7 @@ import ActivityKit
             return
         }
         if studioMode == "wallAR" {
-            wallARFeedback("No modo AR, peça uma cor, madeira ou cimento. Você também pode dizer essa parede, desfaz ou fechar AR.")
+            wallARFeedback("No modo AR, diga marcar parede, adicionar ponto, excluir área ou aplicar recorte. Para objetos, peça cenário floresta, bosque noturno ou cenário estúdio.")
             return
         }
         if let command = Self.visionCommand(value) {

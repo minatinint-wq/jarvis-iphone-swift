@@ -1,0 +1,164 @@
+[
+  {
+    "id": "mossrock",
+    "author": "Kless Gyzen",
+    "source": "https://polyhaven.com/a/rock_moss_set_01",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/2k/rock_moss_set_01/rock_moss_set_01_2k.gltf",
+    "license": "CC0-1.0",
+    "sourceSHA256": "794beaf2f4dc0ab155114f286049dc912a8f3287520965ca8bf6bb0d821ae3e2",
+    "triangles": 5000,
+    "vertices": 2741,
+    "files": [
+      {
+        "file": "Spatial_mossrock.mesh",
+        "sha256": "9cd0ee27ff8b7477e35e7eb15ef78c25ea9158b515f3fb4f5ac962a83380fefb",
+        "bytes": 147724
+      },
+      {
+        "file": "Spatial_mossrock_Color.jpg",
+        "sha256": "832b5e0420f5bcb5374b1c197b982b94deeec231e431a9b21ae4497f576763f4",
+        "bytes": 684992
+      },
+      {
+        "file": "Spatial_mossrock_NormalGL.jpg",
+        "sha256": "bbbcbed5aca55226fbef2d495464f3374250d1fdd22d08a2735dc4f05bf1f181",
+        "bytes": 878089
+      },
+      {
+        "file": "Spatial_mossrock_Roughness.jpg",
+        "sha256": "4f32a4ee2e445c632c58a253d3a0fa6f1799f031be9febff3fad2f6892aa398f",
+        "bytes": 329698
+      },
+      {
+        "file": "Spatial_mossrock_Metalness.jpg",
+        "sha256": "4f32a4ee2e445c632c58a253d3a0fa6f1799f031be9febff3fad2f6892aa398f",
+        "bytes": 329698
+      }
+    ],
+    "doubleSided": true,
+    "alphaMode": "OPAQUE",
+    "baseColor": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "metalness": 0.0,
+    "roughness": 1.0,
+    "Color": "Spatial_mossrock_Color.jpg",
+    "NormalGL": "Spatial_mossrock_NormalGL.jpg",
+    "ARM": "Spatial_mossrock_ARM.jpg",
+    "Roughness": "Spatial_mossrock_Roughness.jpg",
+    "Metalness": "Spatial_mossrock_Metalness.jpg"
+  },
+  {
+    "id": "fern",
+    "author": "Rob Tuytel / Rico Cilliers",
+    "source": "https://polyhaven.com/a/fern_02",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/2k/fern_02/fern_02_2k.gltf",
+    "license": "CC0-1.0",
+    "sourceSHA256": "50540d37531f93fd693d5340d5b3095c9d6d2834fa05c74bea797d54f290cb6a",
+    "triangles": 784,
+    "vertices": 544,
+    "files": [
+      {
+        "file": "Spatial_fern.mesh",
+        "sha256": "48cfb1f1c7734462ca9b0a2f707a5dccb9b36c5ab3334b50f1cefd97a6bd3a37",
+        "bytes": 26828
+      },
+      {
+        "file": "Spatial_fern_Color.png",
+        "sha256": "0c49b07e048a95747ed27aeb492de3e32ee4cc5f60628c77c1ff2ea1486bd5ad",
+        "bytes": 2626809
+      },
+      {
+        "file": "Spatial_fern_NormalGL.jpg",
+        "sha256": "4bc069669e74fce05373cbbe651a323bbe14886eb7b2c17f0e8cc21dfecb1985",
+        "bytes": 435379
+      },
+      {
+        "file": "Spatial_fern_Roughness.jpg",
+        "sha256": "b7d03f5db8f565d8e5c9d782e83a78aeff847236f0039ca9991aea65a8996757",
+        "bytes": 274276
+      },
+      {
+        "file": "Spatial_fern_Metalness.jpg",
+        "sha256": "af6d96fba4f60f009c5550e0a26470ec8ce34789cbf917bb201d320900351e90",
+        "bytes": 161983
+      }
+    ],
+    "doubleSided": true,
+    "alphaMode": "MASK",
+    "baseColor": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "metalness": 0.0,
+    "roughness": 1.0,
+    "Color": "Spatial_fern_Color.png",
+    "NormalGL": "Spatial_fern_NormalGL.jpg",
+    "ARM": "Spatial_fern_ARM.jpg",
+    "Roughness": "Spatial_fern_Roughness.jpg",
+    "Metalness": "Spatial_fern_Metalness.jpg"
+  },
+  {
+    "id": "radio",
+    "author": "Microsoft",
+    "source": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/BoomBox",
+    "download": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/BoomBox/glTF-Binary/BoomBox.glb",
+    "license": "CC0-1.0",
+    "sourceSHA256": "f8b918445ebdd006768232205a62f5182d2208ca57f84c6ccc084943c0bc8f15",
+    "triangles": 6036,
+    "vertices": 3575,
+    "files": [
+      {
+        "file": "Spatial_radio.mesh",
+        "sha256": "6d06d6e25376e15617cde5f66bb7e634adbff3abc4550c1d816c6de304ad9fc1",
+        "bytes": 186844
+      },
+      {
+        "file": "Spatial_radio_Color.jpg",
+        "sha256": "dee8566843c59ed94881c675880cdd5f4d7ad8dadbfa6baf3f95b3e7b15d903d",
+        "bytes": 381072
+      },
+      {
+        "file": "Spatial_radio_NormalGL.jpg",
+        "sha256": "7fc8ab9c7944e31f193f9a747211cdbfc92bfb61ef04b5be41704e0159fee81d",
+        "bytes": 184073
+      },
+      {
+        "file": "Spatial_radio_Roughness.jpg",
+        "sha256": "051d2fcffa8354397d9e69e59e9ce46a3ffe90b0d66b40576e96fe498e7deba5",
+        "bytes": 715309
+      },
+      {
+        "file": "Spatial_radio_Metalness.jpg",
+        "sha256": "6e66e421ccae2b60d9b24b7a256f241ec3d2902cd0e7ba9beab25dfec7fc5bab",
+        "bytes": 258489
+      },
+      {
+        "file": "Spatial_radio_Emission.jpg",
+        "sha256": "e89baa388fcc376b745ab3711d8cd4c20dbc7760ba73ed4429115a93fc52e08c",
+        "bytes": 71424
+      }
+    ],
+    "doubleSided": false,
+    "alphaMode": "OPAQUE",
+    "baseColor": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "metalness": 1.0,
+    "roughness": 1.0,
+    "Color": "Spatial_radio_Color.jpg",
+    "NormalGL": "Spatial_radio_NormalGL.jpg",
+    "ARM": "Spatial_radio_ARM.jpg",
+    "Emission": "Spatial_radio_Emission.jpg",
+    "Roughness": "Spatial_radio_Roughness.jpg",
+    "Metalness": "Spatial_radio_Metalness.jpg"
+  }
+]

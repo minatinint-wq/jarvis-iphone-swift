@@ -6,6 +6,82 @@ import Metal
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    func testMeasuredWallSubtractsDoorAndCupboardEvenAcrossLargeTriangles() {
+        let wall: [SIMD2<Float>]=[.init(0,0),.init(4,0),.init(4,3),.init(0,3)]
+        let door=WallOpening(.init(0.5,0),.init(1.5,2),margin:0)
+        let cupboard=WallOpening(.init(2,0),.init(3.5,2.5),margin:0)
+        let triangles=MeasuredWall.triangles(wall,excluding:[door,cupboard])
+        XCTAssertEqual(triangles.reduce(Float(0)) { $0+MeasuredWall.area($1) },6.25,accuracy:0.0001)
+        for t in triangles {
+            let center=(t[0]+t[1]+t[2])/3
+            XCTAssertFalse(door.contains(center));XCTAssertFalse(cupboard.contains(center))
+        }
+        // Overlapping holes must not subtract the overlap twice.
+        let second=WallOpening(.init(1,0),.init(2,2),margin:0)
+        let overlap=MeasuredWall.triangles(wall,excluding:[door,second])
+        XCTAssertEqual(overlap.reduce(Float(0)) { $0+MeasuredWall.area($1) },9,accuracy:0.0001)
+        XCTAssertTrue(MeasuredWall.triangles(wall,excluding:[WallOpening(.init(-1,-1),.init(5,4),margin:0)]).isEmpty)
+    }
+    func testMeasuredContoursRejectCrossingAndKeepConcaveWalls() {
+        XCTAssertFalse(MeasuredWall.valid([.init(0,0),.init(2,2),.init(0,2),.init(2,0)]))
+        XCTAssertFalse(MeasuredWall.valid([.init(0,0),.init(.nan,1),.init(1,0)]))
+        XCTAssertFalse(MeasuredWall.valid([.init(0,0),.init(0.01,0),.init(0,0.01)]))
+        let outline: [SIMD2<Float>]=[.init(0,0),.init(3,0),.init(3,1),.init(1,1),.init(1,3),.init(0,3)]
+        XCTAssertTrue(MeasuredWall.valid(outline))
+        XCTAssertTrue(MeasuredWall.contains(.init(0.5,2),polygon:outline))
+        XCTAssertFalse(MeasuredWall.contains(.init(2,2),polygon:outline))
+        let divided=WallDepthEvidence.subdivide(MeasuredWall.triangles(outline,excluding:[]))
+        XCTAssertLessThan(divided.count,18000)
+        XCTAssertEqual(divided.reduce(Float(0)) { $0+MeasuredWall.area($1) },5,accuracy:0.001)
+    }
+    func testDepthRequiresRepeatedHighConfidenceAndImmediatelyRejectsFurniture() {
+        var evidence=WallDepthEvidence()
+        XCTAssertTrue(evidence.observe([.wall,.unknown,.obstacle,.outside]).isEmpty)
+        XCTAssertEqual(evidence.observe([.wall,.wall,.wall,.outside]),[0])
+        XCTAssertEqual(evidence.observe([.obstacle,.wall,.unknown,.outside]),[1])
+        XCTAssertEqual(evidence.observe([.wall,.outside,.unknown,.outside]),[1])
+        XCTAssertEqual(evidence.observe([.wall,.unknown,.unknown,.outside]),[0])
+        if case .obstacle = WallDepthEvidence.classify(expected:2,measured:1.4,confidence:2) {} else { XCTFail("Furniture must reject paint") }
+        if case .unknown = WallDepthEvidence.classify(expected:2,measured:3,confidence:2) {} else { XCTFail("An opening is not a wall") }
+        if case .unknown = WallDepthEvidence.classify(expected:2,measured:2,confidence:1) {} else { XCTFail("Low confidence must not authorize paint") }
+        if case .wall = WallDepthEvidence.classify(expected:2,measured:2.02,confidence:2) {} else { XCTFail("Measured coplanar surface") }
+    }
+    func testSpatialVoiceCommandsAndNegations() {
+        XCTAssertEqual(WallARCommand.parse("Oi Jarvis, cenário floresta",inStudio:false),.theme(.forest))
+        XCTAssertEqual(WallARCommand.parse("bosque noturno",inStudio:true),.theme(.enchanted))
+        XCTAssertEqual(WallARCommand.parse("coloca o rádio",inStudio:true),.theme(.studio))
+        XCTAssertEqual(WallARCommand.parse("marca a parede",inStudio:true),.measure)
+        XCTAssertEqual(WallARCommand.parse("adicionar ponto",inStudio:true),.point)
+        XCTAssertEqual(WallARCommand.parse("excluir armário",inStudio:true),.opening)
+        XCTAssertEqual(WallARCommand.parse("aplica o recorte",inStudio:true),.approve)
+        XCTAssertNil(WallARCommand.parse("não coloca o rádio",inStudio:true))
+        XCTAssertNil(WallARCommand.parse("excluir armário",inStudio:false))
+    }
+    @MainActor func testDownloadedSpatialModelsLoadAndRenderWithRealGeometry() throws {
+        for (id,faces) in [("mossrock",5000),("fern",784),("radio",6036)] {
+            let model=try SpatialAssets.load(id)
+            XCTAssertEqual(model.geometry?.elements.first?.primitiveCount,faces)
+            XCTAssertNotNil(model.geometry?.firstMaterial?.diffuse.contents)
+            XCTAssertNotNil(model.geometry?.firstMaterial?.normal.contents)
+        }
+        let sound=try XCTUnwrap(Bundle.main.url(forResource:"Spatial_demo",withExtension:"wav"))
+        XCTAssertGreaterThan(try AVAudioFile(forReading:sound).length,100000)
+        guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
+        for theme in SpatialTheme.allCases {
+            let scene=SCNScene();scene.background.contents=UIColor(white:0.09,alpha:1)
+            let content=try SpatialAssets.composition(theme);scene.rootNode.addChildNode(content)
+            let camera=SCNNode();camera.camera=SCNCamera();camera.position=SCNVector3(0.9,0.65,1.05)
+            camera.look(at:SCNVector3(0,0.15,0));scene.rootNode.addChildNode(camera)
+            let ambient=SCNNode();ambient.light=SCNLight();ambient.light?.type = .ambient;ambient.light?.intensity=450;scene.rootNode.addChildNode(ambient)
+            let light=SCNNode();light.light=SCNLight();light.light?.type = .directional;light.light?.intensity=600
+            light.eulerAngles=SCNVector3(-0.7,-0.5,0);scene.rootNode.addChildNode(light)
+            let floor=SCNNode(geometry:SCNFloor());floor.geometry?.firstMaterial?.diffuse.contents=UIColor(white:0.15,alpha:1);scene.rootNode.addChildNode(floor)
+            let renderer=SCNRenderer(device:device,options:nil);renderer.scene=scene;renderer.pointOfView=camera
+            let image=renderer.snapshot(atTime:1,with:CGSize(width:900,height:700),antialiasingMode:.multisampling4X)
+            let attachment=XCTAttachment(image:image);attachment.name="Spatial-\(theme.rawValue)-downloaded-models";attachment.lifetime = .keepAlways;add(attachment)
+            XCTAssertNotNil(image.cgImage)
+        }
+    }
     func testWallCornersJoinMeasuredCeilingAndDoNotInventMissingCeiling() {
         let outline: [SIMD2<Float>] = [.init(-0.9,0.1),.init(0.9,0.1),.init(0.9,2.8),.init(-0.9,2.8)]
         let edges = [WallEdge(normal:.init(0,-1),offset:3,ceiling:true),

@@ -33,9 +33,27 @@ enum WallMaterials {
     }
 }
 
+enum WallMeasureMode { case none, outline, opening }
+
 /// Owns one live ARSession. Painted geometry has its own world anchor and frozen
 /// metric UVs, so plane refinement cannot stretch the texture or move its edges.
 @MainActor final class WallARController: NSObject, ObservableObject, ARSessionDelegate {
+    @Published var measureMode = WallMeasureMode.none
+    @Published var pointsCount = 0
+    @Published var openingsCount = 0
+    @Published var approved = false
+    @Published var measuredArea: Float = 0
+    @Published var measurement = ""
+    var outline: [SIMD2<Float>] = []
+    var draft: [SIMD2<Float>] = []
+    var openings: [WallOpening] = []
+    var markers = SCNNode()
+    var automaticOpenings: [WallOpening] = []
+    var paintRevision = 0
+    var depthEvidence = WallDepthEvidence()
+    var lastDepthUpdate: TimeInterval = 0
+    var depthPending = false
+    var spatial: SpatialWorld!
     @Published var status = "Mostre a parede, o encontro com o teto e os cantos."
     @Published var selected = false
     @Published var finish = WallFinish.white
@@ -46,19 +64,19 @@ enum WallMaterials {
     @Published var metrics = "Preparando câmera"
     @Published var notice = ""
     let view = ARSCNView(frame:.zero, options:[SCNView.Option.preferredRenderingAPI.rawValue: SCNRenderingAPI.metal.rawValue])
-    private var planes: [UUID:ARPlaneAnchor] = [:]
-    private var painted: SCNNode?
-    private var worldAnchor: ARAnchor?
+    var planes: [UUID:ARPlaneAnchor] = [:]
+    var painted: SCNNode?
+    var worldAnchor: ARAnchor?
     private var history: [WallFinish] = []
     private var occluders: [UUID:SCNNode] = [:]
     private var meshUpdated: [UUID:TimeInterval] = [:]
-    private let meshQueue = DispatchQueue(label:"jarvis.wall.occlusion",qos:.utility)
+    let meshQueue = DispatchQueue(label:"jarvis.wall.occlusion",qos:.utility)
     private var pendingMeshes: Set<UUID> = []
-    private var materials: [WallFinish:SCNMaterial] = [:]
+    var materials: [WallFinish:SCNMaterial] = [:]
     private var gate = WallTrackingGate()
-    private var foreground = true
+    var foreground = true
     private var started = false
-    private var stopped = false
+    var stopped = false
     private var lastMetric: TimeInterval = 0
     private var cameraFrames = 0
     private var stableLight: CGFloat = 350
@@ -70,6 +88,8 @@ enum WallMaterials {
     override init() {
         super.init()
         view.scene = SCNScene()
+        spatial = SpatialWorld(view:view)
+        spatial.attach()
         view.session.delegate = self
         view.session.delegateQueue = .main
         view.delegate = performance
@@ -97,6 +117,11 @@ enum WallMaterials {
         // Decode and upload once, before scanning; no image generation or downloading
         // competes with tracking. Shared PBR textures use metric UVs and mipmaps.
         for f in WallFinish.allCases { materials[f] = WallMaterials.make(f) }
+        for id in ["mossrock","fern","radio"] {
+            do { _ = try SpatialAssets.load(id) }
+            catch { notice = "Modelo local indisponível: \(id)." }
+            await Task.yield()
+        }
         view.prepare(Array(materials.values)) { [weak self] ready in
             Task { @MainActor in
                 guard let self, !self.stopped else { return }
@@ -113,6 +138,9 @@ enum WallMaterials {
         config.planeDetection = [.horizontal,.vertical]
         config.sceneReconstruction = .meshWithClassification
         config.environmentTexturing = .automatic
+        if ARWorldTrackingConfiguration.supportsFrameSemantics(.smoothedSceneDepth) {
+            config.frameSemantics.insert(.smoothedSceneDepth)
+        }
         if ARWorldTrackingConfiguration.supportsFrameSemantics(.personSegmentationWithDepth) {
             config.frameSemantics.insert(.personSegmentationWithDepth)
         }
@@ -137,10 +165,16 @@ enum WallMaterials {
         view.session.pause(); view.isPlaying = false
         view.session.delegate = nil; view.delegate = nil
         onFeedback = nil
+        spatial.stop()
         materials.removeAll(); occluders.removeAll(); planes.removeAll()
     }
 
-    @objc private func tapped(_ gesture: UITapGestureRecognizer) { select(at:gesture.location(in:view)) }
+    @objc private func tapped(_ gesture: UITapGestureRecognizer) {
+        let point=gesture.location(in:view)
+        if measureMode != .none { addPoint(at:point) }
+        else if spatial.active { spatial.tap(point,tracking:tracking) }
+        else { select(at:point) }
+    }
 
     @discardableResult func select(at point: CGPoint? = nil) -> Bool {
         guard prepared, tracking, !fatal else { status = "Aguarde o rastreamento estabilizar antes de selecionar."; return false }
@@ -152,32 +186,24 @@ enum WallMaterials {
               plane.extent.x > 0.25, plane.extent.z > 0.25 else {
             status = "Ainda não encontrei uma parede nesse ponto. Mostre também os cantos e tente de novo."; return false
         }
-        let edges = boundaries(for:plane)
-        let outline = plane.geometry.boundaryVertices.map { SIMD2<Float>($0.x,$0.z) }
-        let fitted = WallBoundary.fitted(outline,edges:edges)
-        guard WallBoundary.touchesCeiling(fitted,edges:edges) else {
-            status = "Mostre o encontro dessa parede com o teto e os cantos; depois selecione de novo. Ainda falta mapear a borda superior."
-            return false
-        }
-        guard let geometry = Self.surface(fitted) else { status = "O contorno ainda está incompleto. Mostre os cantos da parede."; return false }
         clear(silent:true)
-        geometry.materials = [materials[finish] ?? WallMaterials.make(finish)]
-        let root = SCNNode()
-        root.simdTransform = plane.transform
-        let surface = SCNNode(geometry:geometry)
-        // Lift toward camera, not blindly toward the plane normal.
-        if let frame = view.session.currentFrame {
-            let localCamera = simd_inverse(plane.transform) * frame.camera.transform.columns.3
-            surface.position.y = localCamera.y >= 0 ? 0.008 : -0.008
+        spatial.active=false
+        let root=SCNNode(); root.simdTransform=plane.transform
+        let surface=SCNNode()
+        if let frame=view.session.currentFrame {
+            let localCamera=simd_inverse(plane.transform) * frame.camera.transform.columns.3
+            surface.position.y=localCamera.y>=0 ? 0.025 : -0.025
         }
         root.addChildNode(surface)
-        let anchor = ARAnchor(name:"JarvisPaintedWall", transform:plane.transform)
-        worldAnchor = anchor; painted = root
-        view.scene.rootNode.addChildNode(root)
-        view.session.add(anchor:anchor)
-        selected = true; comparing = false; history = []
-        status = "\(finish.title) fixado. Mova o iPhone para conferir."
-        notice = "Encaixe no teto detectado · \(edges.filter { !$0.ceiling }.count) limites adicionais. Confira janelas e quadros."
+        markers=SCNNode(); markers.position.y=surface.position.y*1.3; root.addChildNode(markers)
+        let anchor=ARAnchor(name:"JarvisMeasuredWall",transform:plane.transform)
+        worldAnchor=anchor; painted=root
+        view.scene.rootNode.addChildNode(root); view.session.add(anchor:anchor)
+        selected=true; comparing=false; history=[]; approved=false
+        outline=[]; draft=[]; openings=[]; pointsCount=0; openingsCount=0
+        measureMode = .outline
+        status="Marque os cantos em ordem com a mira e Adicionar ponto. A parede ainda não foi pintada."
+        notice="Exclua portas, janelas e armários antes de Aplicar. Regiões sem profundidade confiável ficam sem pintura."
         return true
     }
 
@@ -223,30 +249,39 @@ enum WallMaterials {
         switch command {
         case .open: break
         case .select:
-            if select() { feedback("Parede selecionada. \(finish.title) aplicado.") }
+            if select() { feedback("Marque os cantos da parede e as áreas que devem ficar livres.") }
             else { feedback(status) }
         case .finish(let value):
             let old = finish
             finish = value
-            if selected {
+            if selected && approved {
                 if old != value { history.append(old); if history.count > 20 { history.removeFirst() } }
                 painted?.childNodes.first?.geometry?.materials = [materials[value] ?? WallMaterials.make(value)]
                 comparing = false; setVisible(tracking)
                 status = "\(value.title) aplicado à mesma parede."
                 feedback(status)
-            } else if select() { feedback("\(value.title) aplicado à parede à sua frente.") }
-            else { status = "\(value.title) escolhido. Enquadre a parede e diga “essa parede” ou toque nela."; feedback(status) }
+            } else {
+                status="\(value.title) escolhido. Marque a parede e as exclusões; depois toque em Aplicar."
+                feedback(status)
+            }
         case .undo:
             guard let previous = history.popLast() else { feedback("Não há outra cor para desfazer nesta parede."); return }
             finish = previous; painted?.childNodes.first?.geometry?.materials = [materials[previous] ?? WallMaterials.make(previous)]
             comparing = false; setVisible(tracking); status = "Voltei para \(previous.title)."; feedback(status)
         case .clear: clear(); feedback("Pintura removida.")
         case .compare: comparing.toggle(); setVisible(tracking && !comparing); status = comparing ? "Parede original." : "Pintura AR." 
+        case .measure: beginOutline()
+        case .point: addPoint()
+        case .opening: beginOpening()
+        case .approve: confirm()
+        case .theme(let theme): measureMode = .none; spatial.setTheme(theme)
+        case .interact: spatial.interact()
+        case .removeObject: spatial.removeSelected()
         case .close: break
         }
     }
 
-    private func feedback(_ text: String) {
+    func feedback(_ text: String) {
         let now = ProcessInfo.processInfo.systemUptime
         guard now-lastFeedback > 0.8 else { return }
         lastFeedback = now; onFeedback?(text)
@@ -254,13 +289,16 @@ enum WallMaterials {
     private func clear(silent: Bool = false) {
         if let anchor = worldAnchor { view.session.remove(anchor:anchor) }
         worldAnchor = nil; painted?.removeFromParentNode(); painted = nil
-        selected = false; comparing = false; history.removeAll()
+        selected=false; approved=false; comparing=false; history.removeAll()
+        measureMode = .none; outline=[]; draft=[]; openings=[]; paintRevision += 1
+        depthEvidence=WallDepthEvidence(); pointsCount=0; openingsCount=0; measuredArea=0; measurement=""
         if !silent { status = "Pintura removida. Escolha outra parede." }
     }
     private func setVisible(_ visible: Bool) {
         // No fade, camera tween, flashing reticle or screen-space fallback.
         // Gate has a dwell time, preventing normal/limited oscillation flicker.
         painted?.isHidden = !visible
+        spatial.setVisible(visible)
     }
 
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
@@ -272,6 +310,7 @@ enum WallMaterials {
             tracking = good; setVisible(good && !comparing)
             status = good ? (selected ? "Parede fixada. Pode mudar o material por voz." : "Toque na parede ou diga “essa parede”.") : "Recuperando posição. Mova devagar e mostre detalhes do ambiente."
         }
+        if approved && good && frame.timestamp-lastDepthUpdate>0.5 { updateDepth(frame) }
         cameraFrames += 1
         if frame.timestamp-lastMetric >= 1 {
             let fps = performance.sample()
@@ -282,6 +321,7 @@ enum WallMaterials {
                 fatal = true; setVisible(false); view.session.pause(); view.isPlaying = false
                 status = "iPhone quente. AR pausado; feche e deixe o aparelho esfriar."; return
             }
+            spatial.setThermal(thermal)
             view.preferredFramesPerSecond = thermal == .serious || ProcessInfo.processInfo.isLowPowerModeEnabled ? 30 : 60
             if thermal == .serious { notice = "iPhone aquecendo: renderização limitada a 30 FPS." }
             if let estimate = frame.lightEstimate {
@@ -296,13 +336,18 @@ enum WallMaterials {
     private func update(_ anchors: [ARAnchor]) {
         guard !stopped else { return }
         for anchor in anchors {
-            if anchor.identifier == worldAnchor?.identifier { painted?.simdTransform = anchor.transform }
-            if let plane = anchor as? ARPlaneAnchor { planes[plane.identifier] = plane }
+            if anchor.identifier == worldAnchor?.identifier { worldAnchor=anchor; painted?.simdTransform = anchor.transform }
+            if let plane = anchor as? ARPlaneAnchor {
+                planes[plane.identifier]=plane
+                if approved && (plane.classification == .door || plane.classification == .window) { refreshAutomaticOpenings() }
+            }
+            spatial.update(anchor)
             if let mesh = anchor as? ARMeshAnchor { updateOccluder(mesh) }
         }
     }
     func session(_ session: ARSession, didRemove anchors: [ARAnchor]) {
         for anchor in anchors {
+            spatial.remove(anchor)
             planes.removeValue(forKey:anchor.identifier)
             occluders.removeValue(forKey:anchor.identifier)?.removeFromParentNode()
             meshUpdated.removeValue(forKey:anchor.identifier)
@@ -349,9 +394,9 @@ enum WallMaterials {
             guard let classes = mesh.classification else { continue }
             let raw = classes.buffer.contents().advanced(by:classes.offset + classes.stride*face).load(as:UInt8.self)
             let kind = ARMeshClassification(rawValue:Int(raw)) ?? .none
-            // A reconstructed wall isn't exactly coplanar with the fitted plane.
-            // Excluding wall/unknown faces prevents depth fighting over the paint.
-            guard [.table,.seat,.door,.window,.floor,.ceiling].contains(kind) else { continue }
+            // Walls and unclassified foreground also occlude spatial objects.
+            // Paint is offset and independently gated by observed scene depth.
+            guard [.wall,.none,.table,.seat,.door,.window,.floor,.ceiling].contains(kind) else { continue }
             for corner in 0..<mesh.faces.indexCountPerPrimitive {
                 let offset = (face*mesh.faces.indexCountPerPrimitive+corner)*mesh.faces.bytesPerIndex
                 let pointer = mesh.faces.buffer.contents().advanced(by:offset)
@@ -394,10 +439,11 @@ private struct WallCameraView: UIViewRepresentable {
     @StateObject private var controller = WallARController()
     @Environment(\.scenePhase) private var scenePhase
     @State private var help = false
+    @State private var objectsTab = false
     var body: some View {
         ZStack {
             WallCameraView(controller:controller).ignoresSafeArea(edges:.bottom)
-            if !controller.selected {
+            if !controller.selected || controller.measureMode != .none {
                 Image(systemName:"plus").font(.title.weight(.ultraLight)).foregroundStyle(.white)
                     .shadow(color:.black,radius:2).allowsHitTesting(false)
             }
@@ -409,6 +455,13 @@ private struct WallCameraView: UIViewRepresentable {
                 }.font(.caption.monospaced()).padding(12).background(.black.opacity(0.72),in:RoundedRectangle(cornerRadius:14))
                 Spacer()
                 VStack(alignment:.leading,spacing:12) {
+                    Picker("Ferramenta",selection:$objectsTab) {
+                        Text("Medir e pintar").tag(false)
+                        Text("Cenários 3D").tag(true)
+                    }.pickerStyle(.segmented)
+                    if objectsTab {
+                        SpatialControls(world:controller.spatial)
+                    } else {
                     Text(controller.status).font(.subheadline.weight(.medium)).fixedSize(horizontal:false,vertical:true)
                     ScrollView(.horizontal,showsIndicators:false) {
                         HStack(spacing:10) {
@@ -423,13 +476,19 @@ private struct WallCameraView: UIViewRepresentable {
                             }
                         }.padding(2)
                     }
-                    HStack {
-                        Button("Selecionar parede") { controller.apply(.select) }.disabled(!controller.tracking)
-                        Spacer()
-                        Button { controller.apply(.undo) } label: { Image(systemName:"arrow.uturn.backward") }.accessibilityLabel("Desfazer cor")
-                        Button { controller.apply(.compare) } label: { Image(systemName:controller.comparing ? "eye.slash" : "eye") }.accessibilityLabel("Comparar original")
-                        Button { help.toggle() } label: { Image(systemName:"info.circle") }.accessibilityLabel("Ajuda do modo AR")
-                    }.buttonStyle(.bordered).controlSize(.small)
+                    ScrollView(.horizontal,showsIndicators:false) {
+                        HStack {
+                            Button("Marcar parede",systemImage:"ruler") { controller.beginOutline() }.disabled(!controller.tracking)
+                            Button("Adicionar ponto",systemImage:"plus.circle.fill") { controller.addPoint() }.disabled(controller.measureMode == .none || !controller.tracking)
+                            Button("Excluir área",systemImage:"rectangle.dashed") { controller.beginOpening() }.disabled(!controller.selected)
+                            Button("Desfazer ponto",systemImage:"arrow.uturn.backward") { controller.undoPoint() }
+                            Button("Aplicar",systemImage:"checkmark") { controller.confirm() }.disabled(!controller.tracking || !controller.selected)
+                            Button { controller.apply(.compare) } label: { Image(systemName:controller.comparing ? "eye.slash" : "eye") }.accessibilityLabel("Comparar original")
+                        }.buttonStyle(.bordered).controlSize(.small)
+                    }
+                    Text("\(controller.pointsCount) pontos · \(controller.openingsCount) exclusões · \(controller.measurement)").font(.caption2).foregroundStyle(.cyan)
+                    }
+                    Button(help ? "Ocultar ajuda" : "Como marcar e interagir") { help.toggle() }.font(.caption)
                     if !model.wakeEnabled {
                         Button("Ativar pedidos por voz") { model.setWakeEnabled(true) }.buttonStyle(.borderedProminent)
                     } else {
@@ -437,7 +496,7 @@ private struct WallCameraView: UIViewRepresentable {
                             .font(.caption).foregroundStyle(.cyan)
                     }
                     if help {
-                        Text("Mostre uma parede lisa, os cantos e o encontro com o teto. Toque nela ou diga “essa parede”. Depois: “agora azul”, “coloca madeira”, “desfaz” ou “mostra o original”.\n\nO recorte é aproximado: portas, quadros, espelhos e móveis pequenos podem não ficar perfeitos. A pintura dura nesta sessão. Se perder a posição, ela é ocultada até estabilizar.\n\nTexturas PBR 2K locais. A iluminação é aproximada; não preserva todas as sombras da parede real. Meta: 60 FPS, com redução térmica para 30 FPS.\n\n\(controller.notice)")
+                        Text("Marcar parede → aponte a mira para cada canto → Adicionar ponto. Siga o contorno em ordem. Excluir área: marque dois cantos opostos de cada porta, janela ou armário. Confira as linhas e toque em Aplicar.\n\nA pintura só aparece onde duas leituras de profundidade confirmam a parede. Áreas desconhecidas ficam vazias: mostre de outro ângulo. Coplanaridade não identifica uma porta fechada; marque a exclusão.\n\nCenários: escolha Bosque, Bosque noturno ou Estúdio, toque no piso/mesa mapeados. Toque no objeto para selecionar e novamente para interagir. Arraste, use pinça e gire com dois dedos.\n\nUse Remover para liberar uma passagem. As medidas são estimativas. Não detecta automaticamente todos os armários ou batentes.\n\nModelos: Poly Haven e Microsoft/Khronos, CC0. Licenças incluídas. Meta de 60 FPS, redução térmica para 30. \(controller.notice)")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }.padding(14).background(.ultraThinMaterial,in:RoundedRectangle(cornerRadius:20))
@@ -448,6 +507,10 @@ private struct WallCameraView: UIViewRepresentable {
                 await controller.start()
                 consume()
             }
+            .onChange(of:objectsTab) { _,active in
+                controller.spatial.active=active
+                if active { controller.measureMode = .none }
+            }
             .onChange(of:model.wallARRequest) { _,_ in consume() }
             .onChange(of:scenePhase) { _,phase in controller.setForeground(phase == .active) }
             .onDisappear { controller.stop() }
@@ -455,6 +518,7 @@ private struct WallCameraView: UIViewRepresentable {
     private func consume() {
         guard let request = model.wallARRequest else { return }
         model.wallARRequest = nil
+        if case .theme = request.command { objectsTab=true }
         controller.apply(request.command)
     }
     @ViewBuilder private func swatch(_ finish: WallFinish) -> some View {

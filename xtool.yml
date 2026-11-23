@@ -29,3 +29,23 @@ resources:
 - JarvisPhone/Resources/AR_wood_Color.jpg
 - JarvisPhone/Resources/AR_wood_NormalGL.jpg
 - JarvisPhone/Resources/AR_wood_Roughness.jpg
+
+- JarvisPhone/Resources/Spatial_mossrock.mesh
+- JarvisPhone/Resources/Spatial_mossrock_Color.jpg
+- JarvisPhone/Resources/Spatial_mossrock_NormalGL.jpg
+- JarvisPhone/Resources/Spatial_mossrock_Roughness.jpg
+- JarvisPhone/Resources/Spatial_mossrock_Metalness.jpg
+- JarvisPhone/Resources/Spatial_fern.mesh
+- JarvisPhone/Resources/Spatial_fern_Color.png
+- JarvisPhone/Resources/Spatial_fern_NormalGL.jpg
+- JarvisPhone/Resources/Spatial_fern_Roughness.jpg
+- JarvisPhone/Resources/Spatial_fern_Metalness.jpg
+- JarvisPhone/Resources/Spatial_radio.mesh
+- JarvisPhone/Resources/Spatial_radio_Color.jpg
+- JarvisPhone/Resources/Spatial_radio_NormalGL.jpg
+- JarvisPhone/Resources/Spatial_radio_Roughness.jpg
+- JarvisPhone/Resources/Spatial_radio_Metalness.jpg
+- JarvisPhone/Resources/Spatial_radio_Emission.jpg
+- JarvisPhone/Resources/SPATIAL_ASSETS.json
+- JarvisPhone/Resources/SPATIAL_LICENSES.txt
+- JarvisPhone/Resources/Spatial_demo.wav

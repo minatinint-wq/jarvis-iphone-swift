@@ -11,6 +11,11 @@ with zipfile.ZipFile(sys.argv[1]) as z:
  resources = Path(__file__).resolve().parents[1] / "JarvisPhone" / "Resources"
  for item in json.loads((resources/'AR_MATERIALS.json').read_text()):
   assert hashlib.sha256(z.read(root+item['file'])).hexdigest() == item['sha256'], 'AR material missing or altered: '+item['file']
+ for asset in json.loads((resources/'SPATIAL_ASSETS.json').read_text()):
+  for item in asset['files']:
+   assert hashlib.sha256(z.read(root+item['file'])).hexdigest() == item['sha256'], 'Spatial asset altered: '+item['file']
+ assert z.read(root+'Spatial_demo.wav') == (resources/'Spatial_demo.wav').read_bytes()
+ assert root+'SPATIAL_LICENSES.txt' in z.namelist()
  for name in ["jarvis-greeting.pcm","jarvis-connection.pcm","jarvis-torch-on.pcm","jarvis-torch-off.pcm","JarvisInstruments.sf2","GeneralUser-LICENSE.txt"]:
   expected = (resources / name).read_bytes()
   assert expected and z.read(root + name) == expected, f"recurso local divergente: {name}"

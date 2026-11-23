@@ -36,12 +36,22 @@ enum WallFinish: String, CaseIterable, Identifiable {
 
 enum WallARCommand: Equatable {
     case open, select, finish(WallFinish), undo, clear, compare, close
+    case measure, point, opening, approve, theme(SpatialTheme), interact, removeObject
 
     static func parse(_ input: String, inStudio: Bool) -> Self? {
         let s = PhoneIntentPhrases.normalized(input)
         guard !s.isEmpty, s.range(of: #"\b(nao|nunca|nem|talvez|disse|dizer|dissesse|se)\b"#, options: .regularExpression) == nil else { return nil }
         if s.range(of: #"^(?:(?:abre|abra|abrir|ativa|ative|ativar) (?:o )?)?(?:modo ar|realidade aumentada|pintura ar|parede ar|pintar parede)$"#, options: .regularExpression) != nil { return .open }
+        let scenes: [String:SpatialTheme] = ["abre o bosque":.forest,"abre a floresta":.forest,"cria uma floresta neste quarto":.forest,"coloca uma floresta":.forest,"cenario floresta":.forest,"cenario bosque":.forest,"bosque noturno":.enchanted,"floresta encantada":.enchanted,"cenario noturno":.enchanted,"cenario estudio":.studio,"abre o estudio ar":.studio,"coloca o radio":.studio]
+        if let scene=scenes[s] { return .theme(scene) }
+        if ["abre o modo espacial","abre o modo cenarios","cenarios ar","modo espacial"].contains(s) { return .theme(.forest) }
         if inStudio {
+            if ["marcar parede","marca a parede","medir parede","marcar cantos"].contains(s) { return .measure }
+            if ["adicionar ponto","marca esse ponto","marca aqui","adiciona ponto"].contains(s) { return .point }
+            if ["excluir area","excluir porta","excluir armario","marca a porta","marca o armario"].contains(s) { return .opening }
+            if ["aplicar recorte","aplica o recorte","confirmar recorte","aplicar pintura"].contains(s) { return .approve }
+            if ["interagir","ativar objeto","ativa o objeto"].contains(s) { return .interact }
+            if ["remove o objeto","remover objeto"].contains(s) { return .removeObject }
             if ["essa parede", "esta parede", "seleciona essa parede", "selecione essa parede", "selecionar parede", "fixa aqui", "pinta aqui"].contains(s) { return .select }
             if ["desfaz", "desfaca", "desfazer", "volta a cor anterior"].contains(s) { return .undo }
             if ["limpa a pintura", "limpar pintura", "remove a pintura", "remova a pintura", "tira a pintura"].contains(s) { return .clear }

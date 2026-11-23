@@ -1,0 +1,13 @@
+Finished models, modified for mobile: isolated specimen, baked transforms, normalized scale, texture conversion.
+
+mossrock — Kless Gyzen
+https://polyhaven.com/a/rock_moss_set_01
+License: CC0 1.0 https://creativecommons.org/publicdomain/zero/1.0/
+
+fern — Rob Tuytel / Rico Cilliers
+https://polyhaven.com/a/fern_02
+License: CC0 1.0 https://creativecommons.org/publicdomain/zero/1.0/
+
+radio — Microsoft
+https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/BoomBox
+License: CC0 1.0 https://creativecommons.org/publicdomain/zero/1.0/
