@@ -54,6 +54,7 @@ enum WallMeasureMode { case none, outline, opening }
     var lastDepthUpdate: TimeInterval = 0
     var depthPending = false
     var spatial: SpatialWorld!
+    var panel: SpatialPanel!
     @Published var status = "Mostre a parede, o encontro com o teto e os cantos."
     @Published var selected = false
     @Published var finish = WallFinish.white
@@ -88,6 +89,7 @@ enum WallMeasureMode { case none, outline, opening }
     override init() {
         super.init()
         view.scene = SCNScene()
+        panel=SpatialPanel(view:view)
         spatial = SpatialWorld(view:view)
         spatial.attach()
         view.session.delegate = self
@@ -165,12 +167,14 @@ enum WallMeasureMode { case none, outline, opening }
         view.session.pause(); view.isPlaying = false
         view.session.delegate = nil; view.delegate = nil
         onFeedback = nil
+        panel.close()
         spatial.stop()
         materials.removeAll(); occluders.removeAll(); planes.removeAll()
     }
 
     @objc private func tapped(_ gesture: UITapGestureRecognizer) {
         let point=gesture.location(in:view)
+        if panel.hit(point) { return }
         if measureMode != .none { addPoint(at:point) }
         else if spatial.active { spatial.tap(point,tracking:tracking) }
         else { select(at:point) }
@@ -270,6 +274,7 @@ enum WallMeasureMode { case none, outline, opening }
             comparing = false; setVisible(tracking); status = "Voltei para \(previous.title)."; feedback(status)
         case .clear: clear(); feedback("Pintura removida.")
         case .compare: comparing.toggle(); setVisible(tracking && !comparing); status = comparing ? "Parede original." : "Pintura AR." 
+        case .panel(let module): panel.open(module,tracking:tracking)
         case .measure: beginOutline()
         case .point: addPoint()
         case .opening: beginOpening()
@@ -299,6 +304,7 @@ enum WallMeasureMode { case none, outline, opening }
         // Gate has a dwell time, preventing normal/limited oscillation flicker.
         painted?.isHidden = !visible
         spatial.setVisible(visible)
+        panel.setTracking(visible)
     }
 
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
@@ -341,6 +347,7 @@ enum WallMeasureMode { case none, outline, opening }
                 planes[plane.identifier]=plane
                 if approved && (plane.classification == .door || plane.classification == .window) { refreshAutomaticOpenings() }
             }
+            panel.update(anchor)
             spatial.update(anchor)
             if let mesh = anchor as? ARMeshAnchor { updateOccluder(mesh) }
         }
@@ -451,6 +458,8 @@ private struct WallCameraView: UIViewRepresentable {
                 HStack {
                     Label(controller.tracking ? "POSIÇÃO ESTÁVEL" : "MAPEANDO",systemImage:controller.tracking ? "viewfinder" : "viewfinder.circle")
                     Spacer()
+                    Button { controller.panel.open(.dashboard,tracking:controller.tracking) } label: { Image(systemName:"square.grid.2x2") }
+                    Button { controller.panel.reposition() } label: { Image(systemName:"scope") }.accessibilityLabel("Trazer painel para frente")
                     Text(controller.metrics)
                 }.font(.caption.monospaced()).padding(12).background(.black.opacity(0.72),in:RoundedRectangle(cornerRadius:14))
                 Spacer()
@@ -504,6 +513,15 @@ private struct WallCameraView: UIViewRepresentable {
         }.background(.black).foregroundStyle(.white)
             .task {
                 controller.onFeedback = { text in model.wallARFeedback(text) }
+                controller.panel.onSpotify = { job in model.requestSpatialSpotify(job) }
+                controller.panel.onAction = { action in
+                    switch action {
+                    case .scene(let theme): objectsTab=true;controller.spatial.setTheme(theme);controller.panel.close()
+                    case .studio(let mode): controller.panel.close();model.openStudio(mode)
+                    case .command(let text): Task { await model.runSpatialCommand(text) }
+                    default: break
+                    }
+                }
                 await controller.start()
                 consume()
             }
@@ -512,6 +530,8 @@ private struct WallCameraView: UIViewRepresentable {
                 if active { controller.measureMode = .none }
             }
             .onChange(of:model.wallARRequest) { _,_ in consume() }
+            .onChange(of:model.spatialPanelResponse) { _,data in if let data { controller.panel.receive(data) } }
+            .onChange(of:model.message) { _,text in controller.panel.showResult(text) }
             .onChange(of:scenePhase) { _,phase in controller.setForeground(phase == .active) }
             .onDisappear { controller.stop() }
     }
@@ -519,6 +539,18 @@ private struct WallCameraView: UIViewRepresentable {
         guard let request = model.wallARRequest else { return }
         model.wallARRequest = nil
         if case .theme = request.command { objectsTab=true }
+        if case .panel = request.command, !controller.tracking {
+            // Opening a panel by voice must wait for AR tracking, not consume the request.
+            Task { @MainActor in
+                for _ in 0..<80 {
+                    try? await Task.sleep(for:.milliseconds(100))
+                    if controller.stopped { return }
+                    if controller.tracking { controller.apply(request.command);return }
+                }
+                controller.status="Não consegui fixar o painel. Mostre detalhes do ambiente e tente novamente."
+            }
+            return
+        }
         controller.apply(request.command)
     }
     @ViewBuilder private func swatch(_ finish: WallFinish) -> some View {

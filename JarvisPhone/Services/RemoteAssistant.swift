@@ -304,6 +304,7 @@ import ActivityKit
     @Published var recording = false
     @Published var cameraAvailable = false
     @Published var studioMode: String? { didSet { updateWake() } }
+    @Published var spatialPanelResponse: Data?
     @Published var wallARRequest: WallARRequest?
     @Published private(set) var localStudio = false
     @Published private(set) var studioInstrument = StudioInstrument.harp
@@ -591,6 +592,9 @@ import ActivityKit
     }
 
     private func event(_ o:[String:Any]) async {
+        if o["phase"] as? String == "spatial-panel" {
+            spatialPanelResponse=try? JSONSerialization.data(withJSONObject:o);return
+        }
         if quietUntilCalled, let type = o["type"] as? String, !["pc-status","status"].contains(type) {
             if ["tool-status","input-status"].contains(type), o["phase"] as? String == "spotify-phone" { acceptSpotifyStatus(o) }
             return
@@ -678,21 +682,35 @@ import ActivityKit
         lines.append(Line(user:user,text:text));if lines.count>60 {lines.removeFirst()}
     }
     private func send(_ o:[String:Any],_ sock:URLSessionWebSocketTask) async throws {try await sock.send(.string(String(decoding:try JSONSerialization.data(withJSONObject:o),as:UTF8.self)))}
-    func say(_ text:String) async {
+    func requestSpatialSpotify(_ job: [String:Any]) {
+        guard ready, active, let sock=ws else {
+            spatialPanelResponse=try? JSONSerialization.data(withJSONObject:["requestId":job["requestId"] ?? "","message":"Conecte o iPhone à ponte do Jarvis para consultar o Spotify."])
+            return
+        }
+        var packet=connectPacket()
+        packet["spatialPanel"]=job
+        Task {
+            do { try await send(packet,sock) }
+            catch { spatialPanelResponse=try? JSONSerialization.data(withJSONObject:["requestId":job["requestId"] ?? "","message":"A ponte desconectou antes de confirmar."]) }
+        }
+    }
+    func runSpatialCommand(_ text: String) async {
+        quietUntilCalled=false
+        let value=PhoneIntentPhrases.normalized(text)
+        if value.contains("vendo") || value.contains("visao continua") || value.contains("gere uma imagem") { studioMode=nil }
+        await say(text,fromSpatialPanel:true)
+    }
+    func say(_ text:String, fromSpatialPanel: Bool = false) async {
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if PhoneVoiceControl.isMute(value) { muteUntilCalled(); return }
         guard !quietUntilCalled else { message = "Em silêncio. Diga “Oi, Jarvis”."; return }
         guard active, !value.isEmpty, value.count <= 2000, !busy, !recording, localRequest == nil else { return }
-        if let command = WallARCommand.parse(value, inStudio:studioMode == "wallAR") {
+        if !fromSpatialPanel, let command = WallARCommand.parse(value, inStudio:studioMode == "wallAR") {
             add(true,value)
             if command == .close { studioMode = nil; wallARRequest = nil; message = "Modo AR fechado."; return }
             if studioMode == "wallAR" || openStudio("wallAR") {
                 wallARRequest = WallARRequest(command:command)
             }
-            return
-        }
-        if studioMode == "wallAR" {
-            wallARFeedback("No modo AR, diga marcar parede, adicionar ponto, excluir área ou aplicar recorte. Para objetos, peça cenário floresta, bosque noturno ou cenário estúdio.")
             return
         }
         if let command = Self.visionCommand(value) {

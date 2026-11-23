@@ -81,7 +81,7 @@ jobs:
 
           set -eo pipefail
 
-          xcodebuild -quiet -project JarvisPhone.xcodeproj -scheme JarvisPhone -configuration Release -destination "generic/platform=iOS" -derivedDataPath "$RUNNER_TEMP/phone-device" CODE_SIGNING_ALLOWED=NO build
+          xcodebuild -quiet -project JarvisPhone.xcodeproj -scheme JarvisPhone -configuration Release -destination "generic/platform=iOS" -derivedDataPath "$RUNNER_TEMP/phone-device" CODE_SIGNING_ALLOWED=NO COMPRESS_PNG_FILES=NO build
 
           mkdir -p "$RUNNER_TEMP/full/Payload"
 

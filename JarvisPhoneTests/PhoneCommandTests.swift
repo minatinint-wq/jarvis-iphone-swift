@@ -6,6 +6,16 @@ import Metal
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    func testGeneralSpatialModulesAndOrdinaryCommandsRemainSeparate() {
+        for (phrase,target) in [("Jarvis, abrir painel",SpatialModule.dashboard),("abrir módulo Spotify",.spotify),("abrir controles",.phone),("mostrar painel da casa",.home),("abrir módulo câmera",.camera),("abrir módulo criação",.creation),("abrir módulo cenários",.scenes),("abrir módulo instrumentos",.instruments),("abrir módulo libras",.libras),("abrir módulo tradução",.translation),("abrir painel meu dia",.personal)] {
+            XCTAssertEqual(WallARCommand.parse(phrase,inStudio:false),.panel(target),phrase)
+        }
+        XCTAssertEqual(WallARCommand.parse("abrir Spotify",inStudio:true),.panel(.spotify))
+        XCTAssertNil(WallARCommand.parse("abrir harpa",inStudio:false))
+        XCTAssertNil(WallARCommand.parse("não abrir painel",inStudio:true))
+        XCTAssertNil(WallARCommand.parse("brilho da lâmpada em 30%",inStudio:true))
+        XCTAssertNil(WallARCommand.parse("brilho do iPhone em 30%",inStudio:true))
+    }
     func testMeasuredWallSubtractsDoorAndCupboardEvenAcrossLargeTriangles() {
         let wall: [SIMD2<Float>]=[.init(0,0),.init(4,0),.init(4,3),.init(0,3)]
         let door=WallOpening(.init(0.5,0),.init(1.5,2),margin:0)

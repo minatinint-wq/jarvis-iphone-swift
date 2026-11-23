@@ -36,12 +36,13 @@ enum WallFinish: String, CaseIterable, Identifiable {
 
 enum WallARCommand: Equatable {
     case open, select, finish(WallFinish), undo, clear, compare, close
-    case measure, point, opening, approve, theme(SpatialTheme), interact, removeObject
+    case measure, point, opening, approve, theme(SpatialTheme), interact, removeObject, panel(SpatialModule)
 
     static func parse(_ input: String, inStudio: Bool) -> Self? {
         let s = PhoneIntentPhrases.normalized(input)
         guard !s.isEmpty, s.range(of: #"\b(nao|nunca|nem|talvez|disse|dizer|dissesse|se)\b"#, options: .regularExpression) == nil else { return nil }
         if s.range(of: #"^(?:(?:abre|abra|abrir|ativa|ative|ativar) (?:o )?)?(?:modo ar|realidade aumentada|pintura ar|parede ar|pintar parede)$"#, options: .regularExpression) != nil { return .open }
+        if let module=SpatialModule.opening(input), inStudio || s.range(of:#"\b(painel|modulo|modulos|central|interface|controles)\b"#,options:.regularExpression) != nil { return .panel(module) }
         let scenes: [String:SpatialTheme] = ["abre o bosque":.forest,"abre a floresta":.forest,"cria uma floresta neste quarto":.forest,"coloca uma floresta":.forest,"cenario floresta":.forest,"cenario bosque":.forest,"bosque noturno":.enchanted,"floresta encantada":.enchanted,"cenario noturno":.enchanted,"cenario estudio":.studio,"abre o estudio ar":.studio,"coloca o radio":.studio]
         if let scene=scenes[s] { return .theme(scene) }
         if ["abre o modo espacial","abre o modo cenarios","cenarios ar","modo espacial"].contains(s) { return .theme(.forest) }
