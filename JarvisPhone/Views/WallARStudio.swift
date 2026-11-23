@@ -2,6 +2,7 @@ import SwiftUI
 import ARKit
 import SceneKit
 import AVFoundation
+import WebKit
 
 struct WallARRequest: Equatable {
     let id = UUID()
@@ -85,6 +86,7 @@ enum WallMeasureMode { case none, outline, opening }
     private var performance = WallRenderMeter()
     private var lastFeedback: TimeInterval = 0
     var onFeedback: ((String) -> Void)?
+    var webWindowVisible = false
     var hands:SpatialHands!
     @Published var handStatus="Mostre a mão à câmera traseira."
 
@@ -97,6 +99,7 @@ enum WallMeasureMode { case none, outline, opening }
         hands.onSample = { [weak self] sample in
             guard let self else { return }
             if self.panel.visible { self.panel.hand(sample) } else { self.spatial.hand(sample) }
+            self.hands.showProgress(self.panel.visible ? self.panel.dwellProgress : self.spatial.dwellProgress)
         }
         hands.onQuality = { [weak self] in self?.handStatus=$0 }
         spatial.attach()
@@ -323,7 +326,7 @@ enum WallMeasureMode { case none, outline, opening }
         let normal: Bool
         switch frame.camera.trackingState { case .normal: normal = true; default: normal = false }
         let good = gate.update(normal:normal, at:frame.timestamp)
-        hands.update(frame,view:view,enabled:good && (panel.visible || spatial.active))
+        hands.update(frame,view:view,enabled:good && !webWindowVisible && (panel.visible || spatial.active))
         if tracking != good {
             tracking = good; setVisible(good && !comparing)
             status = good ? (selected ? "Parede fixada. Pode mudar o material por voz." : "Toque na parede ou diga “essa parede”.") : "Recuperando posição. Mova devagar e mostre detalhes do ambiente."
@@ -460,14 +463,18 @@ private struct WallCameraView: UIViewRepresentable {
     @State private var help = false
     @State private var objectsTab = false
     @State private var panelVisible = false
+    @State private var webModule: SpatialModule?
     @State private var panelStatus = ""
     var body: some View {
         ZStack {
-            WallCameraView(controller:controller).ignoresSafeArea(edges:.bottom)
+            WallCameraView(controller:controller).ignoresSafeArea(edges:.bottom).allowsHitTesting(webModule == nil)
             if !panelVisible && (!controller.selected || controller.measureMode != .none) {
                 Image(systemName:"plus").font(.title.weight(.ultraLight)).foregroundStyle(.white)
                     .shadow(color:.black,radius:2).allowsHitTesting(false)
             }
+            if let webModule {
+                SpatialWebWindow(module:webModule) { self.webModule=nil;controller.panel.open(.dashboard,tracking:controller.tracking) }.id(webModule.rawValue)
+            } else {
             VStack(spacing:10) {
                 HStack {
                     Label(controller.tracking ? "POSIÇÃO ESTÁVEL" : "MAPEANDO",systemImage:controller.tracking ? "viewfinder" : "viewfinder.circle")
@@ -481,7 +488,7 @@ private struct WallCameraView: UIViewRepresentable {
                     VStack(alignment:.leading,spacing:6) {
                         Text(panelStatus).font(.caption).lineLimit(3)
                         Text(controller.handStatus).font(.caption2).foregroundStyle(.cyan)
-                        Text("Pinça: clicar · segure a barra superior para mover. Também pode tocar nos cartões.").font(.caption2).foregroundStyle(.secondary)
+                        Text("Aponte por 2 segundos para clicar. Faça pinça para mover o painel. Abra a mão para circular livremente.").font(.caption2).foregroundStyle(.secondary)
                         HStack {
                             Button("Menor",systemImage:"minus.magnifyingglass") { controller.panel.resize(0.82) }
                             Button("Centralizar",systemImage:"scope") { controller.panel.reposition() }
@@ -536,12 +543,20 @@ private struct WallCameraView: UIViewRepresentable {
                 }.padding(14).background(.ultraThinMaterial,in:RoundedRectangle(cornerRadius:20))
                 }
             }.padding(12)
+            }
         }.background(.black).foregroundStyle(.white)
             .task {
                 controller.onFeedback = { text in model.wallARFeedback(text) }
+                controller.panel.onWeb = { target in
+                    controller.spatial.hand(nil)
+                    controller.hands.reset()
+                    controller.webWindowVisible=true
+                    webModule=target
+                }
                 controller.panel.onSpotify = { job in model.requestSpatialSpotify(job) }
                 controller.panel.onAction = { action in
                     switch action {
+                    case .activateSpotify: model.showSpotify()
                     case .model(let id): objectsTab=true;controller.spatial.setModel(id);controller.panel.close()
                     case .scene(let theme): objectsTab=true;controller.spatial.setTheme(theme);controller.panel.close()
                     case .studio(let mode): controller.panel.close();model.openStudio(mode)
@@ -557,7 +572,11 @@ private struct WallCameraView: UIViewRepresentable {
                 if active { controller.measureMode = .none }
             }
             .onChange(of:model.wallARRequest) { _,_ in consume() }
-            .onReceive(controller.panel.$visible) { panelVisible=$0;controller.spatial.panelBlocking=$0 }
+            .onChange(of:webModule) { _,target in
+                controller.webWindowVisible=target != nil
+                controller.spatial.panelBlocking=target != nil || panelVisible
+            }
+            .onReceive(controller.panel.$visible) { panelVisible=$0;controller.spatial.panelBlocking=$0 || webModule != nil }
             .onReceive(controller.panel.$status) { panelStatus=$0 }
             .onChange(of:model.spatialPanelResponse) { _,data in if let data { controller.panel.receive(data) } }
             .onChange(of:model.message) { _,text in controller.panel.showResult(text) }
@@ -567,6 +586,10 @@ private struct WallCameraView: UIViewRepresentable {
     private func consume() {
         guard let request = model.wallARRequest else { return }
         model.wallARRequest = nil
+        if case .panel(let target) = request.command {
+            if target == .youtube || target == .browser { controller.panel.open(target,tracking:controller.tracking);return }
+            webModule=nil
+        }
         if case .theme = request.command { objectsTab=true }
         if case .panel = request.command, !controller.tracking {
             // Opening a panel by voice must wait for AR tracking, not consume the request.
@@ -587,5 +610,70 @@ private struct WallCameraView: UIViewRepresentable {
            let path = Bundle.main.path(forResource:"AR_\(finish.texture)_Color",ofType:"jpg"),
            let image = UIImage(contentsOfFile:path) { Image(uiImage:image).resizable().scaledToFill() }
         else { let (r,g,b) = finish.rgb; Color(red:r,green:g,blue:b) }
+    }
+}
+
+/// A screen-relative media window stays reachable when looking straight up.
+@MainActor private struct SpatialWebWindow: View {
+    let module: SpatialModule
+    let close: () -> Void
+    @State private var address = ""
+    @State private var destination: URL?
+    var body: some View {
+        VStack(spacing:8) {
+            HStack {
+                Label(module.title,systemImage:module.symbol).font(.headline)
+                Spacer()
+                Button("Voltar ao painel",action:close)
+            }
+            HStack {
+                TextField(module == .youtube ? "Buscar vídeo" : "Endereço ou busca",text:$address)
+                    .textInputAutocapitalization(.never).autocorrectionDisabled()
+                    .submitLabel(.search).onSubmit(search)
+                Button("Ir",action:search)
+            }.textFieldStyle(.roundedBorder)
+            SpatialWebContent(url:destination ?? URL(string:module == .youtube ? "https://m.youtube.com/" : "https://duckduckgo.com/")!)
+                .frame(maxHeight:360).clipShape(RoundedRectangle(cornerRadius:12))
+        }.padding(12).background(.regularMaterial,in:RoundedRectangle(cornerRadius:18)).padding(12)
+    }
+    private func search() {
+        let query = address.trimmingCharacters(in:.whitespacesAndNewlines)
+        guard !query.isEmpty else { return }
+        if module == .browser, !query.contains(" "), query.contains("."),
+           let url=URL(string:query.contains("://") ? query : "https://"+query),url.scheme=="https",url.host != nil {
+            destination=url;return
+        }
+        var parts=URLComponents(string:module == .youtube ? "https://m.youtube.com/results" : "https://duckduckgo.com/")!
+        parts.queryItems=[URLQueryItem(name:module == .youtube ? "search_query" : "q",value:query)]
+        destination=parts.url
+    }
+}
+private struct SpatialWebContent: UIViewRepresentable {
+    let url:URL
+    final class Coordinator: NSObject, WKNavigationDelegate {
+        var requested:URL?
+        func webView(_ webView:WKWebView,decidePolicyFor action:WKNavigationAction,decisionHandler:@escaping(WKNavigationActionPolicy)->Void) {
+            guard let url=action.request.url else { decisionHandler(.cancel);return }
+            if action.targetFrame?.isMainFrame != false && url.scheme != "https" { decisionHandler(.cancel);return }
+            if action.targetFrame == nil { decisionHandler(.cancel);webView.load(action.request);return }
+            decisionHandler(.allow)
+        }
+    }
+    func makeCoordinator()->Coordinator { Coordinator() }
+    func makeUIView(context:Context)->WKWebView {
+        let config=WKWebViewConfiguration()
+        config.websiteDataStore = .nonPersistent()
+        config.allowsInlineMediaPlayback=true
+        let web=WKWebView(frame:.zero,configuration:config)
+        web.navigationDelegate=context.coordinator
+        web.allowsBackForwardNavigationGestures=true
+        return web
+    }
+    func updateUIView(_ web:WKWebView,context:Context) {
+        guard context.coordinator.requested != url else { return }
+        context.coordinator.requested=url;web.load(URLRequest(url:url))
+    }
+    static func dismantleUIView(_ web:WKWebView,coordinator:Coordinator) {
+        web.pauseAllMediaPlayback {};web.stopLoading()
     }
 }

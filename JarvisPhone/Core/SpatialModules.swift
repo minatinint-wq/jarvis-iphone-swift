@@ -1,10 +1,13 @@
 import Foundation
 
 enum SpatialModule: String, CaseIterable {
-    case dashboard, spotify, phone, home, camera, creation, scenes, instruments, libras, translation, personal
+    case dashboard, spotify, youtube, browser, commands, phone, home, camera, creation, scenes, instruments, libras, translation, personal
     var title: String {
         switch self {
         case .dashboard: return "Central JARVIS"
+        case .youtube: return "YouTube"
+        case .browser: return "Navegador"
+        case .commands: return "Comandos"
         case .spotify: return "Spotify"
         case .phone: return "Controles do iPhone"
         case .home: return "Casa · Tuya"
@@ -20,6 +23,9 @@ enum SpatialModule: String, CaseIterable {
     var symbol: String {
         switch self {
         case .dashboard:return "square.grid.2x2"
+        case .youtube:return "play.rectangle.fill"
+        case .browser:return "globe"
+        case .commands:return "waveform"
         case .spotify:return "music.note.list"
         case .phone:return "slider.horizontal.3"
         case .home:return "house"
@@ -41,6 +47,7 @@ enum SpatialModule: String, CaseIterable {
         subject=subject.replacingOccurrences(of:#" (?:em ar|em realidade aumentada|em realidade virtual|do jarvis|espacial)$"#,with:"",options:.regularExpression)
         let aliases: [SpatialModule:[String]] = [
             .dashboard:["painel","central","menu","interface","modulos","funcoes","painel principal"],
+            .youtube:["youtube","you tube"],.browser:["navegador","internet"],.commands:["comandos","comandos de voz"],
             .spotify:["spotify","musica","musicas","playlists"],
             .phone:["controles","controle","iphone","celular","telefone","controles do iphone"],
             .home:["casa","tuya","casa inteligente","luzes","lampadas","dispositivos"],
@@ -52,5 +59,5 @@ enum SpatialModule: String, CaseIterable {
 }
 
 enum SpatialPanelAction {
-    case model(String), module(SpatialModule), command(String), studio(String), scene(SpatialTheme), spotify(String,String?), playlist(String,String), track(String,String), library, playSelection, page(Int), cardsPage(Int), dragHandle, refresh, reposition, close
+    case activateSpotify, model(String), module(SpatialModule), command(String), studio(String), scene(SpatialTheme), spotify(String,String?), playlist(String,String), track(String,String), library, playSelection, page(Int), cardsPage(Int), dragHandle, refresh, reposition, close
 }

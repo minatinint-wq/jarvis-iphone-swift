@@ -6,6 +6,7 @@ import UIKit
 struct SpatialHandSample {
     let point:CGPoint
     let ratio:Double
+    let pointing:Bool
     let world:SIMD3<Float>?
     let time:Double
 }
@@ -19,6 +20,21 @@ enum SpatialHandMath {
         case .down:return CGPoint(x:1-p.x,y:1-p.y)
         default:return p
         }
+    }
+    static func pointing(_ joints: [CGPoint?]) -> Bool {
+        guard joints.count == 21 else { return false }
+        // Cosine at PIP in display coordinates: a straight finger approaches 1.
+        func extensionScore(_ base: Int) -> CGFloat? {
+            guard let knuckle = joints[base], let middle = joints[base+1], let tip = joints[base+3] else { return nil }
+            let a = CGPoint(x:middle.x-knuckle.x,y:middle.y-knuckle.y)
+            let b = CGPoint(x:tip.x-middle.x,y:tip.y-middle.y)
+            let length = hypot(a.x,a.y)*hypot(b.x,b.y)
+            guard length > 1 else { return nil }
+            return (a.x*b.x+a.y*b.y)/length
+        }
+        guard let index = extensionScore(5), index > 0.60 else { return false }
+        let others = [9,13,17].compactMap(extensionScore)
+        return others.count >= 2 && others.allSatisfy { $0 < 0.5 }
     }
     /// The wrist may be outside the camera image. Knuckles still define palm scale.
     static func pinchRatio(_ points:[CGPoint?],size:CGSize)->Double? {
@@ -59,8 +75,21 @@ enum SpatialHandMath {
         cursor.backgroundColor=UIColor.cyan.withAlphaComponent(0.18);cursor.isHidden=true;view.addSubview(cursor)
         bones.strokeColor=UIColor.cyan.withAlphaComponent(0.65).cgColor;bones.fillColor=UIColor.clear.cgColor;bones.lineWidth=1.3
         view.layer.addSublayer(bones)
+        dwellRing.path = UIBezierPath(ovalIn:cursor.bounds.insetBy(dx: -3,dy: -3)).cgPath
+        dwellRing.strokeColor = UIColor.white.cgColor
+        dwellRing.fillColor = nil
+        dwellRing.lineWidth = 3
+        dwellRing.strokeEnd = 0
+        cursor.layer.addSublayer(dwellRing)
     }
-    func reset() { generation+=1;cursor.isHidden=true;bones.path=nil;smoothed=nil;lastRawTip=nil;onSample?(nil) }
+    private let dwellRing = CAShapeLayer()
+    func showProgress(_ value: Double) {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        dwellRing.strokeEnd = CGFloat(value)
+        CATransaction.commit()
+    }
+    func reset() { showProgress(0);generation+=1;cursor.isHidden=true;bones.path=nil;smoothed=nil;lastRawTip=nil;onSample?(nil) }
     private func report(_ text:String) { let now=ProcessInfo.processInfo.systemUptime;if text != quality,now-lastReport>0.3 { lastReport=now;quality=text;onQuality?(text) } }
     func update(_ frame:ARFrame,view:ARSCNView,enabled:Bool) {
         guard enabled else { if wasEnabled { reset() };wasEnabled=false;return };wasEnabled=true
@@ -134,8 +163,9 @@ enum SpatialHandMath {
                     for pair in zip(chain,chain.dropFirst()) { if let a=result[pair.0],let b=result[pair.1] { path.move(to:a);path.addLine(to:b) } }
                 }
                 self.bones.path=path.cgPath
-                self.report(amount == nil ? "Indicador localizado · mostre também o polegar para clicar." : "Mão localizada · una e solte indicador e polegar para clicar.")
-                self.onSample?(SpatialHandSample(point:p,ratio:amount ?? .nan,world:location,time:now))
+                let pointing = SpatialHandMath.pointing(result)
+                self.report(amount == nil ? "Mostre a mão inteira." : amount! < 0.28 ? "Pinça · arrastar" : pointing ? "Indicador · mantenha sobre o alvo" : "Mão livre")
+                self.onSample?(SpatialHandSample(point:p,ratio:amount ?? .nan,pointing:pointing,world:location,time:stamp))
             }
         }
     }

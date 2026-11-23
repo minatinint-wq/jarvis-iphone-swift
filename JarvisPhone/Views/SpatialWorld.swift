@@ -145,6 +145,7 @@ enum SpatialTheme: String, CaseIterable {
     private var initialScale: Float=1
     private var initialAngle: Float=0
     private var thermalPaused=false
+    var dwellProgress: Double { handGesture.progress }
     private var handGesture=SpatialGesture()
     private var handDragging:UUID?
     init(view: ARSCNView) { self.view=view; super.init() }
@@ -222,17 +223,17 @@ enum SpatialTheme: String, CaseIterable {
     func hand(_ sample:SpatialHandSample?) {
         guard active,!panelBlocking,visibility,!placing else { handGesture.reset();return }
         let id=sample.flatMap { hit($0.point) }
-        for event in handGesture.update(point:sample?.point,ratio:sample?.ratio ?? 1,target:id?.uuidString,push:nil,time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {
+        for event in handGesture.update(ratio:sample?.ratio ?? .nan,pointing:sample?.pointing == true,target:id?.uuidString,time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {
             switch event {
             case .press(let key):selected=UUID(uuidString:key);hasSelection=selected != nil;markSelection()
             case .drag(let key):
                 guard let id=UUID(uuidString:key),let node=objects[id],let sample,
                       let location=placement(sample.point,radius:radius(id)*node.simdScale.x,ignoring:id) else { continue }
                 handDragging=id;node.simdPosition=SIMD3(location.0.columns.3.x,location.0.columns.3.y,location.0.columns.3.z);supports[id]=location.1
-            case .release(_,let click):
-                if let id=handDragging { reanchor(id);handDragging=nil } else if click { interact() }
+            case .release:
+                if let id=handDragging { reanchor(id);handDragging=nil }
             case .cancel:if let id=handDragging { reanchor(id);handDragging=nil }
-            case .poke:break
+            case .click(let key):selected=UUID(uuidString:key);hasSelection=selected != nil;markSelection();interact()
             }
         }
     }

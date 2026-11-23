@@ -17,6 +17,12 @@ enum SpatialPanelGeometry {
     /// Gravity defines up. Camera sensor X/Y axes rotate with portrait orientation.
     static func upright(camera:simd_float4x4,distance:Float) -> simd_float4x4? {
         let back=SIMD3<Float>(camera.columns.2.x,0,camera.columns.2.z)
+        // Near the ceiling the horizontal heading is undefined. Face the screen.
+        if abs(camera.columns.2.y) > 0.78 {
+            var pose = camera
+            pose.columns.3 = camera.columns.3 - camera.columns.2 * distance
+            return pose
+        }
         guard simd_length(back)>0.2 else { return nil }
         let z=simd_normalize(back),y=SIMD3<Float>(0,1,0),x=simd_cross(y,z)
         let position=camera.columns.3-camera.columns.2*distance
@@ -67,15 +73,19 @@ enum SpatialPanelGeometry {
     private var timeout: Task<Void,Never>?
     private var lastTap: TimeInterval=0
     private var handGesture=SpatialGesture()
+    var dwellProgress: Double { handGesture.progress }
     private weak var hovered:SCNNode?
     private var dragOffset=SIMD3<Float>.zero
     private var dragDepth:Float=0
     private var dragging=false
+    var onWeb: ((SpatialModule)->Void)?
+    private var needsSpotify = false
     var onAction: ((SpatialPanelAction)->Void)?
     var onSpotify: (([String:Any])->Void)?
     init(view: ARSCNView) { self.view=view }
 
     func open(_ destination: SpatialModule, tracking: Bool) {
+        if destination == .youtube || destination == .browser { close(); onWeb?(destination); return }
         contextRevision += 1
         trackingGood=tracking
         guard tracking else { status="Aguarde o mapeamento estabilizar e abra o painel novamente.";return }
@@ -178,17 +188,20 @@ enum SpatialPanelGeometry {
         if hovered !== node {
             hovered?.scale=SCNVector3(1,1,1);hovered=target == nil ? nil : node;hovered?.scale=SCNVector3(1.025,1.025,1)
         }
-        let normal=root.map { SIMD3<Float>($0.simdWorldTransform.columns.2.x,$0.simdWorldTransform.columns.2.y,$0.simdWorldTransform.columns.2.z) }
-        let push=sample?.world.flatMap { p in normal.map { Double(-simd_dot(p,simd_normalize($0))) } }
-        for event in handGesture.update(point:sample?.point,ratio:sample?.ratio ?? 1,target:target,push:push,time:time) {
+        let overPanel = sample.flatMap { localHit($0.point) } != nil
+        let hit = target ?? (overPanel ? "panel-surface" : nil)
+        let canClick = target.flatMap { actions[$0] }.map { action -> Bool in
+            if case .dragHandle = action { return false }
+            return true
+        } ?? false
+        for event in handGesture.update(ratio:sample?.ratio ?? .nan,pointing:sample?.pointing == true && canClick,target:hit,time:time) {
             switch event {
             case .press:
                 guard let root,let sample else { continue }
                 dragDepth=view.projectPoint(root.worldPosition).z
                 let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),dragDepth))
                 dragOffset=root.simdWorldPosition-SIMD3(p.x,p.y,p.z);dragging=false
-            case .drag(let id):
-                guard case .dragHandle? = actions[id] else { continue }
+            case .drag:
                 guard let root,let sample else { continue }
                 if !dragging { if let anchor { view.session.remove(anchor:anchor) };anchor=nil;dragging=true }
                 let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),dragDepth))
@@ -202,9 +215,9 @@ enum SpatialPanelGeometry {
                 for i in 0..<3 { let c=proposed[i],v=simd_normalize(SIMD3(c.x,c.y,c.z));proposed[i]=SIMD4(v.x,v.y,v.z,0) }
                 proposed.columns.3=SIMD4(destination.x,destination.y,destination.z,1)
                 if clearSpace(transform:proposed,scale:root.simdScale.x) { root.simdWorldPosition=destination }
-            case .release(let id,let click):
-                if dragging { finishDrag() } else if click,let action=actions[id] { UIImpactFeedbackGenerator(style:.light).impactOccurred();activate(action) }
-            case .poke(let id):
+            case .release:
+                if dragging { finishDrag() }
+            case .click(let id):
                 if let action=actions[id] { UIImpactFeedbackGenerator(style:.light).impactOccurred();activate(action) }
             case .cancel: if dragging { finishDrag() }
             }
@@ -230,6 +243,7 @@ enum SpatialPanelGeometry {
         case .library: guard pending==nil else { return };cardPage=0;selectedPlaylist=nil;selectedTrack=nil;tracks=[];offset=0;request("library")
         case .playSelection:
             if let selectedTrack,let selectedPlaylist { request("play_track",playlist:selectedPlaylist.id,track:selectedTrack.id) }
+            else if let selectedPlaylist { request("play",playlist:selectedPlaylist.id) }
             else { request("resume") }
         case .page(let delta): guard pending==nil else { return };cardPage=0;offset=max(0,offset+delta);refreshPage()
         case .refresh: refreshPage()
@@ -290,6 +304,8 @@ enum SpatialPanelGeometry {
             }
             return
         }
+        needsSpotify = result["needsSpotify"] as? Bool == true
+        if needsSpotify { cardPage = 0 }
         if let rows=result["playlists"] as? [[String:Any]] {
             playlists=rows.compactMap { row in
                 guard let id=row["id"] as? String,let name=row["name"] as? String else { return nil };return (id,name)
@@ -321,6 +337,9 @@ enum SpatialPanelGeometry {
         switch module {
         case .dashboard:
             return SpatialModule.allCases.filter{$0 != .dashboard}.map { ($0.title,$0.symbol,.module($0)) }
+        case .browser,.youtube:return []
+        case .commands:
+            return [("Hora","clock",.command("que horas são")),("Passos hoje","figure.walk",.command("quantos passos hoje")),("Ligar lanterna","flashlight.on.fill",.command("ligue a lanterna do iPhone")),("Desligar lanterna","flashlight.off.fill",.command("desligue a lanterna do iPhone"))]
         case .spotify:
             var rows: [(String,String,SpatialPanelAction)]=selectedPlaylist == nil
                 ? playlists.map { ($0.name,"music.note.list",.playlist($0.id,$0.name)) }
@@ -328,6 +347,7 @@ enum SpatialPanelGeometry {
             rows.append(selectedPlaylist == nil ? ("Atualizar","arrow.clockwise",.refresh) : ("Minhas playlists","chevron.left",.library))
             if offset>0 { rows.append(("Página anterior","chevron.left",.page(-6))) }
             if hasNext { rows.append((selectedPlaylist == nil ? "Mais playlists" : "Mais faixas","chevron.right",.page(6))) }
+            if needsSpotify { rows.insert(("Ativar Spotify no iPhone","iphone",.activateSpotify),at:0) }
             return rows
         case .phone:
             return [("Acender lanterna","flashlight.on.fill",.command("ligue a lanterna do iPhone")),("Apagar lanterna","flashlight.off.fill",.command("desligue a lanterna do iPhone")),("Tela 30%","sun.min",.command("ajuste o brilho do iPhone para 30%")),("Tela 70%","sun.max",.command("ajuste o brilho do iPhone para 70%")),("Volume 20%","speaker.wave.1",.command("volume do iPhone em 20%")),("Volume 60%","speaker.wave.2",.command("volume do iPhone em 60%")),("Bateria","battery.100",.command("qual a bateria do iPhone")),("Abrir Spotify","arrow.up.right",.command("configurar spotify deste iphone"))]
@@ -349,7 +369,7 @@ enum SpatialPanelGeometry {
     }
     private func transportItems()->[(String,String,SpatialPanelAction)] {
         guard module == .spotify else { return [] }
-        return [("Anterior","backward.end.fill",.spotify("previous",nil)),(selectedTrack == nil ? "Play / retomar" : "Play: "+selectedTrack!.name,"play.fill",.playSelection),("Pausar","pause.fill",.spotify("pause",nil)),("Próxima","forward.end.fill",.spotify("next",nil))]
+        return [("Anterior","backward.end.fill",.spotify("previous",nil)),(selectedTrack == nil ? (selectedPlaylist == nil ? "Retomar" : "Tocar playlist") : "Play: "+selectedTrack!.name,"play.fill",.playSelection),("Pausar","pause.fill",.spotify("pause",nil)),("Próxima","forward.end.fill",.spotify("next",nil))]
     }
     private func visibleItems()->[(String,String,SpatialPanelAction)] {
         var rows=Array(items().dropFirst(cardPage*4).prefix(4))+transportItems()
@@ -404,6 +424,6 @@ enum SpatialPanelGeometry {
         let count=max(1,(items().count+3)/4)
         plate("Central · \(cardPage+1)/\(count)","square.grid.2x2",width:0.38,height:0.065,x:0,y:-0.19,color:color,action:.module(.dashboard))
         if cardPage+1<count { plate("","chevron.right",width:0.09,height:0.065,x:0.265,y:-0.19,color:color,action:.cardsPage(1)) }
-        plate(module == .spotify ? (selectedTrack?.name ?? selectedPlaylist?.name ?? "Suas playlists") : "Arraste pela barra superior", "",width:width,height:0.055,x:0,y:-0.255,color:.clear)
+        plate(module == .spotify ? (selectedTrack?.name ?? selectedPlaylist?.name ?? "Suas playlists") : "Pinça para mover", "",width:width,height:0.055,x:0,y:-0.255,color:.clear)
     }
 }

@@ -25,8 +25,10 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertLessThanOrEqual(bounds.maxX,viewport.width*0.88)
         XCTAssertGreaterThan(bounds.minY,76)
         XCTAssertLessThan(bounds.maxY,viewport.height-136)
-        var downward=matrix_identity_float4x4;downward.columns.2=SIMD4(0,1,0,0)
-        XCTAssertNil(SpatialPanelGeometry.upright(camera:downward,distance:0.9))
+        let ceiling=simd_float4x4(simd_quatf(angle:Float.pi/2,axis:SIMD3(1,0,0)))
+        let overhead=try XCTUnwrap(SpatialPanelGeometry.upright(camera:ceiling,distance:0.9))
+        XCTAssertEqual(overhead.columns.3.y,0.9,accuracy:0.001)
+        XCTAssertNotNil(SpatialPanelGeometry.fittedScale(transform:overhead,view:simd_inverse(ceiling),projection:projection,viewport:viewport))
     }
     func testHandWithoutWristStillMeasuresPinchAndMissingThumbCannotClick() throws {
         var joints=[CGPoint?](repeating:nil,count:21)
@@ -34,8 +36,8 @@ final class PhoneCommandTests: XCTestCase {
         joints[8]=CGPoint(x:0.45,y:0.3);joints[4]=CGPoint(x:0.48,y:0.3)
         XCTAssertEqual(try XCTUnwrap(SpatialHandMath.pinchRatio(joints,size:CGSize(width:1000,height:1000))),0.1,accuracy:0.001)
         joints[4]=nil;XCTAssertNil(SpatialHandMath.pinchRatio(joints,size:CGSize(width:1000,height:1000)))
-        var gate=SpatialGesture();let p=CGPoint(x:100,y:100)
-        for i in 0..<10 { XCTAssertTrue(gate.update(point:p,ratio:.nan,target:"play",push:Double(i)*0.05,time:Double(i)).isEmpty) }
+        var gate=SpatialGesture()
+        for i in 0..<10 { XCTAssertTrue(gate.update(ratio:.nan,pointing:true,target:"play",time:Double(i)).isEmpty) }
         XCTAssertEqual(SpatialHandMath.rawPoint(CGPoint(x:0.2,y:0.3),orientation:.right),CGPoint(x:0.7,y:0.8))
         let up=SpatialHandMath.rawPoint(CGPoint(x:0.2,y:0.3),orientation:.up)
         XCTAssertEqual(up.x,0.2,accuracy:0.0001);XCTAssertEqual(up.y,0.7,accuracy:0.0001)
@@ -117,7 +119,7 @@ final class PhoneCommandTests: XCTestCase {
         try panel.receive(JSONSerialization.data(withJSONObject:["requestId":job["requestId"]!,"navigation":["operation":"activate","slot":next]]))
         panel.interpret("mostrar esta página")
         let second=try XCTUnwrap(job["items"] as? [[String:String]])
-        XCTAssertEqual(second.first?["title"],"Criação")
+        XCTAssertEqual(second.first?["title"],"Controles do iPhone")
         panel.close()
     }
     func testSpatialAINavigationKeepsOrdinaryToolsOutsideTheInterpreter() {
@@ -144,28 +146,74 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertEqual(commands.count,1)
         panel.close()
     }
-    func testSpatialGestureRequiresDeliberatePressAndReleaseAndCancelsOcclusion() {
-        var gate=SpatialGesture();let p=CGPoint(x:100,y:100)
-        func input(_ ratio:Double,_ time:Double,_ point:CGPoint?=CGPoint(x:100,y:100))->[SpatialGesture.Event] { gate.update(point:point,ratio:ratio,target:"play",push:nil,time:time) }
-        XCTAssertTrue(input(0.1,1).isEmpty) // appearing already pinched cannot click
-        _=input(1,1.1);_=input(1,1.2);_=input(0.1,1.3)
-        XCTAssertEqual(input(0.1,1.4),[.press("play")])
-        _=input(1,1.5);XCTAssertEqual(input(1,1.6),[.release("play",true)])
-        for i in 0..<10 { XCTAssertTrue(input(1,1.7+Double(i)*0.07).isEmpty) }
-        _=input(0.1,2.4);_=input(0.1,2.5)
-        XCTAssertEqual(input(0.1,2.6,nil),[.cancel])
-        XCTAssertTrue(input(1,2.7,p).isEmpty)
+    func testPointingRequiresTwoContinuousSecondsAndFiresOnce() {
+        var gate=SpatialGesture()
+        func event(_ tick:Int,_ target:String="play",_ pointing:Bool=true)->[SpatialGesture.Event] {
+            gate.update(ratio:1,pointing:pointing,target:target,time:Double(tick)/10)
+        }
+        for tick in 0...20 { XCTAssertEqual(event(tick),[]) }
+        XCTAssertEqual(event(21),[.click("play")])
+        for tick in 22...51 { XCTAssertEqual(event(tick),[]) }
+        XCTAssertEqual(event(52,"play",false),[])
+        for tick in 53...70 { XCTAssertEqual(event(tick),[]) }
+        for tick in 71...91 { XCTAssertEqual(event(tick,"next"),[]) }
+        XCTAssertEqual(event(92,"next"),[.click("next")])
+        XCTAssertEqual(event(130),[])
     }
-    func testSpatialGestureHoldDragsWithoutClickAndPokeNeedsRetraction() {
-        var gate=SpatialGesture();let p=CGPoint(x:100,y:100)
-        func input(_ r:Double,_ t:Double,_ push:Double?=nil)->[SpatialGesture.Event] { gate.update(point:p,ratio:r,target:"card",push:push,time:t) }
-        _=input(1,1);_=input(1,1.1);_=input(0.1,1.2);_=input(0.1,1.3)
-        _=input(0.1,1.4);_=input(0.1,1.5);_=input(0.1,1.6)
-        XCTAssertEqual(input(0.1,1.75),[.drag("card")])
-        _=input(1,1.8);XCTAssertEqual(input(1,1.9),[.release("card",false)])
-        gate.reset();_=input(1,3,0);_=input(1,3.1,0);_=input(1,3.2,0)
-        XCTAssertEqual(input(1,3.3,0.04),[.poke("card")])
-        for i in 1...30 { XCTAssertTrue(input(1,3.3+Double(i)*0.1,0.05).isEmpty) }
+    @MainActor func testMediaModulesAndPlaylistPlayback() throws {
+        XCTAssertEqual(SpatialModule.opening("abre o YouTube"),.youtube)
+        XCTAssertEqual(SpatialModule.opening("abrir navegador"),.browser)
+        XCTAssertEqual(SpatialModule.opening("abrir comandos"),.commands)
+        let view=ARSCNView(frame:.zero);view.scene=SCNScene()
+        let panel=SpatialPanel(view:view);panel.preview(.spotify);panel.setTracking(true)
+        var job:[String:Any]=[:];panel.onSpotify={job=$0}
+        func reply(_ payload:[String:Any]) throws {
+            var result=payload;result["requestId"]=try XCTUnwrap(job["requestId"])
+            panel.receive(try JSONSerialization.data(withJSONObject:result))
+        }
+        func choose(_ title:String) throws {
+            panel.interpret(title)
+            let rows=try XCTUnwrap(job["items"] as? [[String:String]])
+            let slot=try XCTUnwrap(rows.firstIndex { $0["title"]==title })
+            try reply(["navigation":["operation":"activate","slot":slot]])
+        }
+        panel.request("library")
+        try reply(["playlists":[["id":"mix","name":"Meu mix"]]])
+        try choose("Meu mix")
+        XCTAssertEqual(job["action"] as? String,"tracks")
+        try reply(["playlistId":"mix","tracks":[["id":"song","name":"Faixa","artist":"Artista"]]])
+        try choose("Tocar playlist")
+        XCTAssertEqual(job["action"] as? String,"play")
+        XCTAssertEqual(job["playlistId"] as? String,"mix")
+        try reply([:])
+        try choose("Faixa · Artista")
+        try choose("Play: Faixa · Artista")
+        XCTAssertEqual(job["action"] as? String,"play_track")
+        XCTAssertEqual(job["trackId"] as? String,"song")
+        panel.close()
+    }
+    func testPinchDragsOnlyAndLostTrackingCancels() {
+        var gate=SpatialGesture()
+        func event(_ ratio:Double,_ tick:Int,_ target:String?)->[SpatialGesture.Event] {
+            gate.update(ratio:ratio,pointing:false,target:target,time:Double(tick)/10)
+        }
+        XCTAssertEqual(event(0.12,0,"play"),[.press("play")])
+        XCTAssertEqual(event(0.15,1,nil),[.drag("play")])
+        XCTAssertEqual(event(1,2,"other"),[.release])
+        for tick in 3...30 { XCTAssertTrue(event(1,tick,"play").isEmpty) }
+        XCTAssertEqual(event(0.12,31,"play"),[.press("play")])
+        XCTAssertEqual(event(.nan,32,nil),[.cancel])
+    }
+    func testOpenPalmIsFreeAndCurledFingersAllowPointing() {
+        var joints=[CGPoint?](repeating:nil,count:21)
+        for base in [5,9,13,17] {
+            joints[base]=CGPoint(x:base,y:60)
+            joints[base+1]=CGPoint(x:base,y:40)
+            joints[base+3]=CGPoint(x:base,y:10)
+        }
+        XCTAssertFalse(SpatialHandMath.pointing(joints))
+        for base in [9,13,17] { joints[base+3]=CGPoint(x:base,y:55) }
+        XCTAssertTrue(SpatialHandMath.pointing(joints))
     }
     @MainActor func testSpatialDashboardRendersRealModuleCards() throws {
         guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
