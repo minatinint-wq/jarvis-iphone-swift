@@ -23,6 +23,7 @@ final class PhoneCommandTests: XCTestCase {
     @MainActor func testDesktopWindowClicksAndMovesWithNoHandDepth() throws {
         let view=ARSCNView(frame:CGRect(x:0,y:0,width:600,height:900));view.scene=SCNScene()
         let camera=SCNNode();camera.camera=SCNCamera();camera.position=SCNVector3(0,0,1)
+        camera.camera?.zNear=0.01;camera.camera?.zFar=10;camera.camera?.fieldOfView=60
         view.scene.rootNode.addChildNode(camera);view.pointOfView=camera
         let desktop=SpatialDesktop(view:view);desktop.preview()
         var jobs:[[String:Any]]=[];desktop.send={jobs.append($0)}
