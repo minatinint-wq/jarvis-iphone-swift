@@ -3,6 +3,16 @@ import ARKit
 import SceneKit
 
 enum SpatialPanelGeometry {
+    /// Intersect the card plane directly. Depth-only meshes must never absorb UI input.
+    static func localHit(origin:SIMD3<Float>,direction:SIMD3<Float>,transform:simd_float4x4)->SIMD2<Float>? {
+        let inverse=simd_inverse(transform),o=inverse*SIMD4(origin,1),d=inverse*SIMD4(direction,0)
+        guard abs(d.z)>0.0001 else { return nil }
+        let t=(Float(0.008)-o.z)/d.z
+        guard t>=0,t.isFinite else { return nil }
+        let p=o+d*t
+        guard p.x.isFinite,p.y.isFinite,abs(p.x)<=0.33,abs(p.y)<=0.30 else { return nil }
+        return SIMD2(p.x,p.y)
+    }
     static let size=CGSize(width:0.64,height:0.58)
     /// Gravity defines up. Camera sensor X/Y axes rotate with portrait orientation.
     static func upright(camera:simd_float4x4,distance:Float) -> simd_float4x4? {
@@ -139,23 +149,31 @@ enum SpatialPanelGeometry {
         if let anchor { view.session.remove(anchor:anchor) };anchor=nil
         root?.removeFromParentNode();root=nil;actions.removeAll()
     }
-    func hit(_ point: CGPoint) -> Bool {
-        guard visible,root?.isHidden==false else { return false }
-        for result in view.hitTest(point,options:[.categoryBitMask:4,.searchMode:SCNHitTestSearchMode.closest.rawValue]) {
-            if let name=result.node.name,let action=actions[name] {
-                let now=ProcessInfo.processInfo.systemUptime
-                guard now-lastTap>0.35 else { return true };lastTap=now
-                UIImpactFeedbackGenerator(style:.light).impactOccurred();activate(action);return true
-            }
-            if result.node===root || result.node.parent===root { return true }
+    private func localHit(_ point:CGPoint)->SIMD2<Float>? {
+        guard let root else { return nil }
+        let a=view.unprojectPoint(SCNVector3(Float(point.x),Float(point.y),0)),b=view.unprojectPoint(SCNVector3(Float(point.x),Float(point.y),1))
+        return SpatialPanelGeometry.localHit(origin:SIMD3(a.x,a.y,a.z),direction:SIMD3(b.x-a.x,b.y-a.y,b.z-a.z),transform:root.simdWorldTransform)
+    }
+    private func selectionNode(_ point:CGPoint)->SCNNode? {
+        guard let p=localHit(point),let root else { return nil }
+        return root.childNodes.first { node in
+            guard let plane=node.geometry as? SCNPlane,let name=node.name,actions[name] != nil else { return false }
+            return abs(p.x-node.position.x)<=Float(plane.width)/2 && abs(p.y-node.position.y)<=Float(plane.height)/2
         }
-        return false
+    }
+    func hit(_ point: CGPoint) -> Bool {
+        guard visible,root?.isHidden==false,localHit(point) != nil else { return false }
+        if let name=selectionNode(point)?.name,let action=actions[name] {
+            let now=ProcessInfo.processInfo.systemUptime
+            guard now-lastTap>0.35 else { return true };lastTap=now
+            UIImpactFeedbackGenerator(style:.light).impactOccurred();activate(action)
+        }
+        return true
     }
     func hand(_ sample:SpatialHandSample?) {
         guard visible,root?.isHidden==false else { handGesture.reset();return }
         let time=sample?.time ?? ProcessInfo.processInfo.systemUptime
-        let result=sample.flatMap { view.hitTest($0.point,options:[.categoryBitMask:4,.searchMode:SCNHitTestSearchMode.closest.rawValue]).first }
-        let node=result?.node
+        let node=sample.flatMap { selectionNode($0.point) }
         let target=node?.name.flatMap { actions[$0] == nil ? nil : $0 }
         if hovered !== node {
             hovered?.scale=SCNVector3(1,1,1);hovered=target == nil ? nil : node;hovered?.scale=SCNVector3(1.025,1.025,1)

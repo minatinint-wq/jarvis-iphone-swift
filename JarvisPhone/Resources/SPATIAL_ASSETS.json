@@ -486,21 +486,6 @@
       {
         "mesh": "Spatial_toycar_1.mesh",
         "baseColor": [
-          0.14901960784313725,
-          0.14901960784313725,
-          0.14901960784313725,
-          1.0
-        ],
-        "metalness": 0.0,
-        "roughness": 1.0,
-        "doubleSided": true,
-        "alphaMode": "OPAQUE",
-        "Color": "Spatial_toycar_1_Color.jpg",
-        "NormalGL": "Spatial_toycar_1_NormalGL.jpg"
-      },
-      {
-        "mesh": "Spatial_toycar_2.mesh",
-        "baseColor": [
           1,
           1,
           1,
@@ -510,11 +495,11 @@
         "roughness": 1.0,
         "doubleSided": true,
         "alphaMode": "OPAQUE",
-        "Color": "Spatial_toycar_2_Color.jpg",
-        "NormalGL": "Spatial_toycar_2_NormalGL.jpg",
-        "Emission": "Spatial_toycar_2_Emission.jpg",
-        "Roughness": "Spatial_toycar_2_Roughness.jpg",
-        "Metalness": "Spatial_toycar_2_Metalness.jpg",
+        "Color": "Spatial_toycar_1_Color.jpg",
+        "NormalGL": "Spatial_toycar_1_NormalGL.jpg",
+        "Emission": "Spatial_toycar_1_Emission.jpg",
+        "Roughness": "Spatial_toycar_1_Roughness.jpg",
+        "Metalness": "Spatial_toycar_1_Metalness.jpg",
         "emissionFactor": [
           1.0,
           1.0,
@@ -525,57 +510,42 @@
     "files": [
       {
         "file": "Spatial_toycar_0.mesh",
-        "sha256": "7accaa6347bf66060cb0496bed7b18bc50d2462736acc99b5ff73df6f8f0bde9",
+        "sha256": "57598f4847e729ffc287bf9b6a15c1aaa3212133cd1081a0c21d7e2b18a5254a",
         "bytes": 78548
       },
       {
         "file": "Spatial_toycar_1.mesh",
-        "sha256": "bcab9175988b87d1d21d8ae04dae98923ed79a90ac41ee0008206b0a51306bfd",
-        "bytes": 497960
-      },
-      {
-        "file": "Spatial_toycar_1_Color.jpg",
-        "sha256": "6d85a71a7e806dfc926ace5c440e9837fb003fdc028408e9bd2abd12ec4e99b7",
-        "bytes": 64474
-      },
-      {
-        "file": "Spatial_toycar_1_NormalGL.jpg",
-        "sha256": "729bf75b441d577bd527823de305ec1b482f6f33b3354e1816dd671c0fe0d5ea",
-        "bytes": 40960
-      },
-      {
-        "file": "Spatial_toycar_2.mesh",
-        "sha256": "b1db8d96c2f0883f3fc3ec7f152c3651c8e8055056a06c21b6fd1fd49339e5ba",
+        "sha256": "497c745f87156f907d5801e6741f286aa0a9b0906f053b8e9719c66cd69a4a5a",
         "bytes": 3208488
       },
       {
-        "file": "Spatial_toycar_2_Color.jpg",
+        "file": "Spatial_toycar_1_Color.jpg",
         "sha256": "700e6384c48834c242dab55618af05cc8d2b7d00d4ff631de785242067207f3a",
         "bytes": 66561
       },
       {
-        "file": "Spatial_toycar_2_NormalGL.jpg",
+        "file": "Spatial_toycar_1_NormalGL.jpg",
         "sha256": "a3086ee6ea9c9d22a9c756db27ceff3cd255da19a5419ba1d89267a7ae8a5dea",
         "bytes": 111923
       },
       {
-        "file": "Spatial_toycar_2_Emission.jpg",
+        "file": "Spatial_toycar_1_Emission.jpg",
         "sha256": "54ec08f912dc6c1b6538343a15abee4f9a45ef5acaf36ee7275be2dc33380fc3",
         "bytes": 47021
       },
       {
-        "file": "Spatial_toycar_2_Roughness.jpg",
+        "file": "Spatial_toycar_1_Roughness.jpg",
         "sha256": "9ef22f12128e5e369d0ebc41491935ec38065e1e6016ed6275434bdee74a35cf",
         "bytes": 28622
       },
       {
-        "file": "Spatial_toycar_2_Metalness.jpg",
+        "file": "Spatial_toycar_1_Metalness.jpg",
         "sha256": "47ba72af02e4e608ff2de8a0f99d7a467780a122c3fbde9d5bada7ce25f2af35",
         "bytes": 43438
       }
     ],
-    "triangles": 108936,
-    "vertices": 77429
+    "triangles": 91331,
+    "vertices": 68470
   },
   {
     "id": "barramundifish",
@@ -1331,35 +1301,6 @@
       {
         "mesh": "Spatial_trafficcone_0.mesh",
         "baseColor": [
-          0.8980392156862745,
-          0.6588235294117647,
-          0.07058823529411765,
-          1.0
-        ],
-        "metalness": 1.0,
-        "roughness": 1.0,
-        "doubleSided": true,
-        "alphaMode": "OPAQUE"
-      },
-      {
-        "mesh": "Spatial_trafficcone_1.mesh",
-        "baseColor": [
-          1,
-          1,
-          1,
-          1
-        ],
-        "metalness": 0.009999999776482582,
-        "roughness": 1.0,
-        "doubleSided": true,
-        "alphaMode": "OPAQUE",
-        "Color": "Spatial_trafficcone_1_Color.jpg",
-        "Roughness": "Spatial_trafficcone_1_Roughness.jpg",
-        "Metalness": "Spatial_trafficcone_1_Metalness.jpg"
-      },
-      {
-        "mesh": "Spatial_trafficcone_2.mesh",
-        "baseColor": [
           1,
           1,
           1,
@@ -1369,96 +1310,35 @@
         "roughness": 0.3499999940395355,
         "doubleSided": false,
         "alphaMode": "OPAQUE",
-        "Color": "Spatial_trafficcone_2_Color.jpg",
-        "Roughness": "Spatial_trafficcone_2_Roughness.jpg",
-        "Metalness": "Spatial_trafficcone_2_Metalness.jpg"
-      },
-      {
-        "mesh": "Spatial_trafficcone_3.mesh",
-        "baseColor": [
-          1,
-          1,
-          1,
-          1
-        ],
-        "metalness": 0.0,
-        "roughness": 0.3499999940395355,
-        "doubleSided": false,
-        "alphaMode": "OPAQUE",
-        "Color": "Spatial_trafficcone_3_Color.jpg",
-        "Roughness": "Spatial_trafficcone_3_Roughness.jpg",
-        "Metalness": "Spatial_trafficcone_3_Metalness.jpg"
+        "Color": "Spatial_trafficcone_0_Color.jpg",
+        "Roughness": "Spatial_trafficcone_0_Roughness.jpg",
+        "Metalness": "Spatial_trafficcone_0_Metalness.jpg"
       }
     ],
     "files": [
       {
         "file": "Spatial_trafficcone_0.mesh",
-        "sha256": "b48db9ca0190bd2b78febe93c3e19c3a9ac7129c548b30144b0a4f2efd129063",
-        "bytes": 7532
-      },
-      {
-        "file": "Spatial_trafficcone_1.mesh",
-        "sha256": "6fb3833b2c1a07c4d5e69b0bbe584f1a3e8028f1399377543ad2ca07e82c5c68",
-        "bytes": 1196
-      },
-      {
-        "file": "Spatial_trafficcone_1_Color.jpg",
-        "sha256": "ac3f88041b5ab5fa841d7136242fbb1201df18d65c584cab61813aebb92f6b60",
-        "bytes": 454679
-      },
-      {
-        "file": "Spatial_trafficcone_1_Roughness.jpg",
-        "sha256": "21130900dd7b5a12914ce3dce3a3aba5cb46f39d93b6b462b881d467fe00bc17",
-        "bytes": 346939
-      },
-      {
-        "file": "Spatial_trafficcone_1_Metalness.jpg",
-        "sha256": "21130900dd7b5a12914ce3dce3a3aba5cb46f39d93b6b462b881d467fe00bc17",
-        "bytes": 346939
-      },
-      {
-        "file": "Spatial_trafficcone_2.mesh",
-        "sha256": "74feed14ab3be0d6dfccd96c59fb1892d3a844c1224bb0965f1d3d1ce25012cf",
+        "sha256": "2700c006a89855276cf330a193632409c65df85f9ec3d83de92d1bf12cbd9758",
         "bytes": 267628
       },
       {
-        "file": "Spatial_trafficcone_2_Color.jpg",
+        "file": "Spatial_trafficcone_0_Color.jpg",
         "sha256": "30860ca5d9b3a3215ad7a3a531f33503ceef0022fe7cbdb757f8e101da3f8843",
         "bytes": 75794
       },
       {
-        "file": "Spatial_trafficcone_2_Roughness.jpg",
+        "file": "Spatial_trafficcone_0_Roughness.jpg",
         "sha256": "77580dd389dd79e5c735740c4e085f4d2390dd83e7e4662d154eb81446041631",
         "bytes": 26590
       },
       {
-        "file": "Spatial_trafficcone_2_Metalness.jpg",
-        "sha256": "77580dd389dd79e5c735740c4e085f4d2390dd83e7e4662d154eb81446041631",
-        "bytes": 26590
-      },
-      {
-        "file": "Spatial_trafficcone_3.mesh",
-        "sha256": "45bd1c368f9e0a5435bbcd6c61dfc019fc71c3a1f201f4ff18f03035cc0ac504",
-        "bytes": 267628
-      },
-      {
-        "file": "Spatial_trafficcone_3_Color.jpg",
-        "sha256": "30860ca5d9b3a3215ad7a3a531f33503ceef0022fe7cbdb757f8e101da3f8843",
-        "bytes": 75794
-      },
-      {
-        "file": "Spatial_trafficcone_3_Roughness.jpg",
-        "sha256": "77580dd389dd79e5c735740c4e085f4d2390dd83e7e4662d154eb81446041631",
-        "bytes": 26590
-      },
-      {
-        "file": "Spatial_trafficcone_3_Metalness.jpg",
+        "file": "Spatial_trafficcone_0_Metalness.jpg",
         "sha256": "77580dd389dd79e5c735740c4e085f4d2390dd83e7e4662d154eb81446041631",
         "bytes": 26590
       }
     ],
-    "triangles": 17224,
-    "vertices": 10539
+    "triangles": 8512,
+    "vertices": 5171
   },
   {
     "id": "commercialrefrigerator",

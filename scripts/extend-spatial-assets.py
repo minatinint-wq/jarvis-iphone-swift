@@ -4,7 +4,7 @@ Source advanced glTF optical extensions are approximated by native PBR. Skeletal
 """
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
-import requests, json, hashlib, struct, sys
+import requests, json, hashlib, struct, sys, re
 import trimesh, numpy as np
 from PIL import Image
 ROOT=Path(__file__).resolve().parents[1]
@@ -38,6 +38,8 @@ licenses=(OUT/'SPATIAL_LICENSES.txt').read_text(encoding='utf-8').split('\n\nADD
 for name,title,url,path,legal in sources:
  key=name.lower();scene=trimesh.load(path,force='scene');meshes=[]
  for node in scene.graph.nodes_geometry:
+  if name=='ToyCar' and node=='Fabric':continue
+  if name=='TrafficCone' and node!='Cone Normal':continue
   matrix,g=scene.graph[node];m=scene.geometry[g].copy()
   if not isinstance(m,trimesh.Trimesh):continue
   m.apply_transform(matrix);meshes.append(m)
@@ -79,3 +81,11 @@ for name,title,url,path,legal in sources:
 (OUT/'SPATIAL_LICENSES.txt').write_text(licenses+'\n\nADDITIONAL CATALOG — models modified: baked world transforms, normalized scale, mobile texture conversion, static geometry. Native PBR approximates advanced optical extensions.\n\n'+'\n\n'.join(x['title']+'\n'+x['source']+'\n'+x['licenseNotice'] for x in manifest[3:]),encoding='utf-8')
 assert len(manifest)==23
 print('TOTAL',sum(sum(f['bytes'] for f in a['files']) for a in manifest)/1e6,'MB')
+
+license_file=OUT/'SPATIAL_LICENSES.txt'
+notice=license_file.read_text(encoding='utf-8')
+for license_name in sorted(set(re.findall(r'../../LICENSES/([^\)]+)',notice))):
+ response=requests.get('https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/LICENSES/'+license_name,timeout=30);response.raise_for_status()
+ notice+='\n\n'+license_name+'\n'+response.text
+notice=notice.replace('../../LICENSES/','https://github.com/KhronosGroup/glTF-Sample-Assets/blob/main/LICENSES/')
+license_file.write_bytes(('\n'.join(line.rstrip() for line in notice.splitlines())+'\n').encode('utf-8'))

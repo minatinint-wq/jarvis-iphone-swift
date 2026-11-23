@@ -40,12 +40,16 @@ final class PhoneCommandTests: XCTestCase {
         let up=SpatialHandMath.rawPoint(CGPoint(x:0.2,y:0.3),orientation:.up)
         XCTAssertEqual(up.x,0.2,accuracy:0.0001);XCTAssertEqual(up.y,0.7,accuracy:0.0001)
     }
-    @MainActor func testDepthOccluderDoesNotStealPanelHit() {
-        let root=SCNNode(),occluder=SCNNode(geometry:SCNPlane(width:2,height:2)),button=SCNNode(geometry:SCNPlane(width:1,height:1))
-        occluder.categoryBitMask=2;occluder.position.z=0.2;button.categoryBitMask=4
-        root.addChildNode(occluder);root.addChildNode(button)
-        let hits=root.hitTestWithSegment(from:SCNVector3(0,0,1),to:SCNVector3(0,0,-1),options:[SCNHitTestOption.categoryBitMask.rawValue:4])
-        XCTAssertTrue(hits.first?.node === button)
+    func testPanelRaySelectionRemainsIndependentOfDepthMeshes() throws {
+        var panel=matrix_identity_float4x4;panel.columns.3=SIMD4(0,0,-0.9,1)
+        for i in 0..<3 { panel[i] *= 0.5 }
+        let center=try XCTUnwrap(SpatialPanelGeometry.localHit(origin:.zero,direction:SIMD3(0,0,-1),transform:panel))
+        XCTAssertEqual(center.x,0,accuracy:0.001);XCTAssertEqual(center.y,0,accuracy:0.001)
+        let card=try XCTUnwrap(SpatialPanelGeometry.localHit(origin:.zero,direction:SIMD3(0.08,0.0675,-0.896),transform:panel))
+        XCTAssertEqual(card.x,0.16,accuracy:0.001);XCTAssertEqual(card.y,0.135,accuracy:0.001)
+        XCTAssertNil(SpatialPanelGeometry.localHit(origin:.zero,direction:SIMD3(1,0,-1),transform:panel))
+        XCTAssertNil(SpatialPanelGeometry.localHit(origin:.zero,direction:SIMD3(0,0,1),transform:panel))
+        XCTAssertNil(SpatialPanelGeometry.localHit(origin:.zero,direction:SIMD3(1,0,0),transform:panel))
     }
     @MainActor func testInteractiveScenariosHaveWorkingActions() throws {
         for theme in [SpatialTheme.garage,.lounge,.aquarium] {
@@ -95,7 +99,7 @@ final class PhoneCommandTests: XCTestCase {
         guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
         let viewport=CGSize(width:390,height:760)
         let view=ARSCNView(frame:CGRect(origin:.zero,size:viewport));view.scene=SCNScene();view.scene.background.contents=UIColor(white:0.12,alpha:1)
-        let panel=SpatialPanel(view:view);panel.preview(.dashboard)
+        let panel=SpatialPanel(view:view);panel.preview(.dashboard);panel.setTracking(true)
         let node=try XCTUnwrap(view.scene.rootNode.childNodes.first)
         let f:Float=1/tan(.pi/6),aspect=Float(viewport.width/viewport.height)
         let projection=simd_float4x4(SIMD4(f/aspect,0,0,0),SIMD4(0,f,0,0),SIMD4(0,0,-1.002,-1),SIMD4(0,0,-0.02002,0))
