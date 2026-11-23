@@ -276,12 +276,16 @@ import SceneKit
             let size=CGSize(width:width*1500,height:height*1500)
             let image=UIGraphicsImageRenderer(size:size,format:format).image { context in
                 color.setFill();UIBezierPath(roundedRect:CGRect(origin:.zero,size:size),cornerRadius:18).fill()
-                let font=UIFont.systemFont(ofSize:height<0.09 ? 25 : 29,weight:.semibold)
+                let font=UIFont.systemFont(ofSize:icon.isEmpty ? 28 : 36,weight:.semibold)
                 if let symbol=UIImage(systemName:icon,withConfiguration:UIImage.SymbolConfiguration(pointSize:28,weight:.medium))?.withTintColor(.cyan,renderingMode:.alwaysOriginal) {
                     symbol.draw(in:CGRect(x:20,y:(size.height-32)/2,width:32,height:32))
                 }
                 let paragraph=NSMutableParagraphStyle();paragraph.lineBreakMode = .byTruncatingTail
-                (title as NSString).draw(in:CGRect(x:icon.isEmpty ? 20 : 65,y:14,width:size.width-(icon.isEmpty ? 40 : 82),height:size.height-24),withAttributes:[.font:font,.foregroundColor:UIColor.white,.paragraphStyle:paragraph])
+                let textWidth=size.width-(icon.isEmpty ? 40 : 82),textHeight=size.height-24
+                let attributes:[NSAttributedString.Key:Any]=[.font:font,.foregroundColor:UIColor.white,.paragraphStyle:paragraph]
+                let measured=(title as NSString).boundingRect(with:CGSize(width:textWidth,height:textHeight),options:[.usesLineFragmentOrigin,.usesFontLeading],attributes:attributes,context:nil)
+                let height=min(textHeight,ceil(measured.height))
+                (title as NSString).draw(in:CGRect(x:icon.isEmpty ? 20 : 65,y:(size.height-height)/2,width:textWidth,height:height),withAttributes:attributes)
             }
             let geometry=SCNPlane(width:width,height:height);geometry.cornerRadius=0.008
             let material=SCNMaterial();material.diffuse.contents=image;material.lightingModel = .constant;material.isDoubleSided=false

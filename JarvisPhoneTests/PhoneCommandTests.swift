@@ -68,10 +68,11 @@ final class PhoneCommandTests: XCTestCase {
             let attachment=XCTAttachment(image:screenshot);attachment.name="Spatial-panel-\(module.rawValue)";attachment.lifetime = .keepAlways;add(attachment)
             XCTAssertNotNil(screenshot.cgImage)
             let cg=try XCTUnwrap(screenshot.cgImage)
-            var pixels=[UInt8](repeating:0,count:64*64*4)
-            let context=try XCTUnwrap(CGContext(data:&pixels,width:64,height:64,bitsPerComponent:8,bytesPerRow:256,space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.premultipliedLast.rawValue))
-            context.draw(cg,in:CGRect(x:0,y:0,width:64,height:64))
-            XCTAssertGreaterThan(stride(from:0,to:pixels.count,by:4).filter { max(pixels[$0],pixels[$0+1],pixels[$0+2])>100 }.count,30,"Panel must contain visible controls, not a blank snapshot")
+            // Preserve glyphs when sampling: a 64px thumbnail erased thin lettering.
+            var pixels=[UInt8](repeating:0,count:256*256*4)
+            let context=try XCTUnwrap(CGContext(data:&pixels,width:256,height:256,bitsPerComponent:8,bytesPerRow:1024,space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.premultipliedLast.rawValue))
+            context.draw(cg,in:CGRect(x:0,y:0,width:256,height:256))
+            XCTAssertGreaterThan(stride(from:0,to:pixels.count,by:4).filter { max(pixels[$0],pixels[$0+1],pixels[$0+2])>100 }.count,100,"Panel must contain visible controls, not a blank snapshot")
         }
         panel.close()
     }
