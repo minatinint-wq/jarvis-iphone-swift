@@ -66,7 +66,7 @@ A transmissão usa a conexão já pareada do JARVIS e encerra a captura quando o
 
 ## Resultado do teste quarto → sala → quarto
 
-Pendente no iPhone físico. Nenhum deslocamento real entre cômodos foi declarado aprovado.
+Percurso entre cômodos ainda pendente. O usuário esclareceu que a falha observada ocorreu ao sair do aplicativo e voltar. A validação desse percurso permanece separada da retomada do app.
 
 1. Entre em Espaço AR, abra Cenários 3D e escolha Quarto.
 2. Mostre piso e detalhes ao redor. Posicione o humanoide e a caixa em pontos marcados fisicamente no chão.
@@ -77,13 +77,13 @@ Pendente no iPhone físico. Nenhum deslocamento real entre cômodos foi declarad
 
 ## Resultado do teste após reiniciar
 
-Pendente no iPhone físico. Os testes de arquivo verificam gravação, leitura e recusa de duplicações e transformações inválidas. Eles não comprovam a posição física restaurada.
+A retomada após sair do aplicativo apresentou falha na revisão 24. O usuário encontrou os objetos fora do lugar e flutuando quando voltou ao Jarvis com o celular em outra posição. Encerrar completamente o processo e reabrir ainda precisa de um teste separado. Os testes de arquivo verificam gravação, leitura e recusa de duplicações e transformações inválidas. Eles não comprovam a posição física restaurada.
 
 Após salvar, feche o app, reabra no ambiente original e mova a câmera lentamente para recuperar o mapa. Confira os mesmos pontos marcados, conte os objetos e compare posição, rotação e escala. Se a recuperação não ocorrer, registre esse resultado e o tempo de espera.
 
 ## Teste da tela do computador por pinça
 
-Pendente no iPhone físico. A captura real do Windows já retornou um JPEG válido de 1280×720. Os testes de entrada usam substitutos das funções do Windows para evitar ações involuntárias no computador.
+Resultado parcial no iPhone físico da revisão 24. O usuário confirmou que a imagem do PC apareceu e relatou que os movimentos, cliques e arrastes da mão ficaram travados. A estimativa de profundidade da ponta estava sendo usada como bloqueio para toda a interação. A revisão 25 corrige esse bloqueio. O teste de puxar e soltar continua pendente de aprovação. A captura real do Windows já retornou um JPEG válido de 1280×720. Os testes de entrada usam substitutos das funções do Windows para evitar ações involuntárias no computador.
 
 1. Deixe uma janela de teste aberta no PC e conecte o Jarvis do iPhone à ponte.
 2. No Espaço AR, aponte para o monitor e abra Tela do PC.
