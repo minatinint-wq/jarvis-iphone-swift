@@ -8,7 +8,6 @@ struct SpatialHandSample {
     let ratio:Double
     let menuPose:Bool
     let pointing:Bool
-    let world:SIMD3<Float>?
     let time:Double
 }
 
@@ -106,11 +105,10 @@ enum SpatialHandMath {
         let orientation=view.window?.windowScene?.interfaceOrientation ?? .portrait
         let transform=frame.displayTransform(for:orientation,viewportSize:size)
         let imageOrientation:CGImagePropertyOrientation=orientation == .landscapeLeft ? .down : orientation == .landscapeRight ? .up : orientation == .portraitUpsideDown ? .left : .right
-        let pixels=frame.capturedImage,camera=frame.camera.transform,intrinsics=frame.camera.intrinsics,resolution=frame.camera.imageResolution
-        let depth=frame.smoothedSceneDepth
+        let pixels=frame.capturedImage,resolution=frame.camera.imageResolution
         queue.async {
             let luminance=Self.luminance(pixels)
-            var positions:[CGPoint?]=[];var ratio:Double?;var world:SIMD3<Float>?;var rawTip:CGPoint?;var detectorError=false
+            var positions:[CGPoint?]=[];var ratio:Double?;var rawTip:CGPoint?;var detectorError=false
             do {
                 if luminance<0.10 {
                     let image=CIImage(cvPixelBuffer:pixels).applyingFilter("CIExposureAdjust",parameters:[kCIInputEVKey:0.7])
@@ -140,15 +138,10 @@ enum SpatialHandMath {
                         if (joints[.indexTip]?.confidence ?? 0)>=0.50,(joints[.thumbTip]?.confidence ?? 0)>=0.50 {
                             ratio=SpatialHandMath.pinchRatio(raw,size:resolution)
                         }
-                        if let metres=Self.depth(at:tip,data:depth) {
-                            let z=Float(metres),x=(Float(tip.x*resolution.width)-intrinsics.columns.2.x)/intrinsics.columns.0.x*z
-                            let y = -(Float(tip.y*resolution.height)-intrinsics.columns.2.y)/intrinsics.columns.1.y*z
-                            let p=camera*SIMD4<Float>(x,y,-z,1);world=SIMD3(p.x,p.y,p.z)
-                        }
                     }
                 }
             } catch { detectorError=true }
-            let result=positions,amount=ratio,location=world,tip=rawTip,failed=detectorError
+            let result=positions,amount=ratio,tip=rawTip,failed=detectorError
             Task { @MainActor [weak self] in
                 guard let self else { return };self.busy=false
                 guard self.generation==ticket else { return }
@@ -170,7 +163,7 @@ enum SpatialHandMath {
                 self.bones.path=path.cgPath
                 let pointing = SpatialHandMath.pointing(result)
                 self.report(amount == nil ? "Mostre a mão inteira." : amount! < 0.28 ? "Pinça · arrastar" : pointing ? "Indicador · mantenha sobre o alvo" : "Mão livre")
-                self.onSample?(SpatialHandSample(point:p,menuPose:SpatialHandMath.pointing(result,twoFingers:true),ratio:amount ?? .nan,pointing:pointing,world:location,time:stamp))
+                self.onSample?(SpatialHandSample(point:p,ratio:amount ?? .nan,menuPose:SpatialHandMath.pointing(result,twoFingers:true),pointing:pointing,time:stamp))
             }
         }
     }
@@ -182,23 +175,5 @@ enum SpatialHandMath {
         var total=0
         for y in 0..<6 { for x in 0..<8 { total+=Int(base.load(fromByteOffset:((y*2+1)*h/12)*stride+(x*2+1)*w/16,as:UInt8.self)) } }
         return Double(total)/(48*255)
-    }
-    nonisolated private static func depth(at p:CGPoint,data:ARDepthData?)->Double? {
-        guard let data,let confidence=data.confidenceMap else { return nil }
-        let map=data.depthMap
-        CVPixelBufferLockBaseAddress(map,.readOnly);CVPixelBufferLockBaseAddress(confidence,.readOnly)
-        defer { CVPixelBufferUnlockBaseAddress(map,.readOnly);CVPixelBufferUnlockBaseAddress(confidence,.readOnly) }
-        guard let base=CVPixelBufferGetBaseAddress(map),let conf=CVPixelBufferGetBaseAddress(confidence) else { return nil }
-        let w=CVPixelBufferGetWidth(map),h=CVPixelBufferGetHeight(map),x=Int(p.x*Double(w)),y=Int(p.y*Double(h))
-        var values:[Float]=[]
-        for dy in -1...1 { for dx in -1...1 {
-            let a=x+dx,b=y+dy;guard a>=0,b>=0,a<w,b<h else { continue }
-            let c=conf.load(fromByteOffset:b*CVPixelBufferGetBytesPerRow(confidence)+a,as:UInt8.self)
-            let d=base.load(fromByteOffset:b*CVPixelBufferGetBytesPerRow(map)+a*4,as:Float.self)
-            if c>=2,d.isFinite,d>0.2,d<1.1 { values.append(d) }
-        } }
-        guard values.count>=5 else { return nil };values.sort()
-        guard values.last!-values.first!<0.08 else { return nil }
-        return Double(values[values.count/2])
     }
 }

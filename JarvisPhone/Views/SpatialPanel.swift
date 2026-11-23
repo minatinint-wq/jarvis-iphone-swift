@@ -339,7 +339,7 @@ enum SpatialPanelGeometry {
         }
         render()
     }
-    func showResult(_ text: String) { guard visible else { return };status=String(text.prefix(190));render() }
+    func showResult(_ text: String) { guard visible else { return };status=String(text.prefix(190)) }
 
     #if DEBUG
     /// Render the actual cards in tests without pretending the simulator has LiDAR.
