@@ -35,6 +35,7 @@ final class PhoneCommandTests: XCTestCase {
         let view=ARSCNView(frame:.zero);view.scene=SCNScene();view.scene.background.contents=UIColor(white:0.07,alpha:1)
         let panel=SpatialPanel(view:view)
         let camera=SCNNode();camera.camera=SCNCamera();camera.camera?.usesOrthographicProjection=true;camera.camera?.orthographicScale=0.48
+        camera.camera?.zNear=0.01;camera.camera?.zFar=10
         camera.position=SCNVector3(0,0,1);view.scene.rootNode.addChildNode(camera)
         let renderer=SCNRenderer(device:device,options:nil);renderer.scene=view.scene;renderer.pointOfView=camera
         for module in [SpatialModule.dashboard,.home,.phone] {
@@ -42,6 +43,11 @@ final class PhoneCommandTests: XCTestCase {
             let screenshot=renderer.snapshot(atTime:0,with:CGSize(width:1000,height:900),antialiasingMode:.multisampling4X)
             let attachment=XCTAttachment(image:screenshot);attachment.name="Spatial-panel-\(module.rawValue)";attachment.lifetime = .keepAlways;add(attachment)
             XCTAssertNotNil(screenshot.cgImage)
+            let cg=try XCTUnwrap(screenshot.cgImage)
+            var pixels=[UInt8](repeating:0,count:64*64*4)
+            let context=try XCTUnwrap(CGContext(data:&pixels,width:64,height:64,bitsPerComponent:8,bytesPerRow:256,space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.premultipliedLast.rawValue))
+            context.draw(cg,in:CGRect(x:0,y:0,width:64,height:64))
+            XCTAssertGreaterThan(stride(from:0,to:pixels.count,by:4).filter { max(pixels[$0],pixels[$0+1],pixels[$0+2])>100 }.count,30,"Panel must contain visible controls, not a blank snapshot")
         }
         panel.close()
     }
