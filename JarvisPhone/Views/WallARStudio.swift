@@ -187,6 +187,7 @@ enum WallMeasureMode { case none, outline, opening }
         if active && started { run() }
         else if !active {
             spatial.saveMap(force:false)
+            spatial.requireSurfaceConfirmation()
             desktop.setTracking(false)
             view.session.pause(); view.isPlaying = false
             tracking = false; _ = gate.update(normal:false, at:0); setVisible(false)
@@ -357,6 +358,7 @@ enum WallMeasureMode { case none, outline, opening }
         let good = gate.update(normal:normal, at:frame.timestamp)
         spatial.persistenceTick(frame)
         spatial.setVisible(good && !comparing)
+        if good && !comparing { spatial.validateSupports(frame) }
         panel.setTracking(good)
         desktop.setTracking(good && !spatial.recovering)
         hands.update(frame,view:view,enabled:good && !webWindowVisible && (panel.visible || spatial.active || desktop.visible))
@@ -364,6 +366,7 @@ enum WallMeasureMode { case none, outline, opening }
             tracking = good; setVisible(good && !comparing)
             status = good ? (selected ? "Parede fixada. Pode mudar o material por voz." : "Toque na parede ou diga “essa parede”.") : "Recuperando posição. Mova devagar e mostre detalhes do ambiente."
         }
+        if good,spatial.objectCount>0,!spatial.supportsConfirmed { status=spatial.persistenceStatus }
         if approved && good && frame.timestamp-lastDepthUpdate>0.5 { updateDepth(frame) }
         cameraFrames += 1
         if frame.timestamp-lastMetric >= 1 {
@@ -417,10 +420,21 @@ enum WallMeasureMode { case none, outline, opening }
         }
     }
     func sessionWasInterrupted(_ session: ARSession) {
+        spatial.requireSurfaceConfirmation()
         tracking = false; _ = gate.update(normal:false,at:0); setVisible(false)
         status = "AR interrompido. A pintura reaparece após recuperar a posição."
     }
     func sessionInterruptionEnded(_ session: ARSession) { if foreground { run() } }
+    func sessionShouldAttemptRelocalization(_ session: ARSession) -> Bool { true }
+    func session(_ session: ARSession,cameraDidChangeTrackingState camera: ARCamera) {
+        switch camera.trackingState {
+        case .normal: break
+        default:
+            spatial.requireSurfaceConfirmation()
+            tracking=false;_ = gate.update(normal:false,at:0);setVisible(false)
+            status="Relocalizando. Volte ao ambiente anterior e mostre o piso e detalhes das paredes."
+        }
+    }
     func session(_ session: ARSession, didFailWithError error: Error) {
         fatal = true; setVisible(false); status = "AR indisponível: \(error.localizedDescription). Feche e reabra este modo."
     }

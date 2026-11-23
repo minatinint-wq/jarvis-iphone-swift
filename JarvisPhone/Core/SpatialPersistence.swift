@@ -17,6 +17,7 @@ struct SpatialObjectRecord: Codable, Equatable, Identifiable {
     var updated: Date
     var kind: String = "object"
     var persistence: String = "anchored"
+    var supportTransform: [Float]? = nil
 }
 
 struct SpatialPanelRecord: Codable {
@@ -52,6 +53,7 @@ struct SpatialArchive: Codable {
                   Self.matrix(object.localTransform) != nil,
                   object.scale.isFinite, (0.25...2).contains(object.scale),
                   !object.model.isEmpty else { throw CocoaError(.fileReadCorruptFile) }
+            if let support=object.supportTransform,Self.matrix(support) == nil { throw CocoaError(.fileReadCorruptFile) }
         }
         if let panel {
             guard panel.scale.isFinite, (0.20...0.70).contains(panel.scale) else { throw CocoaError(.fileReadCorruptFile) }
@@ -99,5 +101,20 @@ struct SpatialArchive: Codable {
         var directory = file.deletingLastPathComponent()
         var values = URLResourceValues(); values.isExcludedFromBackup = true
         try directory.setResourceValues(values)
+    }
+}
+
+/// Observations outside the current camera view preserve previous evidence.
+/// A resumed session starts with no evidence, even if the camera reports normal.
+struct SpatialSupportProof {
+    private var consecutive=0
+    private(set) var confirmed: Bool
+    init(confirmed: Bool = false) { self.confirmed=confirmed }
+    mutating func observe(matches: Int,conflicts: Int) {
+        if conflicts>=2 { consecutive=0;confirmed=false }
+        else if matches>=3 {
+            consecutive=min(2,consecutive+1)
+            confirmed = confirmed || consecutive>=2
+        } else { consecutive=0 }
     }
 }

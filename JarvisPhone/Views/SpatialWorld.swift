@@ -179,6 +179,61 @@ enum SpatialTheme: String, CaseIterable {
     private var relocalizationBegan: TimeInterval?
     private var diagnostics: [[String:Any]] = []
     private var lastDiagnostic: TimeInterval = -.infinity
+    private var supportProofs: [UUID:SpatialSupportProof] = [:]
+    private var lastSupportCheck: TimeInterval = -.infinity
+    var supportsConfirmed: Bool { objects.keys.allSatisfy { supportProofs[$0]?.confirmed == true } }
+
+    func requireSurfaceConfirmation() {
+        supportProofs.removeAll()
+        objects.values.forEach { $0.isHidden=true }
+        persistenceStatus="Recuperando referência. Mostre novamente o piso e a base dos objetos."
+    }
+
+    func validateSupports(_ frame: ARFrame) {
+        guard visibility,!recovering,frame.timestamp-lastSupportCheck>=0.25,
+              let data=frame.smoothedSceneDepth,let confidence=data.confidenceMap else { return }
+        lastSupportCheck=frame.timestamp
+        let depth=data.depthMap
+        CVPixelBufferLockBaseAddress(depth,.readOnly);CVPixelBufferLockBaseAddress(confidence,.readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(depth,.readOnly);CVPixelBufferUnlockBaseAddress(confidence,.readOnly) }
+        guard let values=CVPixelBufferGetBaseAddress(depth),let levels=CVPixelBufferGetBaseAddress(confidence) else { return }
+        let width=CVPixelBufferGetWidth(depth),height=CVPixelBufferGetHeight(depth),ds=CVPixelBufferGetBytesPerRow(depth),cs=CVPixelBufferGetBytesPerRow(confidence)
+        let camera=simd_inverse(frame.camera.transform),k=frame.camera.intrinsics,image=frame.camera.imageResolution
+        for (id,node) in objects {
+            guard let record=records[id],let room=rooms.first(where:{$0.id==record.room}),let origin=SpatialArchive.matrix(room.origin),
+                  let local=SpatialArchive.matrix(record.localTransform) else { continue }
+            let original=origin*local,support=origin*(record.supportTransform.flatMap(SpatialArchive.matrix) ?? local)
+            let normal=SIMD3(support.columns.1.x,support.columns.1.y,support.columns.1.z)
+            let oldPosition=SIMD3(original.columns.3.x,original.columns.3.y,original.columns.3.z)
+            let supportPosition=SIMD3(support.columns.3.x,support.columns.3.y,support.columns.3.z)
+            let elevation=simd_dot(oldPosition-supportPosition,normal)
+            let center=node.simdWorldPosition-normal*elevation
+            let x=SIMD3(support.columns.0.x,support.columns.0.y,support.columns.0.z)*0.08
+            let z=SIMD3(support.columns.2.x,support.columns.2.y,support.columns.2.z)*0.08
+            var matches=0,conflicts=0
+            for world in [center,center+x,center-x,center+z,center-z] {
+                let p=camera*SIMD4(world,1),expected = -p.z
+                guard expected>0.2,expected<4.5 else { continue }
+                let u=(k[0][0]*p.x/expected+k[2][0])/Float(image.width)*Float(width)
+                let v=(-k[1][1]*p.y/expected+k[2][1])/Float(image.height)*Float(height)
+                guard u>=1,v>=1,u<Float(width-1),v<Float(height-1) else { continue }
+                let column=Int(u),row=Int(v)
+                guard levels.load(fromByteOffset:row*cs+column,as:UInt8.self)>=2 else { continue }
+                let measured=values.load(fromByteOffset:row*ds+column*4,as:Float.self)
+                guard measured.isFinite,measured>0.1 else { continue }
+                if abs(measured-expected)<=0.04 { matches+=1 }
+                else if abs(measured-expected)>0.08 { conflicts+=1 }
+            }
+            var proof=supportProofs[id] ?? SpatialSupportProof()
+            proof.observe(matches:matches,conflicts:conflicts);supportProofs[id]=proof
+            node.isHidden = !proof.confirmed
+        }
+        let confirmed=supportProofs.values.filter(\.confirmed).count
+        if !objects.isEmpty {
+            let text=confirmed==objects.count ? "\(confirmed) objetos com apoio conferido. Compare também as marcas físicas." : "\(confirmed)/\(objects.count) apoios conferidos. Mostre a base dos objetos restantes."
+            if persistenceStatus != text { persistenceStatus=text }
+        }
+    }
     var panelSnapshot: (() -> SpatialPanelRecord?)?
     var desktopSnapshot: (() -> SpatialDesktopRecord?)?
     var canSaveWindows: (() -> Bool)?
@@ -219,7 +274,8 @@ enum SpatialTheme: String, CaseIterable {
     }
 
     func saveMap(force: Bool = true) {
-        guard !saving,!recovering,handDragging == nil,(canSaveWindows?() ?? true),let frame=view.session.currentFrame,
+        guard !saving,!recovering,handDragging == nil,(canSaveWindows?() ?? true),
+              objects.isEmpty || supportProofs.values.contains(where:{$0.confirmed}),let frame=view.session.currentFrame,
               case .normal=frame.camera.trackingState,frame.worldMappingStatus == .mapped || frame.worldMappingStatus == .extending else {
             if force { persistenceStatus="Para salvar, termine o gesto e mostre mais detalhes do ambiente até o mapa estabilizar." };return
         }
@@ -261,6 +317,7 @@ enum SpatialTheme: String, CaseIterable {
                                  "thermal":ProcessInfo.processInfo.thermalState.rawValue,
                                  "mapping":frame.worldMappingStatus.rawValue,"battery":UIDevice.current.batteryLevel]
         entry["handLatencyMS"]=handLatencyMS;entry["handFound"]=handFound;entry["handDepth"]=handDepth
+        entry["supportsConfirmed"]=supportProofs.values.filter(\.confirmed).count
         var info=mach_task_basic_info(),count=mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size/MemoryLayout<integer_t>.size)
         let result=withUnsafeMutablePointer(to:&info) { pointer in
             pointer.withMemoryRebound(to:integer_t.self,capacity:Int(count)) { task_info(mach_task_self_,task_flavor_t(MACH_TASK_BASIC_INFO),$0,&count) }
@@ -280,7 +337,7 @@ enum SpatialTheme: String, CaseIterable {
                 deltas.append(["id":record.id.uuidString,"metersFromSavedTransform":simd_distance(a,b),"radiansFromSavedTransform":angle,"scale":record.scale])
             }
             entry["anchorDeltas"]=deltas;relocalizationBegan=nil
-            persistenceStatus="Mapa relocalizado. \(objectCount) objetos recuperados. Confira a posição física."
+            persistenceStatus="Mapa relocalizado. Mostre as superfícies de apoio para conferir os objetos."
         }
         diagnostics.append(entry)
         if diagnostics.count>300 { diagnostics.removeFirst(diagnostics.count-300) }
@@ -295,8 +352,17 @@ enum SpatialTheme: String, CaseIterable {
     private func remember(_ id: UUID, model: String? = nil) {
         guard let node=objects[id],let anchor=anchors[id],let room=rooms.first(where:{$0.id == (records[id]?.room ?? currentRoom ?? rooms[0].id)}),
               let origin=SpatialArchive.matrix(room.origin) else { return }
+        let previousSupport=records[id]?.supportTransform
         records[id]=SpatialObjectRecord(id:id,model:model ?? records[id]?.model ?? "theme:"+theme.rawValue,room:room.id,anchor:anchor.identifier,
                                       localTransform:SpatialArchive.values(simd_inverse(origin)*anchor.transform),scale:node.simdScale.x,updated:Date())
+        records[id]?.supportTransform=previousSupport
+        if let key=supports[id],let plane=planes[key] {
+            var pose=plane.transform
+            let normal=SIMD3(pose.columns.1.x,pose.columns.1.y,pose.columns.1.z),point=SIMD3(pose.columns.3.x,pose.columns.3.y,pose.columns.3.z)
+            let position=node.simdWorldPosition-normal*simd_dot(node.simdWorldPosition-point,normal)
+            pose.columns.3=SIMD4(position,1)
+            records[id]?.supportTransform=SpatialArchive.values(simd_inverse(origin)*pose)
+        }
         if records[id]?.model == SpatialDemo.human.rawValue { records[id]?.kind="character" }
         else if records[id]?.model.hasPrefix("theme:") == true { records[id]?.kind="scene" }
         revision+=1
@@ -364,6 +430,7 @@ enum SpatialTheme: String, CaseIterable {
             root.simdTransform=anchor.transform;root.addChildNode(content);root.isHidden = !visibility
             view.scene.rootNode.addChildNode(root);view.session.add(anchor:anchor)
             objects[id]=root;anchors[id]=anchor;supports[id]=placement.1;radii[id]=footprint
+            supportProofs[id]=SpatialSupportProof(confirmed:true)
             remember(id,model:selectedModel ?? "theme:"+theme.rawValue)
             selected=id;objectCount=objects.count;hasSelection=true;placing=false;markSelection()
             status="Objeto fixado. Arraste, gire com dois dedos ou use pinça. Toque para interagir."
@@ -537,6 +604,7 @@ enum SpatialTheme: String, CaseIterable {
         if playingID==id { player?.stop();playingID=nil }
         objects.removeValue(forKey:id)?.removeFromParentNode();supports.removeValue(forKey:id);radii.removeValue(forKey:id)
         records.removeValue(forKey:id);revision+=1
+        supportProofs.removeValue(forKey:id)
         if let anchor=anchors.removeValue(forKey:id) { view.session.remove(anchor:anchor) }
         selected=nil;hasSelection=false;objectCount=objects.count;status="Conjunto removido."
     }
@@ -552,7 +620,7 @@ enum SpatialTheme: String, CaseIterable {
             if record.model.hasPrefix("theme:"),let value=SpatialTheme(rawValue:String(record.model.dropFirst(6))) { node=try SpatialAssets.composition(value) }
             else if let demo=SpatialDemo(rawValue:record.model) { node=try demo.make() }
             else { let holder=SCNNode();let mesh=try SpatialAssets.load(record.model);mesh.simdScale=SIMD3(repeating:0.3);holder.addChildNode(mesh);node=holder }
-            let root=SCNNode();root.addChildNode(node);root.simdTransform=anchor.transform;root.simdScale=SIMD3(repeating:record.scale);root.isHidden = !visibility
+            let root=SCNNode();root.addChildNode(node);root.simdTransform=anchor.transform;root.simdScale=SIMD3(repeating:record.scale);root.isHidden=true
             objects[id]=root;anchors[id]=anchor;radii[id]=SpatialDemo(rawValue:record.model)?.radius ?? (record.model.hasPrefix("theme:") ? 0.48 : 0.24)
             view.scene.rootNode.addChildNode(root);restored.removeValue(forKey:id);objectCount=objects.count
             if restored.isEmpty { persistenceStatus="Âncoras recuperadas. Aguardando rastreamento estável para exibir." }
@@ -563,7 +631,8 @@ enum SpatialTheme: String, CaseIterable {
         let allowed=value && !recovering
         guard allowed != visibility else { return }
         if !allowed { if let id=handDragging { reanchor(id);handDragging=nil };handGesture.reset();palmScale=SpatialPalmScale() }
-        visibility=allowed;objects.values.forEach { $0.isHidden = !allowed }
+        visibility=allowed
+        for (id,node) in objects { node.isHidden = !allowed || supportProofs[id]?.confirmed != true }
         if !allowed { player?.pause() }
         else if playingID != nil { player?.play() }
     }
@@ -573,6 +642,7 @@ enum SpatialTheme: String, CaseIterable {
         objects.values.forEach { $0.isPaused=paused }
     }
     func stop() {
+        supportProofs.removeAll()
         player?.stop();player=nil
         objects.values.forEach { $0.removeFromParentNode() };objects.removeAll();anchors.removeAll();planes.removeAll();radii.removeAll();SpatialAssets.clear()
     }

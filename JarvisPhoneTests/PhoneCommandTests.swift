@@ -7,6 +7,19 @@ import ARKit
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    @MainActor func testResumeRetainsMapAndRequiresRepeatedSurfaceEvidence() {
+        let controller=WallARController()
+        XCTAssertTrue(controller.sessionShouldAttemptRelocalization(controller.view.session))
+        var proof=SpatialSupportProof()
+        proof.observe(matches:0,conflicts:0);XCTAssertFalse(proof.confirmed)
+        proof.observe(matches:3,conflicts:0);XCTAssertFalse(proof.confirmed)
+        proof.observe(matches:3,conflicts:0);XCTAssertTrue(proof.confirmed)
+        proof.observe(matches:0,conflicts:0);XCTAssertTrue(proof.confirmed)
+        proof.observe(matches:1,conflicts:2);XCTAssertFalse(proof.confirmed)
+        proof=SpatialSupportProof();proof.observe(matches:4,conflicts:0)
+        XCTAssertFalse(proof.confirmed)
+        controller.stop()
+    }
     @MainActor func testDesktopWindowClicksAndMovesWithNoHandDepth() throws {
         let view=ARSCNView(frame:CGRect(x:0,y:0,width:600,height:900));view.scene=SCNScene()
         let camera=SCNNode();camera.camera=SCNCamera();camera.position=SCNVector3(0,0,1)
