@@ -34,6 +34,13 @@ struct SpatialDesktopRecord: Codable {
     var progress: Double { gesture.progress }
 
     init(view: ARSCNView) { self.view=view }
+    #if DEBUG
+    func preview() {
+        build(anchor:ARAnchor(name:"JarvisDesktop",transform:matrix_identity_float4x4),scale:0.7)
+        visible=true;tracking=true;root?.isHidden=false;sequence=1
+    }
+    var previewPosition: SIMD3<Float>? { root?.simdWorldPosition }
+    #endif
 
     func open(tracking: Bool) {
         guard tracking,let frame=view.session.currentFrame else { status="Espere o rastreamento estabilizar.";return }

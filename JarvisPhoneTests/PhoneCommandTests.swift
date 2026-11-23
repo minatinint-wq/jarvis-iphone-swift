@@ -7,6 +7,27 @@ import ARKit
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    @MainActor func testDesktopWindowClicksAndMovesWithNoHandDepth() throws {
+        let view=ARSCNView(frame:CGRect(x:0,y:0,width:600,height:900));view.scene=SCNScene()
+        let camera=SCNNode();camera.camera=SCNCamera();camera.position=SCNVector3(0,0,1)
+        view.scene.rootNode.addChildNode(camera);view.pointOfView=camera
+        let desktop=SpatialDesktop(view:view);desktop.preview()
+        var jobs:[[String:Any]]=[];desktop.send={jobs.append($0)}
+        for tick in 0...23 {
+            let sample=SpatialHandSample(point:CGPoint(x:300,y:450),ratio:1,menuPose:false,pointing:true,time:Double(tick)*0.1)
+            XCTAssertTrue(desktop.hand(sample))
+        }
+        XCTAssertEqual(jobs.filter{$0["action"] as? String == "click"}.count,1)
+        func hand(_ ratio:Double,_ time:Double,_ y:Double) {
+            _=desktop.hand(SpatialHandSample(point:CGPoint(x:300,y:y),ratio:ratio,menuPose:false,pointing:false,time:time))
+        }
+        hand(1,2.4,450);hand(0.1,2.5,450);hand(0.1,2.7,450);hand(0.1,2.8,410)
+        XCTAssertGreaterThan(try XCTUnwrap(desktop.previewPosition).y,0.01)
+        hand(1,2.9,410)
+        XCTAssertFalse(desktop.isDragging)
+        XCTAssertNotNil(desktop.snapshot())
+        desktop.close(recordChange:false)
+    }
     func testPointingWithoutThumbOrDepthCanDwellAndLossStillCancelsPinch() {
         var gesture=SpatialGesture(),clicks=0
         for tick in 0...28 {
