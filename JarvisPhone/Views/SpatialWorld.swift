@@ -33,7 +33,7 @@ enum SpatialTheme: String, CaseIterable {
         mat.metalness.contents=spec["metalness"] as? Double ?? 0
         mat.roughness.contents=spec["roughness"] as? Double ?? 1
         for (property,key) in [(mat.diffuse,"Color"),(mat.normal,"NormalGL"),(mat.roughness,"Roughness"),(mat.emission,"Emission")] {
-            if let file=spec[key] as? String, let path=Bundle.main.path(forResource:file,ofType:nil), let image=UIImage(contentsOfFile:path) {
+            if let file=spec[key] as? String, let path=Bundle.main.path(forResource:file,ofType:nil), let bytes=try? Data(contentsOf:URL(fileURLWithPath:path)), let image=UIImage(data:bytes) {
                 property.contents=image; property.mipFilter = .linear; property.minificationFilter = .linear; property.magnificationFilter = .linear; property.maxAnisotropy=4
             }
         }

@@ -36,7 +36,7 @@ resources:
 - JarvisPhone/Resources/Spatial_mossrock_Roughness.jpg
 - JarvisPhone/Resources/Spatial_mossrock_Metalness.jpg
 - JarvisPhone/Resources/Spatial_fern.mesh
-- JarvisPhone/Resources/Spatial_fern_Color.png
+- JarvisPhone/Resources/Spatial_fern_Color.texture
 - JarvisPhone/Resources/Spatial_fern_NormalGL.jpg
 - JarvisPhone/Resources/Spatial_fern_Roughness.jpg
 - JarvisPhone/Resources/Spatial_fern_Metalness.jpg

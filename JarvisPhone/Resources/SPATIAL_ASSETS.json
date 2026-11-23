@@ -67,7 +67,7 @@
         "bytes": 26828
       },
       {
-        "file": "Spatial_fern_Color.png",
+        "file": "Spatial_fern_Color.texture",
         "sha256": "0c49b07e048a95747ed27aeb492de3e32ee4cc5f60628c77c1ff2ea1486bd5ad",
         "bytes": 2626809
       },
@@ -97,7 +97,7 @@
     ],
     "metalness": 0.0,
     "roughness": 1.0,
-    "Color": "Spatial_fern_Color.png",
+    "Color": "Spatial_fern_Color.texture",
     "NormalGL": "Spatial_fern_NormalGL.jpg",
     "ARM": "Spatial_fern_ARM.jpg",
     "Roughness": "Spatial_fern_Roughness.jpg",

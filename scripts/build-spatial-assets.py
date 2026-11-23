@@ -56,10 +56,10 @@ for key, source, node, author, url in SPECS:
             download('https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fern_02/fern_02_alpha_2k.png',alpha_path)
             image=image.convert('RGBA'); image.putalpha(Image.open(alpha_path).convert('L').resize(image.size))
         image.thumbnail((2048,2048),Image.Resampling.LANCZOS)
-        ext = 'png' if channel=='Color' and 'A' in image.getbands() and image.getextrema()[-1][0]<255 else 'jpg'
+        ext = 'texture' if channel=='Color' and 'A' in image.getbands() and image.getextrema()[-1][0]<255 else 'jpg'
         path = ROOT/(name+'_'+channel+'.'+ext)
         if ext=='jpg': image.convert('RGB').save(path,quality=88)
-        else: image.save(path,optimize=True)
+        else: image.save(path,format="PNG",optimize=True)
         data[channel] = path.name
     # Split packed maps so SceneKit's channel defaults cannot swap roughness/metalness.
     if mat.metallicRoughnessTexture is not None:

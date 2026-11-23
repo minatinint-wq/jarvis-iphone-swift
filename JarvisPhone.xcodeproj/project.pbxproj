@@ -40,7 +40,7 @@ E67830665252478AC4139B36 = {isa = PBXBuildFile; fileRef = E3B2C2EA592534BEA7C45B
 4A330C04C647E342E5D780EA = {isa = PBXFileReference; lastKnownFileType = file; path = "JarvisPhone/Resources/Spatial_fern_NormalGL.jpg"; sourceTree = "<group>";};
 2A7E194459FEA4C81823BCE5 = {isa = PBXBuildFile; fileRef = 4A330C04C647E342E5D780EA;};
 
-B858539991165DE1A4415EC6 = {isa = PBXFileReference; lastKnownFileType = file; path = "JarvisPhone/Resources/Spatial_fern_Color.png"; sourceTree = "<group>";};
+B858539991165DE1A4415EC6 = {isa = PBXFileReference; lastKnownFileType = file; path = "JarvisPhone/Resources/Spatial_fern_Color.texture"; sourceTree = "<group>";};
 F940ADA3E2FFC15797E06D03 = {isa = PBXBuildFile; fileRef = B858539991165DE1A4415EC6;};
 
 6128FC240056B614ECBC0689 = {isa = PBXFileReference; lastKnownFileType = file; path = "JarvisPhone/Resources/Spatial_fern.mesh"; sourceTree = "<group>";};
