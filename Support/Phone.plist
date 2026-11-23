@@ -32,7 +32,7 @@
     <key>NSCalendarsFullAccessUsageDescription</key><string>O Jarvis lê o próximo compromisso para avisar quando ele estiver perto.</string>
     <key>NSContactsUsageDescription</key><string>O Jarvis encontra o telefone do contato que você pedir para ligar ou enviar SMS.</string>
     <key>CFBundleVersion</key>
-	<string>22</string>
+	<string>23</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSApplicationQueriesSchemes</key>
