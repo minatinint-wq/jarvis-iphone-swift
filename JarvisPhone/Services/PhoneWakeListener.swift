@@ -32,8 +32,14 @@ private final class WakeAudioInput: @unchecked Sendable {
                     let x = Double(data[i]); energy += x * x; count += 1
                 }
                 let rms = sqrt(energy / Double(max(1, count)))
-                if rms > max(0.006, floorRMS * 2.8) { lastVoice = ProcessInfo.processInfo.systemUptime }
-                floorRMS += (min(rms, floorRMS * 1.6 + 0.0001) - floorRMS) * 0.018
+                let threshold = max(0.006, floorRMS * 2.8)
+                if rms > threshold {
+                    lastVoice = ProcessInfo.processInfo.systemUptime
+                } else {
+                    // Learn background during gaps. Learning from speech raises the
+                    // threshold until the end of a quieter sentence disappears.
+                    floorRMS += (min(rms, 0.012) - floorRMS) * 0.018
+                }
             }
             request.append(buffer)
         }
@@ -90,10 +96,19 @@ private final class WakeAudioInput: @unchecked Sendable {
               let recognizer, recognizer.isAvailable, recognizer.supportsOnDeviceRecognition else {
             throw failure("O reconhecimento local de fala está indisponível.")
         }
-        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth, .mixWithOthers])
+        try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth, .mixWithOthers])
         try session.setActive(true)
         let engine = AVAudioEngine()
         let node = engine.inputNode
+        do {
+            try node.setVoiceProcessingEnabled(true)
+            node.isVoiceProcessingAGCEnabled = true
+            // The Jarvis reply uses a separate playback engine. Avoid ducking it.
+            node.voiceProcessingOtherAudioDuckingConfiguration = .init(enableAdvancedDucking: false, duckingLevel: .min)
+        } catch {
+            try? session.setActive(false, options: .notifyOthersOnDeactivation)
+            throw error
+        }
         let format = node.outputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0 else {
             try? session.setActive(false, options: .notifyOthersOnDeactivation)
@@ -185,7 +200,7 @@ private final class WakeAudioInput: @unchecked Sendable {
             guard !Task.isCancelled, let self, self.generation == id else { return }
             self.restart(afterFailure: false)
         }
-        if waiting && (greetIfSilent || !pendingText.isEmpty) { scheduleCommand(after: pendingText.isEmpty ? 0.75 : 0.65) }
+        if waiting && (greetIfSilent || !pendingText.isEmpty) { scheduleCommand(after: pendingText.isEmpty ? 1.25 : 0.9) }
     }
 
     private func armIdleTimer() {
@@ -272,7 +287,7 @@ private final class WakeAudioInput: @unchecked Sendable {
         var next: String
         if let wake {
             next = String(text[wake.upperBound...])
-            if !waiting { waiting = true; greetIfSilent = true; window.listen(at: now); armIdleTimer(); onPrompt?(); scheduleCommand(after: 0.75) }
+            if !waiting { waiting = true; greetIfSilent = true; lastPartial = now; window.listen(at: now); armIdleTimer(); onPrompt?(); scheduleCommand(after: 1.25) }
             needsNewPhrase = false
         } else if waiting && needsNewPhrase {
             next = text
@@ -284,7 +299,7 @@ private final class WakeAudioInput: @unchecked Sendable {
             window.listen(at: now); armIdleTimer()
             pendingText = next
             lastPartial = now
-            scheduleCommand(after: 0.65)
+            scheduleCommand(after: 0.9)
         }
         if final { dispatchCommand() }
     }
@@ -296,6 +311,8 @@ private final class WakeAudioInput: @unchecked Sendable {
             guard !Task.isCancelled, let self, self.waiting else { return }
             if self.pendingText.isEmpty {
                 if self.greetIfSilent {
+                    let wait = WakeConversationWindow.endpointDelay(at: self.now, partial: self.lastPartial, voice: self.input.latestActivity())
+                    if wait > 0 { self.scheduleCommand(after: wait); return }
                     self.setPaused(true)
                     self.onCommand?("Oi Jarvis")
                     return

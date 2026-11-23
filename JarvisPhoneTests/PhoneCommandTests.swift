@@ -481,9 +481,11 @@ final class PhoneCommandTests: XCTestCase {
             XCTAssertTrue(pcm.contains { $0 != 0 })
         }
     }
-    func testFasterEndpointStillWaitsForOngoingSpeech() {
-        XCTAssertEqual(WakeConversationWindow.endpointDelay(at: 10.66, partial: 10, voice: 9.8), 0)
+    func testEndpointAllowsBriefPausesAndWaitsForOngoingSpeech() {
+        XCTAssertGreaterThan(WakeConversationWindow.endpointDelay(at: 10.66, partial: 10, voice: 9.8), 0.2)
+        XCTAssertEqual(WakeConversationWindow.endpointDelay(at: 10.91, partial: 10, voice: 9.8), 0)
         XCTAssertGreaterThan(WakeConversationWindow.endpointDelay(at: 10.66, partial: 10, voice: 10.6), 0.4)
+        XCTAssertEqual(WakeConversationWindow.endpointDelay(at: 14, partial: 10, voice: 14), 0)
     }
 
     func testLocalAutomationCommandsAreExactAndDoNotExecuteNegations() {

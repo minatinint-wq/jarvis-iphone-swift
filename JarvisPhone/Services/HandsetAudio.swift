@@ -70,7 +70,7 @@ private final class MicrophoneFrames: @unchecked Sendable {
                 return
             }
         }
-        if (voiced >= 1920 && silence >= 9600) || (voiced == 0 && samples >= 96000) || samples >= 208000 {
+        if (voiced >= 1920 && silence >= 16000) || (voiced == 0 && samples >= 96000) || samples >= 208000 {
             ended = true
             output.finish()
         }
@@ -125,11 +125,15 @@ private final class MicrophoneFrames: @unchecked Sendable {
         try Task.checkCancellation()
         stop()
         do {
-            try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
+            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
             try session.setActive(true)
             sessionActive = true
             let engine = AVAudioEngine()
             let input = engine.inputNode
+            // Enable before reading the format: Voice I/O can change the sample rate.
+            try input.setVoiceProcessingEnabled(true)
+            input.isVoiceProcessingAGCEnabled = true
+            input.voiceProcessingOtherAudioDuckingConfiguration = .init(enableAdvancedDucking: false, duckingLevel: .min)
             let hardware = input.outputFormat(forBus: 0)
             guard hardware.sampleRate > 0, hardware.channelCount > 0 else {
                 throw audioFailure("O microfone está indisponível.")

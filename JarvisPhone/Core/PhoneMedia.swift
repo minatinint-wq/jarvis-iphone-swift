@@ -20,7 +20,7 @@ struct WakeConversationWindow {
     static let silence: TimeInterval = 60
     // A late recognition update or background noise cannot hold a turn indefinitely.
     static func endpointDelay(at now: TimeInterval, partial: TimeInterval, voice: TimeInterval) -> TimeInterval {
-        max(0, min(partial + 2.8, max(partial + 0.65, voice + 0.55)) - now)
+        max(0, min(partial + 4, max(partial + 0.9, voice + 0.75)) - now)
     }
     mutating func listen(at now: TimeInterval) { phase = .listening(until: now + Self.silence) }
     mutating func expire(at now: TimeInterval) {
