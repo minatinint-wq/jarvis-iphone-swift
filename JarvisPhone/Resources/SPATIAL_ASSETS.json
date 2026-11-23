@@ -160,5 +160,3076 @@
     "Emission": "Spatial_radio_Emission.jpg",
     "Roughness": "Spatial_radio_Roughness.jpg",
     "Metalness": "Spatial_radio_Metalness.jpg"
+  },
+  {
+    "id": "avocado",
+    "title": "Abacate",
+    "source": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Avocado/README.md",
+    "download": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Avocado/glTF-Binary/Avocado.glb",
+    "sourceSHA256": "ccc9c3ce56423720b09399c2351537207cd5a65f859f9e6e2f30922762f3abd4",
+    "licenseNotice": "&copy; 2017, Public. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)\n\n - Microsoft for Everything",
+    "license": "CC0-1.0",
+    "parts": [
+      {
+        "mesh": "Spatial_avocado_0.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_avocado_0_Color.jpg",
+        "NormalGL": "Spatial_avocado_0_NormalGL.jpg",
+        "Roughness": "Spatial_avocado_0_Roughness.jpg",
+        "Metalness": "Spatial_avocado_0_Metalness.jpg"
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_avocado_0.mesh",
+        "sha256": "e8def3bd2885fea827721877f8b3d6fe8b0304648a622270f868541bedd4f205",
+        "bytes": 21188
+      },
+      {
+        "file": "Spatial_avocado_0_Color.jpg",
+        "sha256": "6df8901c921fcc2221771e1a37b4ef7eff798bfac3b02a361217fdb9388911c4",
+        "bytes": 75772
+      },
+      {
+        "file": "Spatial_avocado_0_NormalGL.jpg",
+        "sha256": "656ec030c70052a686a6591e0581f2509079f8eaf3e1ad785de6cfb73c7f699a",
+        "bytes": 85457
+      },
+      {
+        "file": "Spatial_avocado_0_Roughness.jpg",
+        "sha256": "a2176d4473baf70640747f8ad878344e38cc9cd811ae33b7c03445c555714ff7",
+        "bytes": 19492
+      },
+      {
+        "file": "Spatial_avocado_0_Metalness.jpg",
+        "sha256": "bda5fbfaa074f47b1fa36f99a494b4d29a9baf5e938247e086f875021cfd7870",
+        "bytes": 17035
+      }
+    ],
+    "triangles": 682,
+    "vertices": 406
+  },
+  {
+    "id": "waterbottle",
+    "title": "Garrafa",
+    "source": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/WaterBottle/README.md",
+    "download": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/WaterBottle/glTF-Binary/WaterBottle.glb",
+    "sourceSHA256": "b337e526fd6a162013c2984aeec163f5fbb4f717252724dfc3f3458bd51df94b",
+    "licenseNotice": "&copy; 2017, Public. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)\n\n - Microsoft for Everything",
+    "license": "CC0-1.0",
+    "parts": [
+      {
+        "mesh": "Spatial_waterbottle_0.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_waterbottle_0_Color.jpg",
+        "NormalGL": "Spatial_waterbottle_0_NormalGL.jpg",
+        "Emission": "Spatial_waterbottle_0_Emission.jpg",
+        "Roughness": "Spatial_waterbottle_0_Roughness.jpg",
+        "Metalness": "Spatial_waterbottle_0_Metalness.jpg",
+        "emissionFactor": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_waterbottle_0.mesh",
+        "sha256": "5344f31bb55471e8bf17ad1b29418bd85905b6c785d497eb90b36db501a2c2f0",
+        "bytes": 135700
+      },
+      {
+        "file": "Spatial_waterbottle_0_Color.jpg",
+        "sha256": "02bf1e50b89c0e13e83e9769b36d9cf1274e3e638da5fe25c847d309d4248c64",
+        "bytes": 61389
+      },
+      {
+        "file": "Spatial_waterbottle_0_NormalGL.jpg",
+        "sha256": "0b301847f9916017ff15d8722aac3cbf5bf890b444a51d5fcfc0b46fc0706179",
+        "bytes": 46055
+      },
+      {
+        "file": "Spatial_waterbottle_0_Emission.jpg",
+        "sha256": "c7c8bd3fa0520f810cc3ab2a19d137341015d1bea48214fe8114b9d44a642e4f",
+        "bytes": 17344
+      },
+      {
+        "file": "Spatial_waterbottle_0_Roughness.jpg",
+        "sha256": "092b3f59b091174b762f13a2a3d4a619cf97bd571bff9f41ff72e861f41f92b7",
+        "bytes": 110623
+      },
+      {
+        "file": "Spatial_waterbottle_0_Metalness.jpg",
+        "sha256": "d905e12b7d78730f0ffb2cab311a4f714de674a0871fb4abefd8bab3b7264728",
+        "bytes": 39563
+      }
+    ],
+    "triangles": 4510,
+    "vertices": 2549
+  },
+  {
+    "id": "lantern",
+    "title": "Lanterna antiga",
+    "source": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Lantern/README.md",
+    "download": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Lantern/glTF-Binary/Lantern.glb",
+    "sourceSHA256": "a79458c4b02d695187a952f23a63b8bf278e7bc3d316a3c2a314f2d6974181f1",
+    "licenseNotice": "&copy; 2017, Microsoft. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)\n\n - sbtron for Initial version\n\n&copy; 2018, Frank Galligan. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)\n\n - Frank Galligan for Draco compression",
+    "license": "CC0-1.0",
+    "parts": [
+      {
+        "mesh": "Spatial_lantern_0.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_lantern_0_Color.texture",
+        "NormalGL": "Spatial_lantern_0_NormalGL.jpg",
+        "Emission": "Spatial_lantern_0_Emission.jpg",
+        "Roughness": "Spatial_lantern_0_Roughness.jpg",
+        "Metalness": "Spatial_lantern_0_Metalness.jpg",
+        "emissionFactor": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_lantern_1.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_lantern_1_Color.texture",
+        "NormalGL": "Spatial_lantern_1_NormalGL.jpg",
+        "Emission": "Spatial_lantern_1_Emission.jpg",
+        "Roughness": "Spatial_lantern_1_Roughness.jpg",
+        "Metalness": "Spatial_lantern_1_Metalness.jpg",
+        "emissionFactor": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_lantern_2.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_lantern_2_Color.texture",
+        "NormalGL": "Spatial_lantern_2_NormalGL.jpg",
+        "Emission": "Spatial_lantern_2_Emission.jpg",
+        "Roughness": "Spatial_lantern_2_Roughness.jpg",
+        "Metalness": "Spatial_lantern_2_Metalness.jpg",
+        "emissionFactor": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_lantern_0.mesh",
+        "sha256": "1cce8f72635f1d18847be56d45492f679a5720d2c2a2177b6f37dc6d1b38eb62",
+        "bytes": 118116
+      },
+      {
+        "file": "Spatial_lantern_0_Color.texture",
+        "sha256": "e13dca520f5123bfac9fa896ab1441213250df967a93fdaaa7317b62c31ab8ee",
+        "bytes": 1202178
+      },
+      {
+        "file": "Spatial_lantern_0_NormalGL.jpg",
+        "sha256": "69384de28821b12a1838c94e0e2bbcf3ab268e9d7fec2edf06065109120d7ef8",
+        "bytes": 140021
+      },
+      {
+        "file": "Spatial_lantern_0_Emission.jpg",
+        "sha256": "13fd39003376a575542556e02d87f9943d581f69503382df718df207abd1c8c6",
+        "bytes": 24193
+      },
+      {
+        "file": "Spatial_lantern_0_Roughness.jpg",
+        "sha256": "c33f412c2f5879493ce8b568e25e7274887937cecd5d9cbeeb5d69d62a176976",
+        "bytes": 162361
+      },
+      {
+        "file": "Spatial_lantern_0_Metalness.jpg",
+        "sha256": "af5f0d7e0c6d8e27b585138ede5ac9aec76080433569f360e65a6271415f8386",
+        "bytes": 67706
+      },
+      {
+        "file": "Spatial_lantern_1.mesh",
+        "sha256": "da7885524df5c68e97fa12c119c13e463e7566ada58ef454ed4102f662e0e223",
+        "bytes": 39180
+      },
+      {
+        "file": "Spatial_lantern_1_Color.texture",
+        "sha256": "e13dca520f5123bfac9fa896ab1441213250df967a93fdaaa7317b62c31ab8ee",
+        "bytes": 1202178
+      },
+      {
+        "file": "Spatial_lantern_1_NormalGL.jpg",
+        "sha256": "69384de28821b12a1838c94e0e2bbcf3ab268e9d7fec2edf06065109120d7ef8",
+        "bytes": 140021
+      },
+      {
+        "file": "Spatial_lantern_1_Emission.jpg",
+        "sha256": "13fd39003376a575542556e02d87f9943d581f69503382df718df207abd1c8c6",
+        "bytes": 24193
+      },
+      {
+        "file": "Spatial_lantern_1_Roughness.jpg",
+        "sha256": "c33f412c2f5879493ce8b568e25e7274887937cecd5d9cbeeb5d69d62a176976",
+        "bytes": 162361
+      },
+      {
+        "file": "Spatial_lantern_1_Metalness.jpg",
+        "sha256": "af5f0d7e0c6d8e27b585138ede5ac9aec76080433569f360e65a6271415f8386",
+        "bytes": 67706
+      },
+      {
+        "file": "Spatial_lantern_2.mesh",
+        "sha256": "13ce394780072b5a2a683da55fffc4f2128ddb3b45654deec23b23e093dd2a03",
+        "bytes": 40108
+      },
+      {
+        "file": "Spatial_lantern_2_Color.texture",
+        "sha256": "e13dca520f5123bfac9fa896ab1441213250df967a93fdaaa7317b62c31ab8ee",
+        "bytes": 1202178
+      },
+      {
+        "file": "Spatial_lantern_2_NormalGL.jpg",
+        "sha256": "69384de28821b12a1838c94e0e2bbcf3ab268e9d7fec2edf06065109120d7ef8",
+        "bytes": 140021
+      },
+      {
+        "file": "Spatial_lantern_2_Emission.jpg",
+        "sha256": "13fd39003376a575542556e02d87f9943d581f69503382df718df207abd1c8c6",
+        "bytes": 24193
+      },
+      {
+        "file": "Spatial_lantern_2_Roughness.jpg",
+        "sha256": "c33f412c2f5879493ce8b568e25e7274887937cecd5d9cbeeb5d69d62a176976",
+        "bytes": 162361
+      },
+      {
+        "file": "Spatial_lantern_2_Metalness.jpg",
+        "sha256": "af5f0d7e0c6d8e27b585138ede5ac9aec76080433569f360e65a6271415f8386",
+        "bytes": 67706
+      }
+    ],
+    "triangles": 5394,
+    "vertices": 4145
+  },
+  {
+    "id": "toycar",
+    "title": "Carro de corrida",
+    "source": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/ToyCar/README.md",
+    "download": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/ToyCar/glTF-Binary/ToyCar.glb",
+    "sourceSHA256": "01a60862de55cd4b9f3acfab0b0def86451800f9c42467fcd61052c16cb9838c",
+    "licenseNotice": "&copy; 2020, Public. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)\n\n - Guido Odendahl for Initial car model\n\n&copy; 2020, Public. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)\n\n - Eric Chadwick for Extensions and scene composition",
+    "license": "CC0-1.0",
+    "parts": [
+      {
+        "mesh": "Spatial_toycar_0.mesh",
+        "baseColor": [
+          0.2980392156862745,
+          0.8,
+          0.2980392156862745,
+          1.0
+        ],
+        "metalness": 0.0,
+        "roughness": 0.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "glass": true
+      },
+      {
+        "mesh": "Spatial_toycar_1.mesh",
+        "baseColor": [
+          0.14901960784313725,
+          0.14901960784313725,
+          0.14901960784313725,
+          1.0
+        ],
+        "metalness": 0.0,
+        "roughness": 1.0,
+        "doubleSided": true,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_toycar_1_Color.jpg",
+        "NormalGL": "Spatial_toycar_1_NormalGL.jpg"
+      },
+      {
+        "mesh": "Spatial_toycar_2.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": true,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_toycar_2_Color.jpg",
+        "NormalGL": "Spatial_toycar_2_NormalGL.jpg",
+        "Emission": "Spatial_toycar_2_Emission.jpg",
+        "Roughness": "Spatial_toycar_2_Roughness.jpg",
+        "Metalness": "Spatial_toycar_2_Metalness.jpg",
+        "emissionFactor": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_toycar_0.mesh",
+        "sha256": "7accaa6347bf66060cb0496bed7b18bc50d2462736acc99b5ff73df6f8f0bde9",
+        "bytes": 78548
+      },
+      {
+        "file": "Spatial_toycar_1.mesh",
+        "sha256": "bcab9175988b87d1d21d8ae04dae98923ed79a90ac41ee0008206b0a51306bfd",
+        "bytes": 497960
+      },
+      {
+        "file": "Spatial_toycar_1_Color.jpg",
+        "sha256": "6d85a71a7e806dfc926ace5c440e9837fb003fdc028408e9bd2abd12ec4e99b7",
+        "bytes": 64474
+      },
+      {
+        "file": "Spatial_toycar_1_NormalGL.jpg",
+        "sha256": "729bf75b441d577bd527823de305ec1b482f6f33b3354e1816dd671c0fe0d5ea",
+        "bytes": 40960
+      },
+      {
+        "file": "Spatial_toycar_2.mesh",
+        "sha256": "b1db8d96c2f0883f3fc3ec7f152c3651c8e8055056a06c21b6fd1fd49339e5ba",
+        "bytes": 3208488
+      },
+      {
+        "file": "Spatial_toycar_2_Color.jpg",
+        "sha256": "700e6384c48834c242dab55618af05cc8d2b7d00d4ff631de785242067207f3a",
+        "bytes": 66561
+      },
+      {
+        "file": "Spatial_toycar_2_NormalGL.jpg",
+        "sha256": "a3086ee6ea9c9d22a9c756db27ceff3cd255da19a5419ba1d89267a7ae8a5dea",
+        "bytes": 111923
+      },
+      {
+        "file": "Spatial_toycar_2_Emission.jpg",
+        "sha256": "54ec08f912dc6c1b6538343a15abee4f9a45ef5acaf36ee7275be2dc33380fc3",
+        "bytes": 47021
+      },
+      {
+        "file": "Spatial_toycar_2_Roughness.jpg",
+        "sha256": "9ef22f12128e5e369d0ebc41491935ec38065e1e6016ed6275434bdee74a35cf",
+        "bytes": 28622
+      },
+      {
+        "file": "Spatial_toycar_2_Metalness.jpg",
+        "sha256": "47ba72af02e4e608ff2de8a0f99d7a467780a122c3fbde9d5bada7ce25f2af35",
+        "bytes": 43438
+      }
+    ],
+    "triangles": 108936,
+    "vertices": 77429
+  },
+  {
+    "id": "barramundifish",
+    "title": "Peixe",
+    "source": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/BarramundiFish/README.md",
+    "download": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/BarramundiFish/glTF-Binary/BarramundiFish.glb",
+    "sourceSHA256": "ecc3bafb6b00f2c8b810863c388e3768a7b7ea0d0335e8cb8c574c266e571f4a",
+    "licenseNotice": "&copy; 2017, Public. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)\n\n - Microsoft for Everything",
+    "license": "CC0-1.0",
+    "parts": [
+      {
+        "mesh": "Spatial_barramundifish_0.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_barramundifish_0_Color.texture",
+        "NormalGL": "Spatial_barramundifish_0_NormalGL.jpg",
+        "Roughness": "Spatial_barramundifish_0_Roughness.jpg",
+        "Metalness": "Spatial_barramundifish_0_Metalness.jpg"
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_barramundifish_0.mesh",
+        "sha256": "57862bcc0b0113f82f7a21008c6906cb77fa9d051f46abb3fd1fae96f03ecfa5",
+        "bytes": 116396
+      },
+      {
+        "file": "Spatial_barramundifish_0_Color.texture",
+        "sha256": "05aff82bf6078734a3c7effe111f3f1ddc420f470bc61ddffea07c031da35f5e",
+        "bytes": 1109477
+      },
+      {
+        "file": "Spatial_barramundifish_0_NormalGL.jpg",
+        "sha256": "821ed97c72819f5836ffaf69997e4f02258d4f8a736c7c0fe0f8a70241b4438a",
+        "bytes": 133119
+      },
+      {
+        "file": "Spatial_barramundifish_0_Roughness.jpg",
+        "sha256": "bcf796bfe641ab28dc384ccced36a243f0224b2a1396c902341378256e8e27a4",
+        "bytes": 164905
+      },
+      {
+        "file": "Spatial_barramundifish_0_Metalness.jpg",
+        "sha256": "6bda0dbb61d30ef52845fac7fc9066f6c1068c0bd084999d38ca438c93239709",
+        "bytes": 17056
+      }
+    ],
+    "triangles": 3864,
+    "vertices": 2188
+  },
+  {
+    "id": "sheenchair",
+    "title": "Poltrona",
+    "source": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/SheenChair/README.md",
+    "download": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/SheenChair/glTF-Binary/SheenChair.glb",
+    "sourceSHA256": "f0af2a2b102d28d540236306ae19f8fb36842df76bd38cf76f063f9bd2853399",
+    "licenseNotice": "&copy; 2020, Wayfair, LLC. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)\n\n - Eric Chadwick for Everything",
+    "license": "CC0-1.0",
+    "parts": [
+      {
+        "mesh": "Spatial_sheenchair_0.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 0.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_sheenchair_0_Color.jpg"
+      },
+      {
+        "mesh": "Spatial_sheenchair_1.mesh",
+        "baseColor": [
+          0.2784313725490196,
+          0.25882352941176473,
+          0.23137254901960785,
+          1.0
+        ],
+        "metalness": 1.0,
+        "roughness": 0.3,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE"
+      },
+      {
+        "mesh": "Spatial_sheenchair_2.mesh",
+        "baseColor": [
+          0.1411764705882353,
+          0.07058823529411765,
+          0.011764705882352941,
+          1.0
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_sheenchair_2_Color.jpg",
+        "Roughness": "Spatial_sheenchair_2_Roughness.jpg",
+        "Metalness": "Spatial_sheenchair_2_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_sheenchair_3.mesh",
+        "baseColor": [
+          0.8823529411764706,
+          0.03529411764705882,
+          0.0,
+          1.0
+        ],
+        "metalness": 0.0,
+        "roughness": 0.8,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_sheenchair_3_Color.jpg",
+        "NormalGL": "Spatial_sheenchair_3_NormalGL.jpg"
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_sheenchair_0.mesh",
+        "sha256": "face69b5a3f3841c6cf68683f129575178719f53d900016965f2945340823eb9",
+        "bytes": 4140
+      },
+      {
+        "file": "Spatial_sheenchair_0_Color.jpg",
+        "sha256": "776bbb6ae6565e75117ffc50dda4f281e8caa88b2764742da3ee91665a7e6f50",
+        "bytes": 120940
+      },
+      {
+        "file": "Spatial_sheenchair_1.mesh",
+        "sha256": "865778b59338447cfa6733443331df23b2cae016fb0c27521f10a6bf2f1a36e5",
+        "bytes": 126732
+      },
+      {
+        "file": "Spatial_sheenchair_2.mesh",
+        "sha256": "ec7f74c8b99eefb27c7637515887574ec8511971a20a299193fb17ee5ef3445c",
+        "bytes": 293772
+      },
+      {
+        "file": "Spatial_sheenchair_2_Color.jpg",
+        "sha256": "9fa603d6f6511e905d16fdc2178b1b96490822088dd922db5c534d96ac1c0d11",
+        "bytes": 87226
+      },
+      {
+        "file": "Spatial_sheenchair_2_Roughness.jpg",
+        "sha256": "9a91e25697c9e16154fa250e3a9583e898fcc687ba1c2d4123fae7afabde7c7a",
+        "bytes": 57142
+      },
+      {
+        "file": "Spatial_sheenchair_2_Metalness.jpg",
+        "sha256": "abfe0c2325b3fe7ceecee748c3fb9d1d515f20a0e3a016164a4a2bca673bbbb1",
+        "bytes": 4724
+      },
+      {
+        "file": "Spatial_sheenchair_3.mesh",
+        "sha256": "53ee3edfd8c7aac12aa3caf3b40f44e4a1ecdb0404fc3c23e2ca4af3ebe3dc36",
+        "bytes": 773324
+      },
+      {
+        "file": "Spatial_sheenchair_3_Color.jpg",
+        "sha256": "5d85e83c502f77272bf7255104e92f087e1b44fe97fd055252b2a69b2eb70816",
+        "bytes": 54123
+      },
+      {
+        "file": "Spatial_sheenchair_3_NormalGL.jpg",
+        "sha256": "53b9146bb780c8d27fb02b87e23c5574a3d2675e720b95c5aa1df424e8996223",
+        "bytes": 320031
+      }
+    ],
+    "triangles": 39936,
+    "vertices": 22459
+  },
+  {
+    "id": "glamvelvetsofa",
+    "title": "Sofá de veludo",
+    "source": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/GlamVelvetSofa/README.md",
+    "download": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/GlamVelvetSofa/glTF-Binary/GlamVelvetSofa.glb",
+    "sourceSHA256": "67202c74a1a33377771f162dc7fad612a6c9bd51ee15124c488e9851d9ac5266",
+    "licenseNotice": "&copy; 2021, Wayfair, LLC. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)\n\n - Eric Chadwick for Everything",
+    "license": "CC-BY-4.0",
+    "parts": [
+      {
+        "mesh": "Spatial_glamvelvetsofa_0.mesh",
+        "baseColor": [
+          1.0,
+          0.8,
+          0.6980392156862745,
+          1.0
+        ],
+        "metalness": 1.0,
+        "roughness": 0.4,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE"
+      },
+      {
+        "mesh": "Spatial_glamvelvetsofa_1.mesh",
+        "baseColor": [
+          0.011764705882352941,
+          0.011764705882352941,
+          0.011764705882352941,
+          1.0
+        ],
+        "metalness": 0.0,
+        "roughness": 0.7,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "NormalGL": "Spatial_glamvelvetsofa_1_NormalGL.jpg"
+      },
+      {
+        "mesh": "Spatial_glamvelvetsofa_2.mesh",
+        "baseColor": [
+          0.0196078431372549,
+          0.0196078431372549,
+          0.0196078431372549,
+          1.0
+        ],
+        "metalness": 0.0,
+        "roughness": 0.4,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE"
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_glamvelvetsofa_0.mesh",
+        "sha256": "ddb737ae77e07d1b798e76c29ec459487bbf7fdaae8b541cf1a9f72a66d3392b",
+        "bytes": 29676
+      },
+      {
+        "file": "Spatial_glamvelvetsofa_1.mesh",
+        "sha256": "cdbddef313b6aa31035199466367fbf1db7803278a390759ccca39ff785739a7",
+        "bytes": 105860
+      },
+      {
+        "file": "Spatial_glamvelvetsofa_1_NormalGL.jpg",
+        "sha256": "af85e4d46502912f4f75be11930a3a42698033881ffa857f4455e340b5ee0976",
+        "bytes": 440911
+      },
+      {
+        "file": "Spatial_glamvelvetsofa_2.mesh",
+        "sha256": "b1907b407dab4af05b307f593410227cb35067f3a10cc68e98c05d18b507073e",
+        "bytes": 14628
+      }
+    ],
+    "triangles": 4196,
+    "vertices": 3118
+  },
+  {
+    "id": "materialsvariantsshoe",
+    "title": "Tênis",
+    "source": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/MaterialsVariantsShoe/README.md",
+    "download": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/MaterialsVariantsShoe/glTF-Binary/MaterialsVariantsShoe.glb",
+    "sourceSHA256": "e1d7cb190382111e5a5b37b51e9a7f007f7eb2ab1b6185e0188e8d0a0d1265a7",
+    "licenseNotice": "&copy; 2021, Shopify. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)\n\n - Shopify for Everthing",
+    "license": "CC-BY-4.0",
+    "parts": [
+      {
+        "mesh": "Spatial_materialsvariantsshoe_0.mesh",
+        "baseColor": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_materialsvariantsshoe_0_Color.jpg",
+        "NormalGL": "Spatial_materialsvariantsshoe_0_NormalGL.jpg",
+        "Roughness": "Spatial_materialsvariantsshoe_0_Roughness.jpg",
+        "Metalness": "Spatial_materialsvariantsshoe_0_Metalness.jpg",
+        "emissionFactor": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_materialsvariantsshoe_0.mesh",
+        "sha256": "7eee54e9a65851d25df6c0972164a60dfd1993bce2616be88dfa548b4f2cbb2a",
+        "bytes": 705692
+      },
+      {
+        "file": "Spatial_materialsvariantsshoe_0_Color.jpg",
+        "sha256": "81500bd4a6ecb268cb7db78efb214f28445e2444bc44c1a018a16109a08a0a49",
+        "bytes": 175904
+      },
+      {
+        "file": "Spatial_materialsvariantsshoe_0_NormalGL.jpg",
+        "sha256": "631570070d64c2c939b05f17aed16ea9c5cbabe89776e98fb6c1a19582f0a930",
+        "bytes": 211481
+      },
+      {
+        "file": "Spatial_materialsvariantsshoe_0_Roughness.jpg",
+        "sha256": "37c8c61bec2ca624ceae518fcbc8cc2169ed5ad6f9ba8b1acb874eca83b94ab6",
+        "bytes": 127229
+      },
+      {
+        "file": "Spatial_materialsvariantsshoe_0_Metalness.jpg",
+        "sha256": "85b90b6c93e04478692d94cd13738ca4e15142eaba2eaf06eb0c86beb6c010a6",
+        "bytes": 91520
+      }
+    ],
+    "triangles": 22700,
+    "vertices": 13540
+  },
+  {
+    "id": "scifihelmet",
+    "title": "Capacete espacial",
+    "source": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/SciFiHelmet/README.md",
+    "download": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/SciFiHelmet/glTF/SciFiHelmet.gltf",
+    "sourceSHA256": "4b9e64c5337ddaba5b44821d76786bcad3b5b78f877cf034ec6163dc8baca35a",
+    "licenseNotice": "&copy; 2017, Public. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)\n\n - Michael Pavlovic for Everything\n\n&copy; 2017, Public. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)\n\n - Norbert Nopper for Conversion to glTF",
+    "license": "CC0-1.0",
+    "parts": [
+      {
+        "mesh": "Spatial_scifihelmet_0.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_scifihelmet_0_Color.jpg",
+        "NormalGL": "Spatial_scifihelmet_0_NormalGL.jpg",
+        "Roughness": "Spatial_scifihelmet_0_Roughness.jpg",
+        "Metalness": "Spatial_scifihelmet_0_Metalness.jpg"
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_scifihelmet_0.mesh",
+        "sha256": "195765f8d21b9c149cfa984afa51711c04d2fb7fd9865827c8ff2261e6e6d113",
+        "bytes": 2522676
+      },
+      {
+        "file": "Spatial_scifihelmet_0_Color.jpg",
+        "sha256": "f18abe77a866d21618472c6c26eec008cbb1162f94ec9aa411a9cb87243ea23f",
+        "bytes": 176061
+      },
+      {
+        "file": "Spatial_scifihelmet_0_NormalGL.jpg",
+        "sha256": "a0e4bd33d01264fc7e415708014b43afcdb2a25d5ed0edf308f9237fcfb3b61f",
+        "bytes": 272660
+      },
+      {
+        "file": "Spatial_scifihelmet_0_Roughness.jpg",
+        "sha256": "1f29d8a5e71905817be84fb9668b77daa138d3e33398e132234634826206def7",
+        "bytes": 303672
+      },
+      {
+        "file": "Spatial_scifihelmet_0_Metalness.jpg",
+        "sha256": "7d8508a206593e361a2c40dde23035be68e251c8103dea981cd706b2d6e0e726",
+        "bytes": 285416
+      }
+    ],
+    "triangles": 23358,
+    "vertices": 70074
+  },
+  {
+    "id": "flighthelmet",
+    "title": "Capacete de piloto",
+    "source": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/FlightHelmet/README.md",
+    "download": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/FlightHelmet/glTF/FlightHelmet.gltf",
+    "sourceSHA256": "c9c16c8b85749f62f38ec6069700e5388c6894d8e566f51a35cc270255402cd3",
+    "licenseNotice": "&copy; 2018, Public. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)\n\n - Gary Hsu for Conversion from Maya",
+    "license": "CC0-1.0",
+    "parts": [
+      {
+        "mesh": "Spatial_flighthelmet_0.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_flighthelmet_0_Color.texture",
+        "NormalGL": "Spatial_flighthelmet_0_NormalGL.jpg",
+        "Roughness": "Spatial_flighthelmet_0_Roughness.jpg",
+        "Metalness": "Spatial_flighthelmet_0_Metalness.jpg",
+        "glass": true
+      },
+      {
+        "mesh": "Spatial_flighthelmet_1.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_flighthelmet_1_Color.jpg",
+        "NormalGL": "Spatial_flighthelmet_1_NormalGL.jpg",
+        "Roughness": "Spatial_flighthelmet_1_Roughness.jpg",
+        "Metalness": "Spatial_flighthelmet_1_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_flighthelmet_2.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_flighthelmet_2_Color.jpg",
+        "NormalGL": "Spatial_flighthelmet_2_NormalGL.jpg",
+        "Roughness": "Spatial_flighthelmet_2_Roughness.jpg",
+        "Metalness": "Spatial_flighthelmet_2_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_flighthelmet_3.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_flighthelmet_3_Color.jpg",
+        "NormalGL": "Spatial_flighthelmet_3_NormalGL.jpg",
+        "Roughness": "Spatial_flighthelmet_3_Roughness.jpg",
+        "Metalness": "Spatial_flighthelmet_3_Metalness.jpg",
+        "glass": true
+      },
+      {
+        "mesh": "Spatial_flighthelmet_4.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_flighthelmet_4_Color.jpg",
+        "NormalGL": "Spatial_flighthelmet_4_NormalGL.jpg",
+        "Roughness": "Spatial_flighthelmet_4_Roughness.jpg",
+        "Metalness": "Spatial_flighthelmet_4_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_flighthelmet_5.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": true,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_flighthelmet_5_Color.jpg",
+        "NormalGL": "Spatial_flighthelmet_5_NormalGL.jpg",
+        "Roughness": "Spatial_flighthelmet_5_Roughness.jpg",
+        "Metalness": "Spatial_flighthelmet_5_Metalness.jpg"
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_flighthelmet_0.mesh",
+        "sha256": "9f7b02db97e2d755b1c8d38806b26814f4c25853fcd369931ce3743d5be2abcd",
+        "bytes": 22796
+      },
+      {
+        "file": "Spatial_flighthelmet_0_Color.texture",
+        "sha256": "d426baaa48bfe95468f8a74bd807aae970ed5f4bd766cd981db14627c23fb59e",
+        "bytes": 662909
+      },
+      {
+        "file": "Spatial_flighthelmet_0_NormalGL.jpg",
+        "sha256": "f134d7699d45acea51d1fadaf9e7a9e33eec5358468152591ba6a13261bfa589",
+        "bytes": 17040
+      },
+      {
+        "file": "Spatial_flighthelmet_0_Roughness.jpg",
+        "sha256": "60812ba5949a21a6a51a8496c861d79a1194425a1239f5cb80d9e4e2ac2a5542",
+        "bytes": 143499
+      },
+      {
+        "file": "Spatial_flighthelmet_0_Metalness.jpg",
+        "sha256": "19dfb379e1c4d54e30c97917595f5a6cf842a271057b13c2d88f4c195591af62",
+        "bytes": 17012
+      },
+      {
+        "file": "Spatial_flighthelmet_1.mesh",
+        "sha256": "5b492d44e1e2ad0b87bfbbe990c9713063d2beec7596ca59aafde447d65c2bd0",
+        "bytes": 663852
+      },
+      {
+        "file": "Spatial_flighthelmet_1_Color.jpg",
+        "sha256": "8a72b993c45a3a7b273a7fe9bf985ba62a305a72565b9aaa6d102fac0d65fcec",
+        "bytes": 171583
+      },
+      {
+        "file": "Spatial_flighthelmet_1_NormalGL.jpg",
+        "sha256": "f31c96be62e66d77bf4252c94752ac44c718ba49c00c4763406f73ebbe7c2623",
+        "bytes": 239400
+      },
+      {
+        "file": "Spatial_flighthelmet_1_Roughness.jpg",
+        "sha256": "4044fd5690a83fcf50ff3bee40076aff565a2bffc598c63269f1057b741e47cd",
+        "bytes": 213674
+      },
+      {
+        "file": "Spatial_flighthelmet_1_Metalness.jpg",
+        "sha256": "9e7399ecc909d59f3300da417ff575c3447aba56d68f750d1ff9d7c1c706b38a",
+        "bytes": 18660
+      },
+      {
+        "file": "Spatial_flighthelmet_2.mesh",
+        "sha256": "0a5b3f648082b0045e5201dd82feb5d62e3f862bbef0fb0c3a36854d69daf887",
+        "bytes": 677516
+      },
+      {
+        "file": "Spatial_flighthelmet_2_Color.jpg",
+        "sha256": "3e0179d6503ce390679e7d046d0cdad301f3ae76660f6dab1442c594d65381d5",
+        "bytes": 200406
+      },
+      {
+        "file": "Spatial_flighthelmet_2_NormalGL.jpg",
+        "sha256": "29448d79b9c9bc75769d070e82372353269a694964aaa53f952eacbbe927b6ae",
+        "bytes": 155977
+      },
+      {
+        "file": "Spatial_flighthelmet_2_Roughness.jpg",
+        "sha256": "b9e3823bca1bb54a6677efaebc48167c02ba64cd07541c951066de94e574070a",
+        "bytes": 146475
+      },
+      {
+        "file": "Spatial_flighthelmet_2_Metalness.jpg",
+        "sha256": "aafc32ebb1f42542f7ef7d8e71e79a1c5337715ed5f7d5a3cd9255b8e2600144",
+        "bytes": 133841
+      },
+      {
+        "file": "Spatial_flighthelmet_3.mesh",
+        "sha256": "6cecd7ba18d79a645172c4be3c6158efccff2650320eeca30cc0483b12ebf149",
+        "bytes": 247276
+      },
+      {
+        "file": "Spatial_flighthelmet_3_Color.jpg",
+        "sha256": "81b4e27bec82763ebd3136405eeb3c8a4063cabc5ff27a244eb39ddfc96b50ae",
+        "bytes": 117674
+      },
+      {
+        "file": "Spatial_flighthelmet_3_NormalGL.jpg",
+        "sha256": "8177bd6617c6608eabef32020132fca8cb6bdca3afb054888078f204fd39fa4f",
+        "bytes": 127655
+      },
+      {
+        "file": "Spatial_flighthelmet_3_Roughness.jpg",
+        "sha256": "d6224176403662a9b914807a4054aad426bfe12f9da40c420f0b3ea6758f42e4",
+        "bytes": 171589
+      },
+      {
+        "file": "Spatial_flighthelmet_3_Metalness.jpg",
+        "sha256": "19dfb379e1c4d54e30c97917595f5a6cf842a271057b13c2d88f4c195591af62",
+        "bytes": 17012
+      },
+      {
+        "file": "Spatial_flighthelmet_4.mesh",
+        "sha256": "7c05faeacf46d43138565b0f7da7918a5abd9d416dd218ae7320ab66fa72bd24",
+        "bytes": 726564
+      },
+      {
+        "file": "Spatial_flighthelmet_4_Color.jpg",
+        "sha256": "b0bd005a4521f8cf805d86831acf5b4957eedc7be0e533871bbf62e88e105544",
+        "bytes": 153086
+      },
+      {
+        "file": "Spatial_flighthelmet_4_NormalGL.jpg",
+        "sha256": "8a8f4ab761d2ba9ed21ad2f207acd4c951c1a6f30cdbeada3bcf78d5f20264d3",
+        "bytes": 165424
+      },
+      {
+        "file": "Spatial_flighthelmet_4_Roughness.jpg",
+        "sha256": "10cd714bb42c57a9f01a612172b2af438d7fec2539ee21d4522a5e39751adb98",
+        "bytes": 184363
+      },
+      {
+        "file": "Spatial_flighthelmet_4_Metalness.jpg",
+        "sha256": "2cef0709532abb853a7ab2198b2405fe28d60e6748e5b5c451cf794327b6ecfe",
+        "bytes": 23571
+      },
+      {
+        "file": "Spatial_flighthelmet_5.mesh",
+        "sha256": "a4bfc6bfc88509dbc80cbae585ff6b806b31ff4f3881a749eb44b484b7f8863a",
+        "bytes": 571276
+      },
+      {
+        "file": "Spatial_flighthelmet_5_Color.jpg",
+        "sha256": "b0bd005a4521f8cf805d86831acf5b4957eedc7be0e533871bbf62e88e105544",
+        "bytes": 153086
+      },
+      {
+        "file": "Spatial_flighthelmet_5_NormalGL.jpg",
+        "sha256": "8a8f4ab761d2ba9ed21ad2f207acd4c951c1a6f30cdbeada3bcf78d5f20264d3",
+        "bytes": 165424
+      },
+      {
+        "file": "Spatial_flighthelmet_5_Roughness.jpg",
+        "sha256": "10cd714bb42c57a9f01a612172b2af438d7fec2539ee21d4522a5e39751adb98",
+        "bytes": 184363
+      },
+      {
+        "file": "Spatial_flighthelmet_5_Metalness.jpg",
+        "sha256": "2cef0709532abb853a7ab2198b2405fe28d60e6748e5b5c451cf794327b6ecfe",
+        "bytes": 23571
+      }
+    ],
+    "triangles": 94722,
+    "vertices": 55392
+  },
+  {
+    "id": "antiquecamera",
+    "title": "Câmera antiga",
+    "source": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/AntiqueCamera/README.md",
+    "download": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/AntiqueCamera/glTF-Binary/AntiqueCamera.glb",
+    "sourceSHA256": "ae89695479ad997f09ebea8060a5ad01312ad8fe7ffb92f73b4e895109feecd2",
+    "licenseNotice": "&copy; 2018, UX3D. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)\n\n - Maximillan Kamps for Everything\n\n&copy; 2017, UX3D. [UX3D Trademark or Logo](../../LICENSES/LicenseRef-LegalMark-UX3D.txt)\n\n - Non-copyrightable logo for UX3D logo",
+    "license": "CC0-1.0",
+    "parts": [
+      {
+        "mesh": "Spatial_antiquecamera_0.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_antiquecamera_0_Color.jpg",
+        "NormalGL": "Spatial_antiquecamera_0_NormalGL.jpg",
+        "Roughness": "Spatial_antiquecamera_0_Roughness.jpg",
+        "Metalness": "Spatial_antiquecamera_0_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_antiquecamera_1.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_antiquecamera_1_Color.jpg",
+        "NormalGL": "Spatial_antiquecamera_1_NormalGL.jpg",
+        "Roughness": "Spatial_antiquecamera_1_Roughness.jpg",
+        "Metalness": "Spatial_antiquecamera_1_Metalness.jpg"
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_antiquecamera_0.mesh",
+        "sha256": "32ed96ae39793c8ca32aae20e86d3aaa87b7c4ddd8cb44c718e28e69f7193c30",
+        "bytes": 281772
+      },
+      {
+        "file": "Spatial_antiquecamera_0_Color.jpg",
+        "sha256": "cb5c30349d9c3866b77a3e4b75b9eddc4166797acc893109286b36ec7be117bf",
+        "bytes": 250282
+      },
+      {
+        "file": "Spatial_antiquecamera_0_NormalGL.jpg",
+        "sha256": "24720e04ee081bee9dfc8d99e4fa4793c2286407d52ff5fe4c39d6bdc47f788e",
+        "bytes": 124859
+      },
+      {
+        "file": "Spatial_antiquecamera_0_Roughness.jpg",
+        "sha256": "e4acd7b058034a861fb5f4c0273715210865046177b0ee45416bf95e5716c1f5",
+        "bytes": 223750
+      },
+      {
+        "file": "Spatial_antiquecamera_0_Metalness.jpg",
+        "sha256": "e4acd7b058034a861fb5f4c0273715210865046177b0ee45416bf95e5716c1f5",
+        "bytes": 223750
+      },
+      {
+        "file": "Spatial_antiquecamera_1.mesh",
+        "sha256": "b3cc1c1bba11fc5f7fe23d78576dfd04b28fc4a06c3187436439e3b6db8b1a41",
+        "bytes": 636740
+      },
+      {
+        "file": "Spatial_antiquecamera_1_Color.jpg",
+        "sha256": "1472bd43b65b2137efbd713c2ba2040d93cd5556db51f178334132d3e72778bd",
+        "bytes": 167405
+      },
+      {
+        "file": "Spatial_antiquecamera_1_NormalGL.jpg",
+        "sha256": "95a9d4ce489369423ab75a32e0dd2c6b57ff92f435b58c326668be7fb5bc3699",
+        "bytes": 153571
+      },
+      {
+        "file": "Spatial_antiquecamera_1_Roughness.jpg",
+        "sha256": "b8aba0ca86771e507cdc1945e75b55ab930e8737c61c61a1cfb1f6c9dddf4d29",
+        "bytes": 224620
+      },
+      {
+        "file": "Spatial_antiquecamera_1_Metalness.jpg",
+        "sha256": "b8aba0ca86771e507cdc1945e75b55ab930e8737c61c61a1cfb1f6c9dddf4d29",
+        "bytes": 224620
+      }
+    ],
+    "triangles": 20066,
+    "vertices": 21178
+  },
+  {
+    "id": "trafficcone",
+    "title": "Cone de trânsito",
+    "source": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/TrafficCone/README.md",
+    "download": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/TrafficCone/glTF-Binary/TrafficCone.glb",
+    "sourceSHA256": "59afb65f620573b8a3ed1b5a5e0d5b55e4d4456c60130a670bb32d2cd7b384d7",
+    "licenseNotice": "&copy; 2024, hinndia. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)\n\n - hinndia for Original model and textures\n\n&copy; 2020, PolyHaven. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)\n\n - Rob Tuytel for Asphalt 02 textures",
+    "license": "CC-BY-4.0",
+    "parts": [
+      {
+        "mesh": "Spatial_trafficcone_0.mesh",
+        "baseColor": [
+          0.8980392156862745,
+          0.6588235294117647,
+          0.07058823529411765,
+          1.0
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": true,
+        "alphaMode": "OPAQUE"
+      },
+      {
+        "mesh": "Spatial_trafficcone_1.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 0.009999999776482582,
+        "roughness": 1.0,
+        "doubleSided": true,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_trafficcone_1_Color.jpg",
+        "Roughness": "Spatial_trafficcone_1_Roughness.jpg",
+        "Metalness": "Spatial_trafficcone_1_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_trafficcone_2.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 0.0,
+        "roughness": 0.3499999940395355,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_trafficcone_2_Color.jpg",
+        "Roughness": "Spatial_trafficcone_2_Roughness.jpg",
+        "Metalness": "Spatial_trafficcone_2_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_trafficcone_3.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 0.0,
+        "roughness": 0.3499999940395355,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_trafficcone_3_Color.jpg",
+        "Roughness": "Spatial_trafficcone_3_Roughness.jpg",
+        "Metalness": "Spatial_trafficcone_3_Metalness.jpg"
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_trafficcone_0.mesh",
+        "sha256": "b48db9ca0190bd2b78febe93c3e19c3a9ac7129c548b30144b0a4f2efd129063",
+        "bytes": 7532
+      },
+      {
+        "file": "Spatial_trafficcone_1.mesh",
+        "sha256": "6fb3833b2c1a07c4d5e69b0bbe584f1a3e8028f1399377543ad2ca07e82c5c68",
+        "bytes": 1196
+      },
+      {
+        "file": "Spatial_trafficcone_1_Color.jpg",
+        "sha256": "ac3f88041b5ab5fa841d7136242fbb1201df18d65c584cab61813aebb92f6b60",
+        "bytes": 454679
+      },
+      {
+        "file": "Spatial_trafficcone_1_Roughness.jpg",
+        "sha256": "21130900dd7b5a12914ce3dce3a3aba5cb46f39d93b6b462b881d467fe00bc17",
+        "bytes": 346939
+      },
+      {
+        "file": "Spatial_trafficcone_1_Metalness.jpg",
+        "sha256": "21130900dd7b5a12914ce3dce3a3aba5cb46f39d93b6b462b881d467fe00bc17",
+        "bytes": 346939
+      },
+      {
+        "file": "Spatial_trafficcone_2.mesh",
+        "sha256": "74feed14ab3be0d6dfccd96c59fb1892d3a844c1224bb0965f1d3d1ce25012cf",
+        "bytes": 267628
+      },
+      {
+        "file": "Spatial_trafficcone_2_Color.jpg",
+        "sha256": "30860ca5d9b3a3215ad7a3a531f33503ceef0022fe7cbdb757f8e101da3f8843",
+        "bytes": 75794
+      },
+      {
+        "file": "Spatial_trafficcone_2_Roughness.jpg",
+        "sha256": "77580dd389dd79e5c735740c4e085f4d2390dd83e7e4662d154eb81446041631",
+        "bytes": 26590
+      },
+      {
+        "file": "Spatial_trafficcone_2_Metalness.jpg",
+        "sha256": "77580dd389dd79e5c735740c4e085f4d2390dd83e7e4662d154eb81446041631",
+        "bytes": 26590
+      },
+      {
+        "file": "Spatial_trafficcone_3.mesh",
+        "sha256": "45bd1c368f9e0a5435bbcd6c61dfc019fc71c3a1f201f4ff18f03035cc0ac504",
+        "bytes": 267628
+      },
+      {
+        "file": "Spatial_trafficcone_3_Color.jpg",
+        "sha256": "30860ca5d9b3a3215ad7a3a531f33503ceef0022fe7cbdb757f8e101da3f8843",
+        "bytes": 75794
+      },
+      {
+        "file": "Spatial_trafficcone_3_Roughness.jpg",
+        "sha256": "77580dd389dd79e5c735740c4e085f4d2390dd83e7e4662d154eb81446041631",
+        "bytes": 26590
+      },
+      {
+        "file": "Spatial_trafficcone_3_Metalness.jpg",
+        "sha256": "77580dd389dd79e5c735740c4e085f4d2390dd83e7e4662d154eb81446041631",
+        "bytes": 26590
+      }
+    ],
+    "triangles": 17224,
+    "vertices": 10539
+  },
+  {
+    "id": "commercialrefrigerator",
+    "title": "Geladeira",
+    "source": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CommercialRefrigerator/README.md",
+    "download": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CommercialRefrigerator/glTF-Binary/CommercialRefrigerator.glb",
+    "sourceSHA256": "ef8da8b144e650c277ac953e6d9e50ac1689ff1ee88c2c5bd9551ae8bccb6065",
+    "licenseNotice": "&copy; 2025, Darmstadt Graphics Group GmbH. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)\n\n - Eric Chadwick for Model and textures and all images in the README.md\n\n&copy; 2025, Sean Thomas. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)\n\n - Sean Thomas for This work is based on 'Commercial Fridge' (https://sketchfab.com/3d-models/commercial-fridge-2174e1e4f1f24f1a95aa110ee060f473) by Sean Thomas (https://sketchfab.com/foon.) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+    "license": "CC-BY-4.0",
+    "parts": [
+      {
+        "mesh": "Spatial_commercialrefrigerator_0.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_commercialrefrigerator_0_Color.jpg",
+        "Roughness": "Spatial_commercialrefrigerator_0_Roughness.jpg",
+        "Metalness": "Spatial_commercialrefrigerator_0_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_commercialrefrigerator_1.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 0.75,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_commercialrefrigerator_1_Color.jpg",
+        "Emission": "Spatial_commercialrefrigerator_1_Emission.jpg",
+        "Roughness": "Spatial_commercialrefrigerator_1_Roughness.jpg",
+        "Metalness": "Spatial_commercialrefrigerator_1_Metalness.jpg",
+        "emissionFactor": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_commercialrefrigerator_2.mesh",
+        "baseColor": [
+          0.01568627450980392,
+          0.03137254901960784,
+          0.01568627450980392,
+          1.0
+        ],
+        "metalness": 0.0,
+        "roughness": 0.5,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "NormalGL": "Spatial_commercialrefrigerator_2_NormalGL.jpg",
+        "Roughness": "Spatial_commercialrefrigerator_2_Roughness.jpg",
+        "Metalness": "Spatial_commercialrefrigerator_2_Metalness.jpg",
+        "glass": true
+      },
+      {
+        "mesh": "Spatial_commercialrefrigerator_3.mesh",
+        "baseColor": [
+          0.8666666666666667,
+          0.6705882352941176,
+          0.41568627450980394,
+          1.0
+        ],
+        "metalness": 1.0,
+        "roughness": 0.4,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "NormalGL": "Spatial_commercialrefrigerator_3_NormalGL.jpg"
+      },
+      {
+        "mesh": "Spatial_commercialrefrigerator_4.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_commercialrefrigerator_4_Color.jpg",
+        "NormalGL": "Spatial_commercialrefrigerator_4_NormalGL.jpg",
+        "Roughness": "Spatial_commercialrefrigerator_4_Roughness.jpg",
+        "Metalness": "Spatial_commercialrefrigerator_4_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_commercialrefrigerator_5.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_commercialrefrigerator_5_Color.jpg",
+        "Roughness": "Spatial_commercialrefrigerator_5_Roughness.jpg",
+        "Metalness": "Spatial_commercialrefrigerator_5_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_commercialrefrigerator_6.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 0.0,
+        "roughness": 0.75,
+        "doubleSided": true,
+        "alphaMode": "OPAQUE",
+        "Roughness": "Spatial_commercialrefrigerator_6_Roughness.jpg",
+        "Metalness": "Spatial_commercialrefrigerator_6_Metalness.jpg",
+        "glass": true
+      },
+      {
+        "mesh": "Spatial_commercialrefrigerator_7.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 0.75,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_commercialrefrigerator_7_Color.jpg",
+        "Emission": "Spatial_commercialrefrigerator_7_Emission.jpg",
+        "Roughness": "Spatial_commercialrefrigerator_7_Roughness.jpg",
+        "Metalness": "Spatial_commercialrefrigerator_7_Metalness.jpg",
+        "emissionFactor": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_commercialrefrigerator_0.mesh",
+        "sha256": "262866f4def2ab0da875cd6d8b3c3e14c99fdb3b64f6ba0b1cc2bfe647551732",
+        "bytes": 29004
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_0_Color.jpg",
+        "sha256": "077e934aab3a73f4d2425c6569cd8901b49db58bb94d39252745572f98920783",
+        "bytes": 84329
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_0_Roughness.jpg",
+        "sha256": "74c09b9aebe6552691499a518a072dd942e175730397cc5d01119424e17096f2",
+        "bytes": 110074
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_0_Metalness.jpg",
+        "sha256": "a41354290a7bf3234cab3d736679d5ca6ad77dfbc5105e330c219b93f9b71534",
+        "bytes": 85613
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_1.mesh",
+        "sha256": "9cf0ca61a569f71b83c4b8774b0c46a7dff80255623bc116227a57ca05c43f70",
+        "bytes": 110728
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_1_Color.jpg",
+        "sha256": "c681e672b95cac4ee02385081db16893cd548bf5c5c96696934aabc35fe4c0d5",
+        "bytes": 162292
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_1_Emission.jpg",
+        "sha256": "0673de5a8e6075b1de4b676dbb4577bffe25c6eea60e9c780df3244ccbe3a9c7",
+        "bytes": 161067
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_1_Roughness.jpg",
+        "sha256": "8eabf0f6396210c6080f2d9405d406dadc6116c9b9d08d8ef44dba86b1c1ca4e",
+        "bytes": 129092
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_1_Metalness.jpg",
+        "sha256": "7d2f558ee9cd9dbdb8dfca6175dd46798fd0b7778daadd48884f243887d60648",
+        "bytes": 106015
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_2.mesh",
+        "sha256": "878717591143dbb6453bb90c4756d2bd29aca83f69417f2a7aea71406a2d9272",
+        "bytes": 3154316
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_2_NormalGL.jpg",
+        "sha256": "c549697447562ded74b93d36b229f088e17bbdc98e18056305ff6f5fc6c0cc69",
+        "bytes": 161300
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_2_Roughness.jpg",
+        "sha256": "6b644946e594c5ef1eea908faf158ae5a0213a667b9b209e61eb034106702206",
+        "bytes": 228034
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_2_Metalness.jpg",
+        "sha256": "4e0fb6eab1437dd2c5f7dac7642cfd99c72d9c5520ef7051bf7e8cd9f53d9c18",
+        "bytes": 165530
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_3.mesh",
+        "sha256": "fff5ffefb645b9c7a65c04acc6a4b49c8faff2ff76886fa6b5374ad73846ccdd",
+        "bytes": 2755468
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_3_NormalGL.jpg",
+        "sha256": "43c180bb72bd42d3d8da31f94f13c425c1ec6f8c0a119c6d37d4ec86616730ae",
+        "bytes": 2692
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_4.mesh",
+        "sha256": "7ed99a1a61e659708fe9842bc9ee69adeac050d490483a31ed693e50f1be7c45",
+        "bytes": 167820
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_4_Color.jpg",
+        "sha256": "a934d9680e79ca6e343256743913bb9a551fc0b18fda8b7a20fb17b1576658ad",
+        "bytes": 27460
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_4_NormalGL.jpg",
+        "sha256": "c549697447562ded74b93d36b229f088e17bbdc98e18056305ff6f5fc6c0cc69",
+        "bytes": 161300
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_4_Roughness.jpg",
+        "sha256": "b3f615b945b0c079b2e1223a7d6f715285ea7832aa9f84305756d24a7e9fd4f5",
+        "bytes": 12630
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_4_Metalness.jpg",
+        "sha256": "3d5b81dd23a2f81d93ce9acf73762bbbc19fd265bd57428e197bde06cbe5f035",
+        "bytes": 15945
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_5.mesh",
+        "sha256": "a2f4c633b666d00bd0178b4dce0c99fcf292e2567477686682916ecbce99d600",
+        "bytes": 23292
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_5_Color.jpg",
+        "sha256": "077e934aab3a73f4d2425c6569cd8901b49db58bb94d39252745572f98920783",
+        "bytes": 84329
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_5_Roughness.jpg",
+        "sha256": "74c09b9aebe6552691499a518a072dd942e175730397cc5d01119424e17096f2",
+        "bytes": 110074
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_5_Metalness.jpg",
+        "sha256": "a41354290a7bf3234cab3d736679d5ca6ad77dfbc5105e330c219b93f9b71534",
+        "bytes": 85613
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_6.mesh",
+        "sha256": "f9b6cb497d3b0c9e0a7718e59d2c573167a065a1dd3de3e18720b90b60c80b25",
+        "bytes": 164
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_6_Roughness.jpg",
+        "sha256": "6b644946e594c5ef1eea908faf158ae5a0213a667b9b209e61eb034106702206",
+        "bytes": 228034
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_6_Metalness.jpg",
+        "sha256": "4e0fb6eab1437dd2c5f7dac7642cfd99c72d9c5520ef7051bf7e8cd9f53d9c18",
+        "bytes": 165530
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_7.mesh",
+        "sha256": "a506d056113b713d6cee81d0e1f0f2d1a9e27e2f83a8ecab85b37a57f0b7187e",
+        "bytes": 1692
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_7_Color.jpg",
+        "sha256": "c681e672b95cac4ee02385081db16893cd548bf5c5c96696934aabc35fe4c0d5",
+        "bytes": 162292
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_7_Emission.jpg",
+        "sha256": "0673de5a8e6075b1de4b676dbb4577bffe25c6eea60e9c780df3244ccbe3a9c7",
+        "bytes": 161067
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_7_Roughness.jpg",
+        "sha256": "8eabf0f6396210c6080f2d9405d406dadc6116c9b9d08d8ef44dba86b1c1ca4e",
+        "bytes": 129092
+      },
+      {
+        "file": "Spatial_commercialrefrigerator_7_Metalness.jpg",
+        "sha256": "7d2f558ee9cd9dbdb8dfca6175dd46798fd0b7778daadd48884f243887d60648",
+        "bytes": 106015
+      }
+    ],
+    "triangles": 208679,
+    "vertices": 116820
+  },
+  {
+    "id": "chronographwatch",
+    "title": "Relógio",
+    "source": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/ChronographWatch/README.md",
+    "download": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/ChronographWatch/glTF-Binary/ChronographWatch.glb",
+    "sourceSHA256": "8e875fcd83efb433afed9ef1c18b2c2b2e075e2bf48371cadfd2a3cf529f1aef",
+    "licenseNotice": "&copy; 2025, Darmstadt Graphics Group GmbH. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)\n\n - Eric Chadwick for Model and textures\n\n&copy; 2015, Khronos Group. [Khronos Trademark or Logo](../../LICENSES/LicenseRef-LegalMark-Khronos.txt)\n\n - Non-copyrightable logo for Khronos logo\n\n&copy; 2017, Khronos Group. [Khronos Trademark or Logo](../../LICENSES/LicenseRef-LegalMark-Khronos.txt)\n\n - Non-copyrightable logo for 3D Commerce logo\n\n&copy; 2020, Darmstadt Graphics Group GmbH. [DGG Trademark or Logo](../../LICENSES/LicenseRef-LegalMark-DGG.txt)\n\n - Copyrightable logo for DGG logo",
+    "license": "CC-BY-4.0",
+    "parts": [
+      {
+        "mesh": "Spatial_chronographwatch_0.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_chronographwatch_0_Color.jpg",
+        "Roughness": "Spatial_chronographwatch_0_Roughness.jpg",
+        "Metalness": "Spatial_chronographwatch_0_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_chronographwatch_1.mesh",
+        "baseColor": [
+          0.03137254901960784,
+          0.03137254901960784,
+          0.03137254901960784,
+          1.0
+        ],
+        "metalness": 0.0,
+        "roughness": 0.3,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE"
+      },
+      {
+        "mesh": "Spatial_chronographwatch_2.mesh",
+        "baseColor": [
+          0.7607843137254902,
+          0.7411764705882353,
+          0.788235294117647,
+          1.0
+        ],
+        "metalness": 1.0,
+        "roughness": 0.3,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE"
+      },
+      {
+        "mesh": "Spatial_chronographwatch_3.mesh",
+        "baseColor": [
+          0.03137254901960784,
+          0.03137254901960784,
+          0.03137254901960784,
+          1.0
+        ],
+        "metalness": 0.0,
+        "roughness": 0.3,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE"
+      },
+      {
+        "mesh": "Spatial_chronographwatch_4.mesh",
+        "baseColor": [
+          0.7607843137254902,
+          0.7411764705882353,
+          0.788235294117647,
+          1.0
+        ],
+        "metalness": 1.0,
+        "roughness": 0.3,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE"
+      },
+      {
+        "mesh": "Spatial_chronographwatch_5.mesh",
+        "baseColor": [
+          0.03137254901960784,
+          0.03137254901960784,
+          0.03137254901960784,
+          1.0
+        ],
+        "metalness": 0.0,
+        "roughness": 0.3,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE"
+      },
+      {
+        "mesh": "Spatial_chronographwatch_6.mesh",
+        "baseColor": [
+          0.7607843137254902,
+          0.7411764705882353,
+          0.788235294117647,
+          1.0
+        ],
+        "metalness": 1.0,
+        "roughness": 0.3,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE"
+      },
+      {
+        "mesh": "Spatial_chronographwatch_7.mesh",
+        "baseColor": [
+          1.0,
+          0.7215686274509804,
+          0.3137254901960784,
+          1.0
+        ],
+        "metalness": 1.0,
+        "roughness": 0.3,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE"
+      },
+      {
+        "mesh": "Spatial_chronographwatch_8.mesh",
+        "baseColor": [
+          0.03137254901960784,
+          0.03137254901960784,
+          0.03137254901960784,
+          1.0
+        ],
+        "metalness": 0.0,
+        "roughness": 0.3,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE"
+      },
+      {
+        "mesh": "Spatial_chronographwatch_9.mesh",
+        "baseColor": [
+          0.7607843137254902,
+          0.7411764705882353,
+          0.788235294117647,
+          1.0
+        ],
+        "metalness": 1.0,
+        "roughness": 0.3,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE"
+      },
+      {
+        "mesh": "Spatial_chronographwatch_10.mesh",
+        "baseColor": [
+          1.0,
+          0.7215686274509804,
+          0.3137254901960784,
+          1.0
+        ],
+        "metalness": 1.0,
+        "roughness": 0.3,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE"
+      },
+      {
+        "mesh": "Spatial_chronographwatch_11.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 0.0,
+        "roughness": 0.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "glass": true
+      },
+      {
+        "mesh": "Spatial_chronographwatch_12.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_chronographwatch_12_Color.jpg",
+        "Roughness": "Spatial_chronographwatch_12_Roughness.jpg",
+        "Metalness": "Spatial_chronographwatch_12_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_chronographwatch_13.mesh",
+        "baseColor": [
+          0.03137254901960784,
+          0.03137254901960784,
+          0.03137254901960784,
+          1.0
+        ],
+        "metalness": 0.0,
+        "roughness": 0.3,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE"
+      },
+      {
+        "mesh": "Spatial_chronographwatch_14.mesh",
+        "baseColor": [
+          0.7607843137254902,
+          0.7411764705882353,
+          0.788235294117647,
+          1.0
+        ],
+        "metalness": 1.0,
+        "roughness": 0.3,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE"
+      },
+      {
+        "mesh": "Spatial_chronographwatch_15.mesh",
+        "baseColor": [
+          1.0,
+          0.7215686274509804,
+          0.3137254901960784,
+          1.0
+        ],
+        "metalness": 1.0,
+        "roughness": 0.3,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE"
+      },
+      {
+        "mesh": "Spatial_chronographwatch_16.mesh",
+        "baseColor": [
+          0.03137254901960784,
+          0.03137254901960784,
+          0.03137254901960784,
+          1.0
+        ],
+        "metalness": 0.0,
+        "roughness": 0.3,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE"
+      },
+      {
+        "mesh": "Spatial_chronographwatch_17.mesh",
+        "baseColor": [
+          1.0,
+          0.7215686274509804,
+          0.3137254901960784,
+          1.0
+        ],
+        "metalness": 1.0,
+        "roughness": 0.4,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "NormalGL": "Spatial_chronographwatch_17_NormalGL.jpg"
+      },
+      {
+        "mesh": "Spatial_chronographwatch_18.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_chronographwatch_18_Color.jpg",
+        "Roughness": "Spatial_chronographwatch_18_Roughness.jpg",
+        "Metalness": "Spatial_chronographwatch_18_Metalness.jpg"
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_chronographwatch_0.mesh",
+        "sha256": "46ee4e110471d1c48b2c3def62e96f83d0d6efbfb9beb69c60c4d896fdac2469",
+        "bytes": 991100
+      },
+      {
+        "file": "Spatial_chronographwatch_0_Color.jpg",
+        "sha256": "0b391360ed1630deefdcc1b9a670be77aca93d17747d1ca6fc9466d6e72cd05e",
+        "bytes": 242351
+      },
+      {
+        "file": "Spatial_chronographwatch_0_Roughness.jpg",
+        "sha256": "77dc2a9ad3b67aeaf3c1f638810cf21b5737aa0231e7d74ad67fba4214630147",
+        "bytes": 250909
+      },
+      {
+        "file": "Spatial_chronographwatch_0_Metalness.jpg",
+        "sha256": "96a0415b9ce523e4fe6ebb51d80b84d57080bdb3b59f89d1a9fb50c2d7dfdf4e",
+        "bytes": 114729
+      },
+      {
+        "file": "Spatial_chronographwatch_1.mesh",
+        "sha256": "a240cb8cc5b1922bda598f1b0f61cd6dea5b5e3a6b118d5f550766207e6deb26",
+        "bytes": 2340
+      },
+      {
+        "file": "Spatial_chronographwatch_2.mesh",
+        "sha256": "d74caa2940cd04d7754d10fa51d632fbd6cdb9bce0b8e54d950d08d26718b22a",
+        "bytes": 3156
+      },
+      {
+        "file": "Spatial_chronographwatch_3.mesh",
+        "sha256": "ef256dbe770619833bec8f59d4bd78796d7d2e97bdea4203d3bb5240b364da98",
+        "bytes": 10900
+      },
+      {
+        "file": "Spatial_chronographwatch_4.mesh",
+        "sha256": "16824b5f630008b4c258edd8d325ec4d8046986150db985bde36d140fe7845d9",
+        "bytes": 4500
+      },
+      {
+        "file": "Spatial_chronographwatch_5.mesh",
+        "sha256": "e27a9f8d90ec5f0f00d13a733d56bd4cb1fba345848acd457f95ea987df69c2e",
+        "bytes": 1908
+      },
+      {
+        "file": "Spatial_chronographwatch_6.mesh",
+        "sha256": "ba9c862e0f9d82f044509b5db8eab86c6477692003eae9b8766ac2b9222be3a6",
+        "bytes": 1300
+      },
+      {
+        "file": "Spatial_chronographwatch_7.mesh",
+        "sha256": "2f429fd2433858254b41c832b1c54790f2328781380377e9e748e289ace119c5",
+        "bytes": 1164
+      },
+      {
+        "file": "Spatial_chronographwatch_8.mesh",
+        "sha256": "17e33f2a82e3a32287e8cf27fec828cec744a194cb50ff5f6a8efbdf5d058bdc",
+        "bytes": 1908
+      },
+      {
+        "file": "Spatial_chronographwatch_9.mesh",
+        "sha256": "8b45a1d1bfcd0533f3cadfbbdd5f99b3ef7bb346763c41945ab9e2f40faa1579",
+        "bytes": 1300
+      },
+      {
+        "file": "Spatial_chronographwatch_10.mesh",
+        "sha256": "74aabd233fa916da83ee88bc8ef98fa181ade51b6f8fe958b2104b7a3f406d49",
+        "bytes": 1164
+      },
+      {
+        "file": "Spatial_chronographwatch_11.mesh",
+        "sha256": "e86e14eefdbd0fcffe1490033db61bf95d709726e36be0d3cd57ec509fe51e8e",
+        "bytes": 2804
+      },
+      {
+        "file": "Spatial_chronographwatch_12.mesh",
+        "sha256": "1a9296ad8aeb8f748873afab42cf5c587a5e40cfe2d2b954b248e2656d7f971b",
+        "bytes": 99908
+      },
+      {
+        "file": "Spatial_chronographwatch_12_Color.jpg",
+        "sha256": "6a397d7b7766b7e7c7ec31de58a9f705a7d996d72b737f4289761cad54d59c5f",
+        "bytes": 17567
+      },
+      {
+        "file": "Spatial_chronographwatch_12_Roughness.jpg",
+        "sha256": "68a8c321b296e5672bbaa74f1283766f9a99093b24e648197c1e26c23de3b90d",
+        "bytes": 14077
+      },
+      {
+        "file": "Spatial_chronographwatch_12_Metalness.jpg",
+        "sha256": "25b6c0c61bc3157967b28a996fe365f0be8c40fcb87ddba34b7e9bed500192a8",
+        "bytes": 19792
+      },
+      {
+        "file": "Spatial_chronographwatch_13.mesh",
+        "sha256": "244d93278bf5d032764f347eb492f852c31a8c5e09cffbf05e532b7d276b1f55",
+        "bytes": 153872
+      },
+      {
+        "file": "Spatial_chronographwatch_14.mesh",
+        "sha256": "28224e823248a8f5f6911b6c96054bd21ee34315c7d6d1bd380c36058ec815b0",
+        "bytes": 1724892
+      },
+      {
+        "file": "Spatial_chronographwatch_15.mesh",
+        "sha256": "823b0ce01df98cfc86aaab2355ecb8d270bd92f6e3fee675839a0e49bc43e11b",
+        "bytes": 631380
+      },
+      {
+        "file": "Spatial_chronographwatch_16.mesh",
+        "sha256": "97c61498f100270e486e8488b945b4aafabec54f0db99fe29b15ff400804af17",
+        "bytes": 564908
+      },
+      {
+        "file": "Spatial_chronographwatch_17.mesh",
+        "sha256": "317d8dca179f8137b0af4711f31ee97ffd39df87724fc7e0ec547c9e3bcbcb7b",
+        "bytes": 274312
+      },
+      {
+        "file": "Spatial_chronographwatch_17_NormalGL.jpg",
+        "sha256": "547dddf45186cfc8c28321d773d34e187b0c88baabf8271a20723a7f9473de59",
+        "bytes": 13785
+      },
+      {
+        "file": "Spatial_chronographwatch_18.mesh",
+        "sha256": "becf3ad73467a4327b435dac3cbce40bbb1d4401f83826dd352d8f476aefd2f4",
+        "bytes": 79916
+      },
+      {
+        "file": "Spatial_chronographwatch_18_Color.jpg",
+        "sha256": "66f6fa05c7d68743745450e07b3a6227b0a598b9e6e506a381501bbd9c5be42f",
+        "bytes": 28169
+      },
+      {
+        "file": "Spatial_chronographwatch_18_Roughness.jpg",
+        "sha256": "928f528c66f73fbcff47eb319c2105d6b83a842b93f9097851e3b940c2c1c9e4",
+        "bytes": 22980
+      },
+      {
+        "file": "Spatial_chronographwatch_18_Metalness.jpg",
+        "sha256": "e5623c53c4764777dcd19965f4f0112dcbbffd7675706900b0f3f57e002d03b9",
+        "bytes": 31110
+      }
+    ],
+    "triangles": 100002,
+    "vertices": 104765
+  },
+  {
+    "id": "chairdamaskpurplegold",
+    "title": "Cadeira clássica",
+    "source": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/ChairDamaskPurplegold/README.md",
+    "download": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/ChairDamaskPurplegold/glTF-Binary/ChairDamaskPurplegold.glb",
+    "sourceSHA256": "9862ff753f25ca6738bf5924afbfde01b794fae73db3f94bcd8cdc7cc570d9bb",
+    "licenseNotice": "&copy; 2021, Wayfair. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)\n\n - Eric Chadwick for Models and Textures",
+    "license": "CC-BY-4.0",
+    "parts": [
+      {
+        "mesh": "Spatial_chairdamaskpurplegold_0.mesh",
+        "baseColor": [
+          0.24705882352941178,
+          0.10980392156862745,
+          0.03529411764705882,
+          1.0
+        ],
+        "metalness": 0.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_chairdamaskpurplegold_0_Color.jpg",
+        "NormalGL": "Spatial_chairdamaskpurplegold_0_NormalGL.jpg",
+        "Roughness": "Spatial_chairdamaskpurplegold_0_Roughness.jpg",
+        "Metalness": "Spatial_chairdamaskpurplegold_0_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_chairdamaskpurplegold_1.mesh",
+        "baseColor": [
+          0.24705882352941178,
+          0.10980392156862745,
+          0.03529411764705882,
+          1.0
+        ],
+        "metalness": 0.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_chairdamaskpurplegold_1_Color.jpg",
+        "NormalGL": "Spatial_chairdamaskpurplegold_1_NormalGL.jpg",
+        "Roughness": "Spatial_chairdamaskpurplegold_1_Roughness.jpg",
+        "Metalness": "Spatial_chairdamaskpurplegold_1_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_chairdamaskpurplegold_2.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_chairdamaskpurplegold_2_Color.jpg",
+        "NormalGL": "Spatial_chairdamaskpurplegold_2_NormalGL.jpg",
+        "Roughness": "Spatial_chairdamaskpurplegold_2_Roughness.jpg",
+        "Metalness": "Spatial_chairdamaskpurplegold_2_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_chairdamaskpurplegold_3.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_chairdamaskpurplegold_3_Color.jpg",
+        "NormalGL": "Spatial_chairdamaskpurplegold_3_NormalGL.jpg",
+        "Roughness": "Spatial_chairdamaskpurplegold_3_Roughness.jpg",
+        "Metalness": "Spatial_chairdamaskpurplegold_3_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_chairdamaskpurplegold_4.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_chairdamaskpurplegold_4_Color.jpg",
+        "NormalGL": "Spatial_chairdamaskpurplegold_4_NormalGL.jpg",
+        "Roughness": "Spatial_chairdamaskpurplegold_4_Roughness.jpg",
+        "Metalness": "Spatial_chairdamaskpurplegold_4_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_chairdamaskpurplegold_5.mesh",
+        "baseColor": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "metalness": 0.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_chairdamaskpurplegold_5_Color.jpg",
+        "emissionFactor": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "mesh": "Spatial_chairdamaskpurplegold_6.mesh",
+        "baseColor": [
+          0.24705882352941178,
+          0.10980392156862745,
+          0.03529411764705882,
+          1.0
+        ],
+        "metalness": 0.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_chairdamaskpurplegold_6_Color.jpg",
+        "NormalGL": "Spatial_chairdamaskpurplegold_6_NormalGL.jpg",
+        "Roughness": "Spatial_chairdamaskpurplegold_6_Roughness.jpg",
+        "Metalness": "Spatial_chairdamaskpurplegold_6_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_chairdamaskpurplegold_7.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_chairdamaskpurplegold_7_Color.jpg",
+        "NormalGL": "Spatial_chairdamaskpurplegold_7_NormalGL.jpg",
+        "Roughness": "Spatial_chairdamaskpurplegold_7_Roughness.jpg",
+        "Metalness": "Spatial_chairdamaskpurplegold_7_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_chairdamaskpurplegold_8.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_chairdamaskpurplegold_8_Color.jpg",
+        "NormalGL": "Spatial_chairdamaskpurplegold_8_NormalGL.jpg",
+        "Roughness": "Spatial_chairdamaskpurplegold_8_Roughness.jpg",
+        "Metalness": "Spatial_chairdamaskpurplegold_8_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_chairdamaskpurplegold_9.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_chairdamaskpurplegold_9_Color.jpg",
+        "NormalGL": "Spatial_chairdamaskpurplegold_9_NormalGL.jpg",
+        "Roughness": "Spatial_chairdamaskpurplegold_9_Roughness.jpg",
+        "Metalness": "Spatial_chairdamaskpurplegold_9_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_chairdamaskpurplegold_10.mesh",
+        "baseColor": [
+          0.25098039215686274,
+          0.25098039215686274,
+          0.25098039215686274,
+          1.0
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Roughness": "Spatial_chairdamaskpurplegold_10_Roughness.jpg",
+        "Metalness": "Spatial_chairdamaskpurplegold_10_Metalness.jpg"
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_chairdamaskpurplegold_0.mesh",
+        "sha256": "780b57bfec1ee2cf36f54c465dfe07b112883c3efccdbc3bd39ff5914a2c2716",
+        "bytes": 46476
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_0_Color.jpg",
+        "sha256": "bf825c1087b1810e59ced4e754e5a4d6014f1137a635ebb52ae56ccb1ee31520",
+        "bytes": 87230
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_0_NormalGL.jpg",
+        "sha256": "2d5fb6380a562d8e8530b3af562b13a9a994b839a8aec621e548718787a054b0",
+        "bytes": 30038
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_0_Roughness.jpg",
+        "sha256": "39918b951320aa93740378a1d4d4e84b9ae65227e14e938444397b9286929d24",
+        "bytes": 45617
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_0_Metalness.jpg",
+        "sha256": "8d5c528fee98438c052c18422e36ca84fa2008762f5e310c34b9240536cea52b",
+        "bytes": 25899
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_1.mesh",
+        "sha256": "837e196a3d7a7515546aab25eee25e0c08a82b827862d57bfcc1679e2c57b0fa",
+        "bytes": 13612
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_1_Color.jpg",
+        "sha256": "bf825c1087b1810e59ced4e754e5a4d6014f1137a635ebb52ae56ccb1ee31520",
+        "bytes": 87230
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_1_NormalGL.jpg",
+        "sha256": "2d5fb6380a562d8e8530b3af562b13a9a994b839a8aec621e548718787a054b0",
+        "bytes": 30038
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_1_Roughness.jpg",
+        "sha256": "39918b951320aa93740378a1d4d4e84b9ae65227e14e938444397b9286929d24",
+        "bytes": 45617
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_1_Metalness.jpg",
+        "sha256": "8d5c528fee98438c052c18422e36ca84fa2008762f5e310c34b9240536cea52b",
+        "bytes": 25899
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_2.mesh",
+        "sha256": "d81601e9c1721fe168297d4bceaa69e51eebb30c1642175df79ebb839b91e670",
+        "bytes": 92204
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_2_Color.jpg",
+        "sha256": "e283b2d4103578bef6f40cad98594f20a1f130afbd21a20f119771121c305a35",
+        "bytes": 69448
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_2_NormalGL.jpg",
+        "sha256": "b32d7a779ac809cdeddd12e78f33625215dbef09fd34c61d566364e341fbd2af",
+        "bytes": 84468
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_2_Roughness.jpg",
+        "sha256": "ba4dd7e53a6b41dc60d782a75b3ff0d8622499195f19c379773ce12abe801cd1",
+        "bytes": 64348
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_2_Metalness.jpg",
+        "sha256": "fbc81fdb93adb71b947ce223aa0bb83f43d72a58f0e81989d413d13b638c90e2",
+        "bytes": 67337
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_3.mesh",
+        "sha256": "8200dc18d2a6504fb17932bf51b024dc1f8c0aef06f384b32ac6b48d74323d76",
+        "bytes": 23340
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_3_Color.jpg",
+        "sha256": "e283b2d4103578bef6f40cad98594f20a1f130afbd21a20f119771121c305a35",
+        "bytes": 69448
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_3_NormalGL.jpg",
+        "sha256": "b32d7a779ac809cdeddd12e78f33625215dbef09fd34c61d566364e341fbd2af",
+        "bytes": 84468
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_3_Roughness.jpg",
+        "sha256": "ba4dd7e53a6b41dc60d782a75b3ff0d8622499195f19c379773ce12abe801cd1",
+        "bytes": 64348
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_3_Metalness.jpg",
+        "sha256": "fbc81fdb93adb71b947ce223aa0bb83f43d72a58f0e81989d413d13b638c90e2",
+        "bytes": 67337
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_4.mesh",
+        "sha256": "0a906fe887a3c86cf265baabcc728bc86d42d9f85eefff9d8898ceabcd95773c",
+        "bytes": 15372
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_4_Color.jpg",
+        "sha256": "e283b2d4103578bef6f40cad98594f20a1f130afbd21a20f119771121c305a35",
+        "bytes": 69448
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_4_NormalGL.jpg",
+        "sha256": "b32d7a779ac809cdeddd12e78f33625215dbef09fd34c61d566364e341fbd2af",
+        "bytes": 84468
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_4_Roughness.jpg",
+        "sha256": "ba4dd7e53a6b41dc60d782a75b3ff0d8622499195f19c379773ce12abe801cd1",
+        "bytes": 64348
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_4_Metalness.jpg",
+        "sha256": "fbc81fdb93adb71b947ce223aa0bb83f43d72a58f0e81989d413d13b638c90e2",
+        "bytes": 67337
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_5.mesh",
+        "sha256": "3d01059d947f11c67bfed403e1c91abdb4524890cd75eea163ac2264d55c3fc0",
+        "bytes": 1196
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_5_Color.jpg",
+        "sha256": "ec7665b6217505836b1b825ba42fef630f8451dd09cb9fef565dc0c7f3c9dea2",
+        "bytes": 121955
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_6.mesh",
+        "sha256": "2568832a6428cce6725f137bbb77672594bb1812b0de95d63778cab22e69e9c5",
+        "bytes": 18604
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_6_Color.jpg",
+        "sha256": "bf825c1087b1810e59ced4e754e5a4d6014f1137a635ebb52ae56ccb1ee31520",
+        "bytes": 87230
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_6_NormalGL.jpg",
+        "sha256": "2d5fb6380a562d8e8530b3af562b13a9a994b839a8aec621e548718787a054b0",
+        "bytes": 30038
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_6_Roughness.jpg",
+        "sha256": "39918b951320aa93740378a1d4d4e84b9ae65227e14e938444397b9286929d24",
+        "bytes": 45617
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_6_Metalness.jpg",
+        "sha256": "8d5c528fee98438c052c18422e36ca84fa2008762f5e310c34b9240536cea52b",
+        "bytes": 25899
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_7.mesh",
+        "sha256": "869fd2c1e2d3910523dfa74b3af152ad5a05a401a0fc08e16df9c639e50b36e3",
+        "bytes": 46636
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_7_Color.jpg",
+        "sha256": "e283b2d4103578bef6f40cad98594f20a1f130afbd21a20f119771121c305a35",
+        "bytes": 69448
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_7_NormalGL.jpg",
+        "sha256": "b32d7a779ac809cdeddd12e78f33625215dbef09fd34c61d566364e341fbd2af",
+        "bytes": 84468
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_7_Roughness.jpg",
+        "sha256": "ba4dd7e53a6b41dc60d782a75b3ff0d8622499195f19c379773ce12abe801cd1",
+        "bytes": 64348
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_7_Metalness.jpg",
+        "sha256": "fbc81fdb93adb71b947ce223aa0bb83f43d72a58f0e81989d413d13b638c90e2",
+        "bytes": 67337
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_8.mesh",
+        "sha256": "8c3fcc30d554807a54abaea0d4381b8abdc9c99f9904582d44205d3a6c870361",
+        "bytes": 23340
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_8_Color.jpg",
+        "sha256": "e283b2d4103578bef6f40cad98594f20a1f130afbd21a20f119771121c305a35",
+        "bytes": 69448
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_8_NormalGL.jpg",
+        "sha256": "b32d7a779ac809cdeddd12e78f33625215dbef09fd34c61d566364e341fbd2af",
+        "bytes": 84468
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_8_Roughness.jpg",
+        "sha256": "ba4dd7e53a6b41dc60d782a75b3ff0d8622499195f19c379773ce12abe801cd1",
+        "bytes": 64348
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_8_Metalness.jpg",
+        "sha256": "fbc81fdb93adb71b947ce223aa0bb83f43d72a58f0e81989d413d13b638c90e2",
+        "bytes": 67337
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_9.mesh",
+        "sha256": "b1298a8a2be708cdd952778cdaabb3892afce19f176a7229844db1957b5ca2cc",
+        "bytes": 3084
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_9_Color.jpg",
+        "sha256": "e283b2d4103578bef6f40cad98594f20a1f130afbd21a20f119771121c305a35",
+        "bytes": 69448
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_9_NormalGL.jpg",
+        "sha256": "b32d7a779ac809cdeddd12e78f33625215dbef09fd34c61d566364e341fbd2af",
+        "bytes": 84468
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_9_Roughness.jpg",
+        "sha256": "ba4dd7e53a6b41dc60d782a75b3ff0d8622499195f19c379773ce12abe801cd1",
+        "bytes": 64348
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_9_Metalness.jpg",
+        "sha256": "fbc81fdb93adb71b947ce223aa0bb83f43d72a58f0e81989d413d13b638c90e2",
+        "bytes": 67337
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_10.mesh",
+        "sha256": "d24760a850ef4a1dd971dce37f2e3b5d32d9313bf9f2f42910b2fbc10a80060f",
+        "bytes": 36876
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_10_Roughness.jpg",
+        "sha256": "bc8048d780cd1b46b8037a71f9ac2008c2e2c41fefa301d52f4c8377cdc1de11",
+        "bytes": 5699
+      },
+      {
+        "file": "Spatial_chairdamaskpurplegold_10_Metalness.jpg",
+        "sha256": "6ddf6cfb61fbbfacc94cd2634ece96ef217f0fca8c8dedfc4420f62965eee99b",
+        "bytes": 3434
+      }
+    ],
+    "triangles": 9984,
+    "vertices": 6275
+  },
+  {
+    "id": "specularsilkpouf",
+    "title": "Pufe",
+    "source": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/SpecularSilkPouf/README.md",
+    "download": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/SpecularSilkPouf/glTF-Binary/SpecularSilkPouf.glb",
+    "sourceSHA256": "a028bc6a7ac8981044fba414c1de633ac775b53602ad386f8ece74aec81d1006",
+    "licenseNotice": "&copy; 2023, Copyright 2023 Wayfair, LLC. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)\n\n - Eric Chadwick for Everything",
+    "license": "CC-BY-4.0",
+    "parts": [
+      {
+        "mesh": "Spatial_specularsilkpouf_0.mesh",
+        "baseColor": [
+          0.023529411764705882,
+          0.03137254901960784,
+          0.07450980392156863,
+          1.0
+        ],
+        "metalness": 0.0,
+        "roughness": 0.65,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "NormalGL": "Spatial_specularsilkpouf_0_NormalGL.jpg"
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_specularsilkpouf_0.mesh",
+        "sha256": "529d0cb14bd3d6b21016b6d2668145f28a155e62185d33941966d47e6c269deb",
+        "bytes": 2313996
+      },
+      {
+        "file": "Spatial_specularsilkpouf_0_NormalGL.jpg",
+        "sha256": "4de5179aa5036b241938eb5b8181916c5565570b3a800c23abc07081b9e95c9c",
+        "bytes": 382405
+      }
+    ],
+    "triangles": 81280,
+    "vertices": 41832
+  },
+  {
+    "id": "sheenwoodleathersofa",
+    "title": "Sofá de couro",
+    "source": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/SheenWoodLeatherSofa/README.md",
+    "download": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/SheenWoodLeatherSofa/glTF-Binary/SheenWoodLeatherSofa.glb",
+    "sourceSHA256": "5349e042ad41e695e89f1110230c4ee0c75b2bc62ef830c7016be6ecf665bfb6",
+    "licenseNotice": "&copy; 2024, Darmstadt Graphics Group GmbH. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)\n\n - Eric Chadwick for Improvements\n\n&copy; 2021, Public domain. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)\n\n - Fran Calvente for Original asset",
+    "license": "CC-BY-4.0",
+    "parts": [
+      {
+        "mesh": "Spatial_sheenwoodleathersofa_0.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 0.8,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_sheenwoodleathersofa_0_Color.jpg",
+        "NormalGL": "Spatial_sheenwoodleathersofa_0_NormalGL.jpg",
+        "Roughness": "Spatial_sheenwoodleathersofa_0_Roughness.jpg",
+        "Metalness": "Spatial_sheenwoodleathersofa_0_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_sheenwoodleathersofa_1.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 0.8,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_sheenwoodleathersofa_1_Color.jpg",
+        "NormalGL": "Spatial_sheenwoodleathersofa_1_NormalGL.jpg",
+        "Roughness": "Spatial_sheenwoodleathersofa_1_Roughness.jpg",
+        "Metalness": "Spatial_sheenwoodleathersofa_1_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_sheenwoodleathersofa_2.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 0.8,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_sheenwoodleathersofa_2_Color.jpg",
+        "NormalGL": "Spatial_sheenwoodleathersofa_2_NormalGL.jpg",
+        "Roughness": "Spatial_sheenwoodleathersofa_2_Roughness.jpg",
+        "Metalness": "Spatial_sheenwoodleathersofa_2_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_sheenwoodleathersofa_3.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 0.8,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_sheenwoodleathersofa_3_Color.jpg",
+        "NormalGL": "Spatial_sheenwoodleathersofa_3_NormalGL.jpg",
+        "Roughness": "Spatial_sheenwoodleathersofa_3_Roughness.jpg",
+        "Metalness": "Spatial_sheenwoodleathersofa_3_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_sheenwoodleathersofa_4.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_sheenwoodleathersofa_4_Color.jpg",
+        "NormalGL": "Spatial_sheenwoodleathersofa_4_NormalGL.jpg",
+        "Roughness": "Spatial_sheenwoodleathersofa_4_Roughness.jpg",
+        "Metalness": "Spatial_sheenwoodleathersofa_4_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_sheenwoodleathersofa_5.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 0.8,
+        "doubleSided": false,
+        "alphaMode": "BLEND",
+        "Color": "Spatial_sheenwoodleathersofa_5_Color.texture",
+        "NormalGL": "Spatial_sheenwoodleathersofa_5_NormalGL.jpg"
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_sheenwoodleathersofa_0.mesh",
+        "sha256": "2acbb16c998b095d174bc59a62d8ea780a62f19124f3be881e05078ff99a2bd4",
+        "bytes": 335676
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_0_Color.jpg",
+        "sha256": "7d75d8967835a2307ebed12b74c9c4b1a97bcb79e33066e6c24a14ad8d3f3ee6",
+        "bytes": 42611
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_0_NormalGL.jpg",
+        "sha256": "9a2a9521a916ec8941990d777f968758f71491a82e2d702b7ce8a9b4fd3983a5",
+        "bytes": 49553
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_0_Roughness.jpg",
+        "sha256": "5000747a1276de8aad58f814a53aab72e6289f593a0289dcf0d51ac01b2a8451",
+        "bytes": 9962
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_0_Metalness.jpg",
+        "sha256": "b94b81e3394070a674f0feb1b21ea40d4a70412c5cc631c8016b74b1177058cd",
+        "bytes": 11675
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_1.mesh",
+        "sha256": "97e08c268183afa4f11f6b8546324f8c4480088fb9f0748dc449ff57be8b61d1",
+        "bytes": 114060
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_1_Color.jpg",
+        "sha256": "f7c263878c843f8a91b45c3a9f5211edf59281c486fef831203a553069aa961f",
+        "bytes": 19402
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_1_NormalGL.jpg",
+        "sha256": "2912319602fa231ae6a9478d9e3b6d7a981eab09133f29ebc00777870bd8cdb6",
+        "bytes": 8298
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_1_Roughness.jpg",
+        "sha256": "5000747a1276de8aad58f814a53aab72e6289f593a0289dcf0d51ac01b2a8451",
+        "bytes": 9962
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_1_Metalness.jpg",
+        "sha256": "b94b81e3394070a674f0feb1b21ea40d4a70412c5cc631c8016b74b1177058cd",
+        "bytes": 11675
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_2.mesh",
+        "sha256": "f85cff0379654aba6d8a058b15269a426513bb285a75c57c7201ede0c331ce1a",
+        "bytes": 733548
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_2_Color.jpg",
+        "sha256": "0122f7f0e4ebf4699d350b670d9ddbe6f0ef1447c039039545b89d0f93dbc36f",
+        "bytes": 401709
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_2_NormalGL.jpg",
+        "sha256": "b536ca0e7f1081fd4562fbc2565b560af9b612f580c49ba5be49367586da4154",
+        "bytes": 385412
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_2_Roughness.jpg",
+        "sha256": "5000747a1276de8aad58f814a53aab72e6289f593a0289dcf0d51ac01b2a8451",
+        "bytes": 9962
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_2_Metalness.jpg",
+        "sha256": "b94b81e3394070a674f0feb1b21ea40d4a70412c5cc631c8016b74b1177058cd",
+        "bytes": 11675
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_3.mesh",
+        "sha256": "c0ced64836ca6eff50da55ad9ec3bbcb70a192fd120aa327e42ebbe035eadfdc",
+        "bytes": 127884
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_3_Color.jpg",
+        "sha256": "7d75d8967835a2307ebed12b74c9c4b1a97bcb79e33066e6c24a14ad8d3f3ee6",
+        "bytes": 42611
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_3_NormalGL.jpg",
+        "sha256": "9a2a9521a916ec8941990d777f968758f71491a82e2d702b7ce8a9b4fd3983a5",
+        "bytes": 49553
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_3_Roughness.jpg",
+        "sha256": "4ff0d8d556ccc9c0417453799f3c59127e0f46eb4a1984363b4619ee66ac8eff",
+        "bytes": 29698
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_3_Metalness.jpg",
+        "sha256": "e6c1f46cc0f3d4d853e939c8967a2902850c983a3518c9d7545d34df389f9fa1",
+        "bytes": 19463
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_4.mesh",
+        "sha256": "ce15fe5a2164e4c0e1ec72ae1b976ec34502cd1372392c28579731999b26fa4e",
+        "bytes": 1774668
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_4_Color.jpg",
+        "sha256": "250af245cf44037230ec45e1dd50ba6cffd78acc79617ed691b9483a4be8730b",
+        "bytes": 103468
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_4_NormalGL.jpg",
+        "sha256": "c26b5ee1940e196aad3baeb82cfff5dd351b2c5d4fa54a69babe919d286d7ead",
+        "bytes": 101878
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_4_Roughness.jpg",
+        "sha256": "4ff0d8d556ccc9c0417453799f3c59127e0f46eb4a1984363b4619ee66ac8eff",
+        "bytes": 29698
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_4_Metalness.jpg",
+        "sha256": "e6c1f46cc0f3d4d853e939c8967a2902850c983a3518c9d7545d34df389f9fa1",
+        "bytes": 19463
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_5.mesh",
+        "sha256": "d59f1170f4522691c06ac36af254d56e642f67437bb50476da7a6c4b80396798",
+        "bytes": 1935372
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_5_Color.texture",
+        "sha256": "1aeddf55e2ae94f20fceffdfd28b9ee30cdf0409f17d79635e4bcc40f4350f96",
+        "bytes": 299718
+      },
+      {
+        "file": "Spatial_sheenwoodleathersofa_5_NormalGL.jpg",
+        "sha256": "8027a52af4f1b0c27d24065b0376db1aa1ec2586e5309830961665c4d6e14bd5",
+        "bytes": 7963
+      }
+    ],
+    "triangles": 46492,
+    "vertices": 139476
+  },
+  {
+    "id": "anisotropybarnlamp",
+    "title": "Luminária",
+    "source": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/AnisotropyBarnLamp/README.md",
+    "download": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/AnisotropyBarnLamp/glTF-Binary/AnisotropyBarnLamp.glb",
+    "sourceSHA256": "0e728826c30bd6f3a18a0911db9f5f9ddc2dafa8e20bf9c3312c9625d1e32a24",
+    "licenseNotice": "&copy; 2023, Copyright 2023 Wayfair, LLC. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)\n\n - Eric Chadwick for Everything",
+    "license": "CC-BY-4.0",
+    "parts": [
+      {
+        "mesh": "Spatial_anisotropybarnlamp_0.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 0.0,
+        "roughness": 0.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "glass": true
+      },
+      {
+        "mesh": "Spatial_anisotropybarnlamp_1.mesh",
+        "baseColor": [
+          0.09019607843137255,
+          0.09019607843137255,
+          0.09019607843137255,
+          1.0
+        ],
+        "metalness": 0.0,
+        "roughness": 0.7,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "emissionFactor": [
+          1.0,
+          0.5,
+          0.25
+        ]
+      },
+      {
+        "mesh": "Spatial_anisotropybarnlamp_2.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 1.0,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_anisotropybarnlamp_2_Color.jpg",
+        "NormalGL": "Spatial_anisotropybarnlamp_2_NormalGL.jpg",
+        "Roughness": "Spatial_anisotropybarnlamp_2_Roughness.jpg",
+        "Metalness": "Spatial_anisotropybarnlamp_2_Metalness.jpg"
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_anisotropybarnlamp_0.mesh",
+        "sha256": "bb8b18234aa9aaf3338c6558f897d0cde3c41f513006b0faaebf6bc18b0d29f4",
+        "bytes": 42668
+      },
+      {
+        "file": "Spatial_anisotropybarnlamp_1.mesh",
+        "sha256": "ae67b443e7704f6b72fae0658aebd2135b51505270bab8ae91419c8d4cc240e9",
+        "bytes": 7852
+      },
+      {
+        "file": "Spatial_anisotropybarnlamp_2.mesh",
+        "sha256": "d3d1416424a70c9812a87f07865b2b9c560dd9a3f24813efe25cab6981ed8e48",
+        "bytes": 318736
+      },
+      {
+        "file": "Spatial_anisotropybarnlamp_2_Color.jpg",
+        "sha256": "af7e29c652ce5bfe570e664cd97e9796c8ec4438007a57bba69536ad047ff4e3",
+        "bytes": 178608
+      },
+      {
+        "file": "Spatial_anisotropybarnlamp_2_NormalGL.jpg",
+        "sha256": "f688f1e12b8310e6d2913f6440664f4afb91ca659a5e2cf9b71362f62cbe44da",
+        "bytes": 25786
+      },
+      {
+        "file": "Spatial_anisotropybarnlamp_2_Roughness.jpg",
+        "sha256": "b1a2628d096d0c1e454172425178830458bec2e47635efc491b3a89bd071885f",
+        "bytes": 115912
+      },
+      {
+        "file": "Spatial_anisotropybarnlamp_2_Metalness.jpg",
+        "sha256": "93bb8a5a898b6340eb61fa90d5460ac213b5bfe00a0f100e4294a22bafbc30a9",
+        "bytes": 91443
+      }
+    ],
+    "triangles": 10203,
+    "vertices": 7712
+  },
+  {
+    "id": "iridescenceabalone",
+    "title": "Concha",
+    "source": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/IridescenceAbalone/README.md",
+    "download": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/IridescenceAbalone/glTF-Binary/IridescenceAbalone.glb",
+    "sourceSHA256": "d15ab000d3b04f177e101b2a36aacbf1c99490fc9bfe3868d481d75736946bab",
+    "licenseNotice": "&copy; 2015, Abby Crawford. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)\n\n - Abby Crawford for Everything\n\n&copy; 2023, Eric Chadwick. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)\n\n - Eric Chadwick for Materials",
+    "license": "CC-BY-4.0",
+    "parts": [
+      {
+        "mesh": "Spatial_iridescenceabalone_0.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 0.5,
+        "roughness": 1.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "Color": "Spatial_iridescenceabalone_0_Color.jpg",
+        "NormalGL": "Spatial_iridescenceabalone_0_NormalGL.jpg",
+        "Roughness": "Spatial_iridescenceabalone_0_Roughness.jpg",
+        "Metalness": "Spatial_iridescenceabalone_0_Metalness.jpg"
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_iridescenceabalone_0.mesh",
+        "sha256": "e823cd2e0072d487dd6bc4433cfa46cb56e3a0225ae3bf7578737905e30af741",
+        "bytes": 173532
+      },
+      {
+        "file": "Spatial_iridescenceabalone_0_Color.jpg",
+        "sha256": "6493400fbee7b26d2e3cc367859d1da59c18dd624ed2d1593a7096cbda30ed58",
+        "bytes": 139978
+      },
+      {
+        "file": "Spatial_iridescenceabalone_0_NormalGL.jpg",
+        "sha256": "cf01b187ce872b49dbce4a75cb3b620501a264c1dae688459e64056263b41a22",
+        "bytes": 164636
+      },
+      {
+        "file": "Spatial_iridescenceabalone_0_Roughness.jpg",
+        "sha256": "3cc155c62445b0fbdac74c493ac36e5277783d17924fbf7e8129a46b9dc47ede",
+        "bytes": 152087
+      },
+      {
+        "file": "Spatial_iridescenceabalone_0_Metalness.jpg",
+        "sha256": "565294a304234dedf86a9e244b1df33d93108082d1ba493d9c24f8b2d15adbaa",
+        "bytes": 17089
+      }
+    ],
+    "triangles": 6036,
+    "vertices": 3159
+  },
+  {
+    "id": "glassvaseflowers",
+    "title": "Vaso de flores",
+    "source": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/GlassVaseFlowers/README.md",
+    "download": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/GlassVaseFlowers/glTF-Binary/GlassVaseFlowers.glb",
+    "sourceSHA256": "faa2e19329961652b585cc62132ef50b1d95dca8a6a2fd63409158e680563761",
+    "licenseNotice": "&copy; 2023, Public. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)\n\n - Eric Chadwick for Glass vase\n\n&copy; 2023, Public. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)\n\n - Rico Cilliers for Flowers",
+    "license": "CC0-1.0",
+    "parts": [
+      {
+        "mesh": "Spatial_glassvaseflowers_0.mesh",
+        "baseColor": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "metalness": 0.0,
+        "roughness": 0.0,
+        "doubleSided": false,
+        "alphaMode": "OPAQUE",
+        "glass": true
+      },
+      {
+        "mesh": "Spatial_glassvaseflowers_1.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 0.0,
+        "roughness": 1.0,
+        "doubleSided": true,
+        "alphaMode": "MASK",
+        "Color": "Spatial_glassvaseflowers_1_Color.texture",
+        "NormalGL": "Spatial_glassvaseflowers_1_NormalGL.jpg",
+        "Roughness": "Spatial_glassvaseflowers_1_Roughness.jpg",
+        "Metalness": "Spatial_glassvaseflowers_1_Metalness.jpg"
+      },
+      {
+        "mesh": "Spatial_glassvaseflowers_2.mesh",
+        "baseColor": [
+          0.14901960784313725,
+          0.14901960784313725,
+          0.14901960784313725,
+          0.2980392156862745
+        ],
+        "metalness": 0.0,
+        "roughness": 0.0,
+        "doubleSided": false,
+        "alphaMode": "BLEND",
+        "glass": true
+      },
+      {
+        "mesh": "Spatial_glassvaseflowers_3.mesh",
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metalness": 0.0,
+        "roughness": 1.0,
+        "doubleSided": true,
+        "alphaMode": "MASK",
+        "Color": "Spatial_glassvaseflowers_3_Color.texture",
+        "NormalGL": "Spatial_glassvaseflowers_3_NormalGL.jpg",
+        "Roughness": "Spatial_glassvaseflowers_3_Roughness.jpg",
+        "Metalness": "Spatial_glassvaseflowers_3_Metalness.jpg"
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_glassvaseflowers_0.mesh",
+        "sha256": "1388061f15aa219334f1e85e82105d07c92b5bbb9185ae0874b02ef0d154098a",
+        "bytes": 93260
+      },
+      {
+        "file": "Spatial_glassvaseflowers_1.mesh",
+        "sha256": "fda6e637aa0c7b3396efee530a5586c8e973458e312642e6d1879b3dbdb73986",
+        "bytes": 127780
+      },
+      {
+        "file": "Spatial_glassvaseflowers_1_Color.texture",
+        "sha256": "c2b2ab64d7110e05753941bda5fe561917dcc17d67530f0eeace8b13143ca192",
+        "bytes": 1011783
+      },
+      {
+        "file": "Spatial_glassvaseflowers_1_NormalGL.jpg",
+        "sha256": "f717b9f209951fd0c768f9d27b4e0e7a11725b975708dd41b43b4a36e34c54bd",
+        "bytes": 139626
+      },
+      {
+        "file": "Spatial_glassvaseflowers_1_Roughness.jpg",
+        "sha256": "e538b2ef24ed137f84bc3306454f52db9a524689eb4d235f7d74f891d5857b15",
+        "bytes": 51151
+      },
+      {
+        "file": "Spatial_glassvaseflowers_1_Metalness.jpg",
+        "sha256": "3ca11cb467fc9d9fc29e30418ded7e74f22ed6971144f9ac803c10075202fec3",
+        "bytes": 25049
+      },
+      {
+        "file": "Spatial_glassvaseflowers_2.mesh",
+        "sha256": "bf4f5c5d0c6c6a76896b0287cd8bebda4f1624f50dcf409b431a9e80c6e5d7e4",
+        "bytes": 93260
+      },
+      {
+        "file": "Spatial_glassvaseflowers_3.mesh",
+        "sha256": "2cb9d431b74533d89621fc91770dda4508f2fa82631154cba1ec2cc7a99d25f8",
+        "bytes": 127780
+      },
+      {
+        "file": "Spatial_glassvaseflowers_3_Color.texture",
+        "sha256": "c2b2ab64d7110e05753941bda5fe561917dcc17d67530f0eeace8b13143ca192",
+        "bytes": 1011783
+      },
+      {
+        "file": "Spatial_glassvaseflowers_3_NormalGL.jpg",
+        "sha256": "f717b9f209951fd0c768f9d27b4e0e7a11725b975708dd41b43b4a36e34c54bd",
+        "bytes": 139626
+      },
+      {
+        "file": "Spatial_glassvaseflowers_3_Roughness.jpg",
+        "sha256": "e538b2ef24ed137f84bc3306454f52db9a524689eb4d235f7d74f891d5857b15",
+        "bytes": 51151
+      },
+      {
+        "file": "Spatial_glassvaseflowers_3_Metalness.jpg",
+        "sha256": "3ca11cb467fc9d9fc29e30418ded7e74f22ed6971144f9ac803c10075202fec3",
+        "bytes": 25049
+      }
+    ],
+    "triangles": 14036,
+    "vertices": 8550
   }
 ]

@@ -11,3 +11,215 @@ License: CC0 1.0 https://creativecommons.org/publicdomain/zero/1.0/
 radio — Microsoft
 https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/BoomBox
 License: CC0 1.0 https://creativecommons.org/publicdomain/zero/1.0/
+
+ADDITIONAL CATALOG — models modified: baked world transforms, normalized scale, mobile texture conversion, static geometry. Native PBR approximates advanced optical extensions.
+
+Abacate
+https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Avocado/README.md
+&copy; 2017, Public. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)
+
+ - Microsoft for Everything
+
+Garrafa
+https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/WaterBottle/README.md
+&copy; 2017, Public. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)
+
+ - Microsoft for Everything
+
+Lanterna antiga
+https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Lantern/README.md
+&copy; 2017, Microsoft. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)
+
+ - sbtron for Initial version
+
+&copy; 2018, Frank Galligan. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)
+
+ - Frank Galligan for Draco compression
+
+Carro de corrida
+https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/ToyCar/README.md
+&copy; 2020, Public. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)
+
+ - Guido Odendahl for Initial car model
+
+&copy; 2020, Public. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)
+
+ - Eric Chadwick for Extensions and scene composition
+
+Peixe
+https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/BarramundiFish/README.md
+&copy; 2017, Public. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)
+
+ - Microsoft for Everything
+
+Poltrona
+https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/SheenChair/README.md
+&copy; 2020, Wayfair, LLC. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)
+
+ - Eric Chadwick for Everything
+
+Sofá de veludo
+https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/GlamVelvetSofa/README.md
+&copy; 2021, Wayfair, LLC. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)
+
+ - Eric Chadwick for Everything
+
+Tênis
+https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/MaterialsVariantsShoe/README.md
+&copy; 2021, Shopify. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)
+
+ - Shopify for Everthing
+
+Capacete espacial
+https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/SciFiHelmet/README.md
+&copy; 2017, Public. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)
+
+ - Michael Pavlovic for Everything
+
+&copy; 2017, Public. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)
+
+ - Norbert Nopper for Conversion to glTF
+
+Capacete de piloto
+https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/FlightHelmet/README.md
+&copy; 2018, Public. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)
+
+ - Gary Hsu for Conversion from Maya
+
+Câmera antiga
+https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/AntiqueCamera/README.md
+&copy; 2018, UX3D. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)
+
+ - Maximillan Kamps for Everything
+
+&copy; 2017, UX3D. [UX3D Trademark or Logo](https://github.com/KhronosGroup/glTF-Sample-Assets/blob/main/LICENSES/LicenseRef-LegalMark-UX3D.txt)
+
+ - Non-copyrightable logo for UX3D logo
+
+Cone de trânsito
+https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/TrafficCone/README.md
+&copy; 2024, hinndia. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)
+
+ - hinndia for Original model and textures
+
+&copy; 2020, PolyHaven. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)
+
+ - Rob Tuytel for Asphalt 02 textures
+
+Geladeira
+https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CommercialRefrigerator/README.md
+&copy; 2025, Darmstadt Graphics Group GmbH. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)
+
+ - Eric Chadwick for Model and textures and all images in the README.md
+
+&copy; 2025, Sean Thomas. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)
+
+ - Sean Thomas for This work is based on 'Commercial Fridge' (https://sketchfab.com/3d-models/commercial-fridge-2174e1e4f1f24f1a95aa110ee060f473) by Sean Thomas (https://sketchfab.com/foon.) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+
+Relógio
+https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/ChronographWatch/README.md
+&copy; 2025, Darmstadt Graphics Group GmbH. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)
+
+ - Eric Chadwick for Model and textures
+
+&copy; 2015, Khronos Group. [Khronos Trademark or Logo](https://github.com/KhronosGroup/glTF-Sample-Assets/blob/main/LICENSES/LicenseRef-LegalMark-Khronos.txt)
+
+ - Non-copyrightable logo for Khronos logo
+
+&copy; 2017, Khronos Group. [Khronos Trademark or Logo](https://github.com/KhronosGroup/glTF-Sample-Assets/blob/main/LICENSES/LicenseRef-LegalMark-Khronos.txt)
+
+ - Non-copyrightable logo for 3D Commerce logo
+
+&copy; 2020, Darmstadt Graphics Group GmbH. [DGG Trademark or Logo](https://github.com/KhronosGroup/glTF-Sample-Assets/blob/main/LICENSES/LicenseRef-LegalMark-DGG.txt)
+
+ - Copyrightable logo for DGG logo
+
+Cadeira clássica
+https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/ChairDamaskPurplegold/README.md
+&copy; 2021, Wayfair. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)
+
+ - Eric Chadwick for Models and Textures
+
+Pufe
+https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/SpecularSilkPouf/README.md
+&copy; 2023, Copyright 2023 Wayfair, LLC. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)
+
+ - Eric Chadwick for Everything
+
+Sofá de couro
+https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/SheenWoodLeatherSofa/README.md
+&copy; 2024, Darmstadt Graphics Group GmbH. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)
+
+ - Eric Chadwick for Improvements
+
+&copy; 2021, Public domain. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)
+
+ - Fran Calvente for Original asset
+
+Luminária
+https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/AnisotropyBarnLamp/README.md
+&copy; 2023, Copyright 2023 Wayfair, LLC. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)
+
+ - Eric Chadwick for Everything
+
+Concha
+https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/IridescenceAbalone/README.md
+&copy; 2015, Abby Crawford. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)
+
+ - Abby Crawford for Everything
+
+&copy; 2023, Eric Chadwick. [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)
+
+ - Eric Chadwick for Materials
+
+Vaso de flores
+https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/GlassVaseFlowers/README.md
+&copy; 2023, Public. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)
+
+ - Eric Chadwick for Glass vase
+
+&copy; 2023, Public. [Creative Commons Zero v1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/legalcode)
+
+ - Rico Cilliers for Flowers
+
+LicenseRef-LegalMark-DGG.txt
+Use of Logo or Trademark Image owned by Darmstadt Graphics Group GmbH
+
+The logo or trademark incorporated into this content is owned by
+Darmstadt Graphics Group GmbH and is used by permission.
+
+Use in this model do not change the license of the model. The model
+license does not confer any usage rights on the Mark beyond that
+specified in the Guidelines. In particular, there is no right to
+use the Mark in any other context based on the usage here.
+
+
+LicenseRef-LegalMark-Khronos.txt
+Use of Logo or Trademark Image owned by Khronos
+
+The logo or trademark incorporated into this content is owned by
+The Khronos Group and is used by permission in accordance with the
+Legal Mark Usage Guidelines at https://www.Khronos.org/.
+
+Use in this model do not change the license of the model. The model
+license does not confer any usage rights on the Mark beyond that
+specified in the Guidelines. In particular, there is no right to
+use the Mark in any other context based on the usage here.
+
+Khronos reserves the right to remove the Mark or unilaterally
+change the terms of use.
+
+
+LicenseRef-LegalMark-UX3D.txt
+Use of Logo or Trademark Image owned by UX3D
+
+The logo or trademark incorporated into this content is owned by
+UX3D and is used by permission.
+
+Use in this model do not change the license of the model. The model
+license does not confer any usage rights on the Mark beyond that
+specified in the Guidelines. In particular, there is no right to
+use the Mark in any other context based on the usage here.
+
+UX3D reserves the right to remove the Mark or unilaterally
+change the terms of use.

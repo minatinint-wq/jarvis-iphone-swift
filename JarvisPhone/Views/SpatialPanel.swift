@@ -2,6 +2,37 @@ import SwiftUI
 import ARKit
 import SceneKit
 
+enum SpatialPanelGeometry {
+    static let size=CGSize(width:0.64,height:0.58)
+    /// Gravity defines up. Camera sensor X/Y axes rotate with portrait orientation.
+    static func upright(camera:simd_float4x4,distance:Float) -> simd_float4x4? {
+        let back=SIMD3<Float>(camera.columns.2.x,0,camera.columns.2.z)
+        guard simd_length(back)>0.2 else { return nil }
+        let z=simd_normalize(back),y=SIMD3<Float>(0,1,0),x=simd_cross(y,z)
+        let position=camera.columns.3-camera.columns.2*distance
+        return simd_float4x4(SIMD4(x.x,x.y,x.z,0),SIMD4(y.x,y.y,y.z,0),SIMD4(z.x,z.y,z.z,0),SIMD4(position.x,position.y,position.z,1))
+    }
+    static func projectedBounds(transform:simd_float4x4,scale:Float,view:simd_float4x4,projection:simd_float4x4,viewport:CGSize)->CGRect? {
+        var points:[CGPoint]=[]
+        for x in [-0.33,0.33] as [Float] { for y in [-0.30,0.30] as [Float] {
+            let p=projection*view*transform*SIMD4<Float>(x*scale,y*scale,0,1)
+            guard p.w>0,p.x.isFinite,p.y.isFinite else { return nil }
+            points.append(CGPoint(x:CGFloat(p.x/p.w+1)*viewport.width/2,y:CGFloat(1-p.y/p.w)*viewport.height/2))
+        } }
+        let xs=points.map(\.x),ys=points.map(\.y)
+        return CGRect(x:xs.min()!,y:ys.min()!,width:xs.max()!-xs.min()!,height:ys.max()!-ys.min()!)
+    }
+    static func fittedScale(transform:simd_float4x4,view:simd_float4x4,projection:simd_float4x4,viewport:CGSize,maximum:Float=0.70)->Float? {
+        let safe=CGRect(x:viewport.width*0.12,y:max(76,viewport.height*0.12),width:viewport.width*0.76,height:viewport.height-max(76,viewport.height*0.12)-max(136,viewport.height*0.20))
+        var scale=maximum
+        while scale>=0.20 {
+            if let bounds=projectedBounds(transform:transform,scale:scale,view:view,projection:projection,viewport:viewport),safe.contains(bounds) { return scale }
+            scale *= 0.93
+        }
+        return nil
+    }
+}
+
 /// An anchored spatial dashboard. Tap targets are separate real SceneKit nodes;
 /// the content is drawn crisply into textures, not a screenshot floating in UI.
 @MainActor final class SpatialPanel: ObservableObject {
@@ -18,6 +49,7 @@ import SceneKit
     private var selectedTrack: (id:String,name:String)?
     private var offset=0
     private var hasNext=false
+    private var cardPage=0
     private var pending: String?
     private var contextRevision=0
     private var trackingGood=false
@@ -38,6 +70,7 @@ import SceneKit
         trackingGood=tracking
         guard tracking else { status="Aguarde o mapeamento estabilizar e abra o painel novamente.";return }
         module=destination
+        cardPage=0
         if root == nil { reposition() }
         guard root != nil else { return }
         visible=true;root?.isHidden=false;status="\(destination.title) · escolha uma ação."
@@ -46,22 +79,47 @@ import SceneKit
     }
     func reposition() {
         guard let frame=view.session.currentFrame else { return }
-        var transform=frame.camera.transform
-        var distance:Float=1.0
+        let orientation=view.window?.windowScene?.interfaceOrientation ?? .portrait
+        let camera=simd_inverse(frame.camera.viewMatrix(for:orientation))
+        var distance:Float=0.9
         if let query=view.raycastQuery(from:CGPoint(x:view.bounds.midX,y:view.bounds.midY),allowing:.existingPlaneGeometry,alignment:.any),
            let hit=view.session.raycast(query).first {
-            let gap=simd_distance(SIMD3(hit.worldTransform.columns.3.x,hit.worldTransform.columns.3.y,hit.worldTransform.columns.3.z),SIMD3(transform.columns.3.x,transform.columns.3.y,transform.columns.3.z))-0.18
-            guard gap>=0.35 else { status="Afaste o iPhone da superfície para abrir espaço para o painel.";return }
+            let gap=simd_distance(SIMD3(hit.worldTransform.columns.3.x,hit.worldTransform.columns.3.y,hit.worldTransform.columns.3.z),SIMD3(camera.columns.3.x,camera.columns.3.y,camera.columns.3.z))-0.18
+            guard gap>=0.45 else { status="Aponte para um espaço livre, afastado da parede e da mão.";return }
             distance=min(distance,gap)
         }
+        guard let transform=SpatialPanelGeometry.upright(camera:camera,distance:distance),
+              let scale=SpatialPanelGeometry.fittedScale(transform:transform,view:frame.camera.viewMatrix(for:orientation),projection:frame.camera.projectionMatrix(for:orientation,viewportSize:view.bounds.size,zNear:0.01,zFar:20),viewport:view.bounds.size) else {
+            status="Aponte o iPhone para frente para posicionar um painel vertical.";return
+        }
+        guard clearSpace(transform:transform,scale:scale) else { status="Há uma superfície ocupando o painel. Aponte para uma área livre e toque em Centralizar.";return }
         if let anchor { view.session.remove(anchor:anchor) };root?.removeFromParentNode()
-        transform.columns.3 -= transform.columns.2*distance;transform.columns.3.w=1
         let anchor=ARAnchor(name:"JarvisControlPanel",transform:transform)
         let root=SCNNode();root.simdTransform=transform
-        // Maintain legibility and fit view even when a real wall is close.
-        let scale=max(0.35,distance);root.simdScale=SIMD3<Float>(repeating:scale)
+        root.simdScale=SIMD3<Float>(repeating:scale)
         self.anchor=anchor;self.root=root;view.scene.rootNode.addChildNode(root);view.session.add(anchor:anchor)
         render()
+    }
+    private func clearSpace(transform:simd_float4x4,scale:Float)->Bool {
+        guard let frame=view.session.currentFrame else { return false }
+        let origin=SIMD3(frame.camera.transform.columns.3.x,frame.camera.transform.columns.3.y,frame.camera.transform.columns.3.z)
+        for x in [-0.32,0,0.32] as [Float] { for y in [-0.29,0,0.29] as [Float] {
+            let p=transform*SIMD4<Float>(x*scale,y*scale,0,1),destination=SIMD3(p.x,p.y,p.z)
+            let screen=view.projectPoint(SCNVector3(p.x,p.y,p.z))
+            guard let query=view.raycastQuery(from:CGPoint(x:CGFloat(screen.x),y:CGFloat(screen.y)),allowing:.existingPlaneGeometry,alignment:.any) else { continue }
+            if let hit=view.session.raycast(query).first {
+                let obstacle=SIMD3(hit.worldTransform.columns.3.x,hit.worldTransform.columns.3.y,hit.worldTransform.columns.3.z)
+                if simd_distance(origin,destination)>simd_distance(origin,obstacle)-0.10 { return false }
+            }
+        } }
+        return true
+    }
+    func resize(_ multiplier:Float) {
+        guard let root else { return }
+        let next=min(0.70,max(0.20,root.simdScale.x*multiplier))
+        var transform=root.simdWorldTransform
+        for i in 0..<3 { let c=transform[i],v=simd_normalize(SIMD3(c.x,c.y,c.z));transform[i]=SIMD4(v.x,v.y,v.z,0) }
+        if clearSpace(transform:transform,scale:next) { root.simdScale=SIMD3(repeating:next) }
     }
     func update(_ updated: ARAnchor) {
         if updated.identifier==anchor?.identifier {
@@ -83,7 +141,7 @@ import SceneKit
     }
     func hit(_ point: CGPoint) -> Bool {
         guard visible,root?.isHidden==false else { return false }
-        for result in view.hitTest(point,options:[.searchMode:SCNHitTestSearchMode.closest.rawValue]) {
+        for result in view.hitTest(point,options:[.categoryBitMask:4,.searchMode:SCNHitTestSearchMode.closest.rawValue]) {
             if let name=result.node.name,let action=actions[name] {
                 let now=ProcessInfo.processInfo.systemUptime
                 guard now-lastTap>0.35 else { return true };lastTap=now
@@ -96,7 +154,7 @@ import SceneKit
     func hand(_ sample:SpatialHandSample?) {
         guard visible,root?.isHidden==false else { handGesture.reset();return }
         let time=sample?.time ?? ProcessInfo.processInfo.systemUptime
-        let result=sample.flatMap { view.hitTest($0.point,options:[.searchMode:SCNHitTestSearchMode.closest.rawValue]).first }
+        let result=sample.flatMap { view.hitTest($0.point,options:[.categoryBitMask:4,.searchMode:SCNHitTestSearchMode.closest.rawValue]).first }
         let node=result?.node
         let target=node?.name.flatMap { actions[$0] == nil ? nil : $0 }
         if hovered !== node {
@@ -111,7 +169,8 @@ import SceneKit
                 dragDepth=view.projectPoint(root.worldPosition).z
                 let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),dragDepth))
                 dragOffset=root.simdWorldPosition-SIMD3(p.x,p.y,p.z);dragging=false
-            case .drag:
+            case .drag(let id):
+                guard case .dragHandle? = actions[id] else { continue }
                 guard let root,let sample else { continue }
                 if !dragging { if let anchor { view.session.remove(anchor:anchor) };anchor=nil;dragging=true }
                 let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),dragDepth))
@@ -121,7 +180,10 @@ import SceneKit
                     let obstacle=SIMD3(hit.worldTransform.columns.3.x,hit.worldTransform.columns.3.y,hit.worldTransform.columns.3.z)
                     if simd_distance(camera,destination)>simd_distance(camera,obstacle)-0.1 { continue }
                 }
-                root.simdWorldPosition=destination
+                var proposed=root.simdWorldTransform
+                for i in 0..<3 { let c=proposed[i],v=simd_normalize(SIMD3(c.x,c.y,c.z));proposed[i]=SIMD4(v.x,v.y,v.z,0) }
+                proposed.columns.3=SIMD4(destination.x,destination.y,destination.z,1)
+                if clearSpace(transform:proposed,scale:root.simdScale.x) { root.simdWorldPosition=destination }
             case .release(let id,let click):
                 if dragging { finishDrag() } else if click,let action=actions[id] { UIImpactFeedbackGenerator(style:.light).impactOccurred();activate(action) }
             case .poke(let id):
@@ -139,17 +201,19 @@ import SceneKit
     private func activate(_ action: SpatialPanelAction) {
         contextRevision += 1
         switch action {
+        case .dragHandle: break
+        case .cardsPage(let delta):cardPage=max(0,min(max(0,(items().count-1)/4),cardPage+delta));render()
         case .module(let target): open(target,tracking:true)
         case .close: close()
         case .reposition: reposition()
         case .playlist(let id,let name):
-            guard pending==nil else { return };selectedPlaylist=(id,name);selectedTrack=nil;tracks=[];offset=0;hasNext=false;request("tracks",playlist:id)
+            guard pending==nil else { return };cardPage=0;selectedPlaylist=(id,name);selectedTrack=nil;tracks=[];offset=0;hasNext=false;request("tracks",playlist:id)
         case .track(let id,let name): selectedTrack=(id,name);status="Selecionada: \(name). Aperte Play.";render()
-        case .library: guard pending==nil else { return };selectedPlaylist=nil;selectedTrack=nil;tracks=[];offset=0;request("library")
+        case .library: guard pending==nil else { return };cardPage=0;selectedPlaylist=nil;selectedTrack=nil;tracks=[];offset=0;request("library")
         case .playSelection:
             if let selectedTrack,let selectedPlaylist { request("play_track",playlist:selectedPlaylist.id,track:selectedTrack.id) }
             else { request("resume") }
-        case .page(let delta): guard pending==nil else { return };offset=max(0,offset+delta);refreshPage()
+        case .page(let delta): guard pending==nil else { return };cardPage=0;offset=max(0,offset+delta);refreshPage()
         case .refresh: refreshPage()
         case .spotify(let action,let playlist): request(action,playlist:playlist)
         default: onAction?(action)
@@ -158,13 +222,13 @@ import SceneKit
     private func refreshPage() { request(selectedPlaylist == nil ? "library" : "tracks",playlist:selectedPlaylist?.id) }
     func interpret(_ text:String) {
         guard pending==nil else { status="Aguarde a confirmação do pedido anterior.";render();return }
-        let rows=items(),id=UUID().uuidString
+        let rows=visibleItems(),id=UUID().uuidString
         navigationContext=(contextRevision,rows.map{$0.2});pending=id
         status="Interpretando seu pedido…";render()
         let cards:[[String:String]]=rows.map { row in
             let kind:String
             switch row.2 {
-            case .module,.playlist,.track,.library,.page,.refresh,.reposition,.close:kind="navigation"
+            case .model,.scene,.module,.playlist,.track,.library,.page,.cardsPage,.dragHandle,.refresh,.reposition,.close:kind="navigation"
             default:kind="action"
             }
             return ["title":row.0,"kind":kind]
@@ -230,7 +294,7 @@ import SceneKit
     #if DEBUG
     /// Render the actual cards in tests without pretending the simulator has LiDAR.
     func preview(_ destination: SpatialModule) {
-        close();module=destination;visible=true
+        close();cardPage=0;module=destination;visible=true
         let node=SCNNode();root=node;view.scene.rootNode.addChildNode(node);render()
     }
     #endif
@@ -243,10 +307,9 @@ import SceneKit
             var rows: [(String,String,SpatialPanelAction)]=selectedPlaylist == nil
                 ? playlists.map { ($0.name,"music.note.list",.playlist($0.id,$0.name)) }
                 : tracks.map { ($0.name,$0.id==selectedTrack?.id ? "checkmark.circle.fill" : "music.note",.track($0.id,$0.name)) }
-            rows += [(selectedTrack == nil ? "Play / retomar" : "Play: "+selectedTrack!.name,"play.fill",.playSelection),("Pausar","pause.fill",.spotify("pause",nil)),("Próxima","forward.end.fill",.spotify("next",nil)),("Anterior","backward.end.fill",.spotify("previous",nil))]
             rows.append(selectedPlaylist == nil ? ("Atualizar","arrow.clockwise",.refresh) : ("Minhas playlists","chevron.left",.library))
             if offset>0 { rows.append(("Página anterior","chevron.left",.page(-6))) }
-            if hasNext { rows.append(("Mais playlists","chevron.right",.page(6))) }
+            if hasNext { rows.append((selectedPlaylist == nil ? "Mais playlists" : "Mais faixas","chevron.right",.page(6))) }
             return rows
         case .phone:
             return [("Acender lanterna","flashlight.on.fill",.command("ligue a lanterna do iPhone")),("Apagar lanterna","flashlight.off.fill",.command("desligue a lanterna do iPhone")),("Tela 30%","sun.min",.command("ajuste o brilho do iPhone para 30%")),("Tela 70%","sun.max",.command("ajuste o brilho do iPhone para 70%")),("Volume 20%","speaker.wave.1",.command("volume do iPhone em 20%")),("Volume 60%","speaker.wave.2",.command("volume do iPhone em 60%")),("Bateria","battery.100",.command("qual a bateria do iPhone")),("Abrir Spotify","arrow.up.right",.command("configurar spotify deste iphone"))]
@@ -257,7 +320,7 @@ import SceneKit
         case .creation:
             return [("Desenhar","pencil.tip",.studio("sketch")),("Gerar imagem por voz","photo",.command("gere uma imagem")),("Objetos e cenários","cube",.module(.scenes))]
         case .scenes:
-            return SpatialTheme.allCases.map { ($0.title,$0.symbol,.scene($0)) }
+            return SpatialTheme.allCases.map { ($0.title,$0.symbol,.scene($0)) } + SpatialAssets.catalog.map { ($0.title,"cube",.model($0.id)) }
         case .instruments:
             return [("Harpa","music.note",.command("abrir harpa")),("Violão","guitars",.command("abrir violão")),("Guitarra","guitars.fill",.command("abrir guitarra"))]
         case .libras:return [("Abrir reconhecimento","hands.sparkles",.studio("libras"))]
@@ -266,44 +329,63 @@ import SceneKit
             return [("Hora","clock",.command("que horas são")),("Passos hoje","figure.walk",.command("quantos passos hoje")),("Clima","cloud.sun",.command("como está o tempo aqui")),("Minha agenda","calendar",.command("leia minha agenda de hoje")),("Último e-mail","envelope",.command("leia meu último email"))]
         }
     }
+    private func transportItems()->[(String,String,SpatialPanelAction)] {
+        guard module == .spotify else { return [] }
+        return [("Anterior","backward.end.fill",.spotify("previous",nil)),(selectedTrack == nil ? "Play / retomar" : "Play: "+selectedTrack!.name,"play.fill",.playSelection),("Pausar","pause.fill",.spotify("pause",nil)),("Próxima","forward.end.fill",.spotify("next",nil))]
+    }
+    private func visibleItems()->[(String,String,SpatialPanelAction)] {
+        var rows=Array(items().dropFirst(cardPage*4).prefix(4))+transportItems()
+        if cardPage>0 { rows.append(("Página anterior de cartões","chevron.left",.cardsPage(-1))) }
+        if (cardPage+1)*4<items().count { rows.append(("Mais cartões","chevron.right",.cardsPage(1))) }
+        rows.append(("Central JARVIS","square.grid.2x2",.module(.dashboard)))
+        return rows
+    }
     private func render() {
         hovered=nil
         guard let root else { return };root.childNodes.forEach { $0.removeFromParentNode() };actions.removeAll()
-        let rows=items(), columns=2, rowCount=max(1,(rows.count+columns-1)/columns)
-        let width:CGFloat=0.76, height:CGFloat=0.24+CGFloat(rowCount)*0.087
-        func plate(_ title: String,_ icon: String,width:CGFloat,height:CGFloat,x:Float,y:Float,color:UIColor,action:SpatialPanelAction?=nil) {
-            let format=UIGraphicsImageRendererFormat();format.scale=2
-            let size=CGSize(width:width*1500,height:height*1500)
-            let image=UIGraphicsImageRenderer(size:size,format:format).image { context in
-                color.setFill();UIBezierPath(roundedRect:CGRect(origin:.zero,size:size),cornerRadius:18).fill()
-                let font=UIFont.systemFont(ofSize:icon.isEmpty ? 28 : 36,weight:.semibold)
-                if let symbol=UIImage(systemName:icon,withConfiguration:UIImage.SymbolConfiguration(pointSize:28,weight:.medium))?.withTintColor(.cyan,renderingMode:.alwaysOriginal) {
-                    symbol.draw(in:CGRect(x:20,y:(size.height-32)/2,width:32,height:32))
+        cardPage=min(cardPage,max(0,(items().count-1)/4))
+        let rows=Array(items().dropFirst(cardPage*4).prefix(4))
+        let width:CGFloat=0.64,height:CGFloat=0.58
+        func plate(_ title:String,_ icon:String,width:CGFloat,height:CGFloat,x:Float,y:Float,color:UIColor,action:SpatialPanelAction?=nil) {
+            let format=UIGraphicsImageRendererFormat();format.scale=1
+            let size=CGSize(width:width*1800,height:height*1800)
+            let image=UIGraphicsImageRenderer(size:size,format:format).image { _ in
+                color.setFill();UIBezierPath(roundedRect:CGRect(origin:.zero,size:size),cornerRadius:20).fill()
+                let symbolWidth:CGFloat=title.isEmpty ? 48 : 36
+                if let symbol=UIImage(systemName:icon,withConfiguration:UIImage.SymbolConfiguration(pointSize:symbolWidth,weight:.medium))?.withTintColor(.cyan,renderingMode:.alwaysOriginal) {
+                    symbol.draw(in:CGRect(x:title.isEmpty ? (size.width-symbolWidth)/2 : 18,y:(size.height-symbolWidth)/2,width:symbolWidth,height:symbolWidth))
                 }
+                let font=UIFont.systemFont(ofSize:icon.isEmpty ? 30 : 48,weight:.semibold)
                 let paragraph=NSMutableParagraphStyle();paragraph.lineBreakMode = .byTruncatingTail
-                let textWidth=size.width-(icon.isEmpty ? 40 : 82),textHeight=size.height-24
+                let left:CGFloat=icon.isEmpty ? 18 : 66,textWidth=max(0,size.width-left-18),textHeight=size.height-24
                 let attributes:[NSAttributedString.Key:Any]=[.font:font,.foregroundColor:UIColor.white,.paragraphStyle:paragraph]
                 let measured=(title as NSString).boundingRect(with:CGSize(width:textWidth,height:textHeight),options:[.usesLineFragmentOrigin,.usesFontLeading],attributes:attributes,context:nil)
-                let height=min(textHeight,ceil(measured.height))
-                (title as NSString).draw(in:CGRect(x:icon.isEmpty ? 20 : 65,y:(size.height-height)/2,width:textWidth,height:height),withAttributes:attributes)
+                let h=min(textHeight,ceil(measured.height))
+                (title as NSString).draw(in:CGRect(x:left,y:(size.height-h)/2,width:textWidth,height:h),withAttributes:attributes)
             }
             let geometry=SCNPlane(width:width,height:height);geometry.cornerRadius=0.008
             let material=SCNMaterial();material.diffuse.contents=image;material.lightingModel = .constant;material.isDoubleSided=false
             geometry.materials=[material]
-            let node=SCNNode(geometry:geometry);node.position=SCNVector3(x,y,0.008)
+            let node=SCNNode(geometry:geometry);node.categoryBitMask=4;node.position=SCNVector3(x,y,0.008)
             if let action { let id=UUID().uuidString;node.name=id;actions[id]=action }
             root.addChildNode(node)
         }
-        let back=SCNNode(geometry:SCNBox(width:width+0.035,height:height+0.035,length:0.012,chamferRadius:0.015))
+        let back=SCNNode(geometry:SCNBox(width:width+0.015,height:height+0.015,length:0.012,chamferRadius:0.012));back.categoryBitMask=4
         back.geometry?.firstMaterial?.diffuse.contents=UIColor(red:0.018,green:0.04,blue:0.06,alpha:1);back.geometry?.firstMaterial?.lightingModel = .constant
         root.addChildNode(back)
-        let top=Float(height/2)
-        plate(selectedPlaylist != nil && module == .spotify ? selectedPlaylist!.name : module.title,module.symbol,width:width-0.17,height:0.065,x:-0.08,y:top-0.04,color:.clear,action:.module(.dashboard))
-        plate("","xmark",width:0.07,height:0.065,x:0.33,y:top-0.04,color:.clear,action:.close)
+        let color=UIColor(red:0.045,green:0.12,blue:0.16,alpha:1)
+        plate(module.title,"hand.draw",width:0.53,height:0.075,x:-0.045,y:0.24,color:.clear,action:.dragHandle)
+        plate("","xmark",width:0.07,height:0.075,x:0.275,y:0.24,color:.clear,action:.close)
         for (i,row) in rows.enumerated() {
-            plate(row.0,row.1,width:0.36,height:0.075,x:i%2==0 ? -0.19 : 0.19,y:top-0.13-Float(i/2)*0.087,
-                  color:UIColor(red:0.045,green:0.12,blue:0.16,alpha:1),action:row.2)
+            plate(row.0,row.1,width:0.30,height:0.115,x:i%2==0 ? -0.16 : 0.16,y:0.135-Float(i/2)*0.13,color:color,action:row.2)
         }
-        plate(status,"",width:width,height:0.075,x:0,y:-top+0.05,color:.clear)
+        for (i,row) in transportItems().enumerated() {
+            plate("",row.1,width:0.13,height:0.065,x:-0.225+Float(i)*0.15,y:-0.105,color:color,action:row.2)
+        }
+        if cardPage>0 { plate("","chevron.left",width:0.09,height:0.065,x:-0.265,y:-0.19,color:color,action:.cardsPage(-1)) }
+        let count=max(1,(items().count+3)/4)
+        plate("Central · \(cardPage+1)/\(count)","square.grid.2x2",width:0.38,height:0.065,x:0,y:-0.19,color:color,action:.module(.dashboard))
+        if cardPage+1<count { plate("","chevron.right",width:0.09,height:0.065,x:0.265,y:-0.19,color:color,action:.cardsPage(1)) }
+        plate(module == .spotify ? (selectedTrack?.name ?? selectedPlaylist?.name ?? "Suas playlists") : "Arraste pela barra superior", "",width:width,height:0.055,x:0,y:-0.255,color:.clear)
     }
 }

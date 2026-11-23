@@ -7,6 +7,115 @@ import ARKit
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    func testPortraitPanelIgnoresCameraRollAndFitsScreen() throws {
+        let viewport=CGSize(width:390,height:760)
+        let f:Float=1/tan(.pi/6),aspect=Float(viewport.width/viewport.height)
+        let projection=simd_float4x4(SIMD4(f/aspect,0,0,0),SIMD4(0,f,0,0),SIMD4(0,0,-1.002,-1),SIMD4(0,0,-0.02002,0))
+        // Camera's sensor coordinates can be rolled 90 degrees; world up cannot.
+        for roll in [0,Float.pi/2,-Float.pi/2,0.15] as [Float] {
+            let camera=simd_float4x4(simd_quatf(angle:roll,axis:SIMD3(0,0,1)))
+            let panel=try XCTUnwrap(SpatialPanelGeometry.upright(camera:camera,distance:0.9))
+            XCTAssertEqual(panel.columns.1,SIMD4<Float>(0,1,0,0))
+            XCTAssertEqual(panel.columns.3.z,-0.9,accuracy:0.001)
+        }
+        let panel=try XCTUnwrap(SpatialPanelGeometry.upright(camera:matrix_identity_float4x4,distance:0.9))
+        let scale=try XCTUnwrap(SpatialPanelGeometry.fittedScale(transform:panel,view:matrix_identity_float4x4,projection:projection,viewport:viewport))
+        let bounds=try XCTUnwrap(SpatialPanelGeometry.projectedBounds(transform:panel,scale:scale,view:matrix_identity_float4x4,projection:projection,viewport:viewport))
+        XCTAssertGreaterThanOrEqual(bounds.minX,viewport.width*0.12)
+        XCTAssertLessThanOrEqual(bounds.maxX,viewport.width*0.88)
+        XCTAssertGreaterThan(bounds.minY,76)
+        XCTAssertLessThan(bounds.maxY,viewport.height-136)
+        var downward=matrix_identity_float4x4;downward.columns.2=SIMD4(0,1,0,0)
+        XCTAssertNil(SpatialPanelGeometry.upright(camera:downward,distance:0.9))
+    }
+    func testHandWithoutWristStillMeasuresPinchAndMissingThumbCannotClick() throws {
+        var joints=[CGPoint?](repeating:nil,count:21)
+        joints[5]=CGPoint(x:0.35,y:0.6);joints[17]=CGPoint(x:0.65,y:0.6)
+        joints[8]=CGPoint(x:0.45,y:0.3);joints[4]=CGPoint(x:0.48,y:0.3)
+        XCTAssertEqual(try XCTUnwrap(SpatialHandMath.pinchRatio(joints,size:CGSize(width:1000,height:1000))),0.1,accuracy:0.001)
+        joints[4]=nil;XCTAssertNil(SpatialHandMath.pinchRatio(joints,size:CGSize(width:1000,height:1000)))
+        var gate=SpatialGesture();let p=CGPoint(x:100,y:100)
+        for i in 0..<10 { XCTAssertTrue(gate.update(point:p,ratio:.nan,target:"play",push:Double(i)*0.05,time:Double(i)).isEmpty) }
+        XCTAssertEqual(SpatialHandMath.rawPoint(CGPoint(x:0.2,y:0.3),orientation:.right),CGPoint(x:0.7,y:0.8))
+        let up=SpatialHandMath.rawPoint(CGPoint(x:0.2,y:0.3),orientation:.up)
+        XCTAssertEqual(up.x,0.2,accuracy:0.0001);XCTAssertEqual(up.y,0.7,accuracy:0.0001)
+    }
+    @MainActor func testDepthOccluderDoesNotStealPanelHit() {
+        let root=SCNNode(),occluder=SCNNode(geometry:SCNPlane(width:2,height:2)),button=SCNNode(geometry:SCNPlane(width:1,height:1))
+        occluder.categoryBitMask=2;occluder.position.z=0.2;button.categoryBitMask=4
+        root.addChildNode(occluder);root.addChildNode(button)
+        let hits=root.hitTestWithSegment(from:SCNVector3(0,0,1),to:SCNVector3(0,0,-1),options:[.categoryBitMask:4])
+        XCTAssertTrue(hits.first?.node === button)
+    }
+    @MainActor func testInteractiveScenariosHaveWorkingActions() throws {
+        for theme in [SpatialTheme.garage,.lounge,.aquarium] {
+            let view=ARSCNView(frame:.zero);view.scene=SCNScene();let world=SpatialWorld(view:view);try world.preview(theme)
+            if theme == .garage {
+                let car=try XCTUnwrap(view.scene.rootNode.childNode(withName:"movingCar",recursively:true))
+                world.interact();XCTAssertNotNil(car.action(forKey:"drive"));world.interact();XCTAssertNil(car.action(forKey:"drive"))
+            } else if theme == .lounge {
+                let light=try XCTUnwrap(view.scene.rootNode.childNode(withName:"roomLight",recursively:true))
+                world.interact();XCTAssertTrue(light.isHidden);world.interact();XCTAssertFalse(light.isHidden)
+            } else {
+                let fish=try XCTUnwrap(view.scene.rootNode.childNode(withName:"fishOrbit",recursively:true))
+                world.interact();XCTAssertTrue(fish.isPaused);world.interact();XCTAssertFalse(fish.isPaused)
+            }
+            world.stop()
+        }
+    }
+    @MainActor func testTwentyAdditionalModelsRenderActualGeometry() throws {
+        XCTAssertEqual(SpatialAssets.catalog.count,20)
+        XCTAssertEqual(Set(SpatialAssets.catalog.map(\.id)).count,20)
+        guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
+        let atlas=UIGraphicsImageRenderer(size:CGSize(width:1400,height:1400)).image { ctx in
+            UIColor.black.setFill();ctx.fill(CGRect(x:0,y:0,width:1400,height:1400))
+            for (i,item) in SpatialAssets.catalog.enumerated() {
+                do {
+                    let scene=SCNScene();scene.background.contents=UIColor(white:0.08,alpha:1)
+                    let model=try SpatialAssets.load(item.id);scene.rootNode.addChildNode(model)
+                    var triangles=0;model.enumerateChildNodes { node,_ in triangles += node.geometry?.elements.reduce(0,{$0+$1.primitiveCount}) ?? 0 }
+                    XCTAssertGreaterThan(triangles,500,item.id)
+                    let camera=SCNNode();camera.camera=SCNCamera();camera.position=SCNVector3(1.2,0.9,1.5);camera.look(at:SCNVector3(0,0.4,0))
+                    scene.rootNode.addChildNode(camera)
+                    let light=SCNNode();light.light=SCNLight();light.light?.type = .directional;light.light?.intensity=900;light.eulerAngles=SCNVector3(-0.7,-0.4,0);scene.rootNode.addChildNode(light)
+                    let ambient=SCNNode();ambient.light=SCNLight();ambient.light?.type = .ambient;ambient.light?.intensity=450;scene.rootNode.addChildNode(ambient)
+                    let renderer=SCNRenderer(device:device,options:nil);renderer.scene=scene;renderer.pointOfView=camera
+                    let image=renderer.snapshot(atTime:0,with:CGSize(width:280,height:300),antialiasingMode:.multisampling4X)
+                    XCTAssertNotNil(image.cgImage,item.id)
+                    let origin=CGPoint(x:CGFloat((i%5)*280),y:CGFloat((i/5)*350))
+                    image.draw(at:origin)
+                    (item.title as NSString).draw(in:CGRect(x:origin.x+8,y:origin.y+302,width:264,height:40),withAttributes:[.font:UIFont.systemFont(ofSize:18),.foregroundColor:UIColor.white])
+                    renderer.scene=nil;SpatialAssets.clear()
+                } catch { XCTFail("Model \(item.id): \(error)") }
+            }
+        }
+        let attachment=XCTAttachment(image:atlas);attachment.name="Spatial-20-models-catalog";attachment.lifetime = .keepAlways;add(attachment)
+    }
+    @MainActor func testPortraitPerspectivePanelPreviewAndPagination() throws {
+        guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
+        let viewport=CGSize(width:390,height:760)
+        let view=ARSCNView(frame:CGRect(origin:.zero,size:viewport));view.scene=SCNScene();view.scene.background.contents=UIColor(white:0.12,alpha:1)
+        let panel=SpatialPanel(view:view);panel.preview(.dashboard)
+        let node=try XCTUnwrap(view.scene.rootNode.childNodes.first)
+        let f:Float=1/tan(.pi/6),aspect=Float(viewport.width/viewport.height)
+        let projection=simd_float4x4(SIMD4(f/aspect,0,0,0),SIMD4(0,f,0,0),SIMD4(0,0,-1.002,-1),SIMD4(0,0,-0.02002,0))
+        let pose=try XCTUnwrap(SpatialPanelGeometry.upright(camera:matrix_identity_float4x4,distance:0.9))
+        node.simdTransform=pose;node.simdScale=SIMD3(repeating:try XCTUnwrap(SpatialPanelGeometry.fittedScale(transform:pose,view:matrix_identity_float4x4,projection:projection,viewport:viewport)))
+        let camera=SCNNode();camera.camera=SCNCamera();camera.camera?.projectionTransform=SCNMatrix4(projection);view.scene.rootNode.addChildNode(camera)
+        let renderer=SCNRenderer(device:device,options:nil);renderer.scene=view.scene;renderer.pointOfView=camera
+        let image=renderer.snapshot(atTime:0,with:viewport,antialiasingMode:.multisampling4X)
+        let attachment=XCTAttachment(image:image);attachment.name="Spatial-portrait-real-perspective";attachment.lifetime = .keepAlways;add(attachment)
+        var job:[String:Any]=[:];panel.onSpotify={job=$0}
+        panel.interpret("mostrar mais cartões")
+        let first=try XCTUnwrap(job["items"] as? [[String:String]])
+        XCTAssertEqual(first.first?["title"],"Spotify")
+        let next=try XCTUnwrap(first.firstIndex(where:{$0["title"]=="Mais cartões"}))
+        try panel.receive(JSONSerialization.data(withJSONObject:["requestId":job["requestId"]!,"navigation":["operation":"activate","slot":next]]))
+        panel.interpret("mostrar esta página")
+        let second=try XCTUnwrap(job["items"] as? [[String:String]])
+        XCTAssertEqual(second.first?["title"],"Criação")
+        panel.close()
+    }
     func testSpatialAINavigationKeepsOrdinaryToolsOutsideTheInterpreter() {
         for phrase in ["me leva para os controles da casa","voltar às playlists","quero ver os módulos","seleciona a segunda faixa","toca essa","fecha esse painel"] {
             XCTAssertTrue(WallARCommand.needsInterpretation(phrase),phrase)

@@ -398,7 +398,7 @@ enum WallMeasureMode { case none, outline, opening }
                 guard !self.stopped, self.meshUpdated[anchor.identifier] != nil else { return }
                 guard let geometry else { self.occluders.removeValue(forKey:anchor.identifier)?.removeFromParentNode(); return }
                 let node = self.occluders[anchor.identifier] ?? SCNNode()
-                node.geometry = geometry; node.simdTransform = anchor.transform; node.renderingOrder = -100
+                node.geometry = geometry; node.simdTransform = anchor.transform; node.renderingOrder = -100;node.categoryBitMask=2
                 if node.parent == nil { self.view.scene.rootNode.addChildNode(node) }
                 self.occluders[anchor.identifier] = node
             }
@@ -464,7 +464,7 @@ private struct WallCameraView: UIViewRepresentable {
     var body: some View {
         ZStack {
             WallCameraView(controller:controller).ignoresSafeArea(edges:.bottom)
-            if !controller.selected || controller.measureMode != .none {
+            if !panelVisible && (!controller.selected || controller.measureMode != .none) {
                 Image(systemName:"plus").font(.title.weight(.ultraLight)).foregroundStyle(.white)
                     .shadow(color:.black,radius:2).allowsHitTesting(false)
             }
@@ -481,7 +481,11 @@ private struct WallCameraView: UIViewRepresentable {
                     VStack(alignment:.leading,spacing:6) {
                         Text(panelStatus).font(.caption).lineLimit(3)
                         Text(controller.handStatus).font(.caption2).foregroundStyle(.cyan)
-                        Text("Pinça curta: clicar · segurar: arrastar · avance o indicador para clicar quando o LiDAR confirmar a mão.").font(.caption2).foregroundStyle(.secondary)
+                        Text("Pinça: clicar · segure a barra superior para mover. Também pode tocar nos cartões.").font(.caption2).foregroundStyle(.secondary)
+                        HStack {
+                            Button("Menor",systemImage:"minus.magnifyingglass") { controller.panel.resize(0.82) }
+                            Button("Centralizar",systemImage:"scope") { controller.panel.reposition() }
+                        }.buttonStyle(.bordered).controlSize(.small)
                     }.padding(12).frame(maxWidth:.infinity,alignment:.leading).background(.black.opacity(0.8),in:RoundedRectangle(cornerRadius:14))
                 } else {
                 VStack(alignment:.leading,spacing:12) {
@@ -526,7 +530,7 @@ private struct WallCameraView: UIViewRepresentable {
                             .font(.caption).foregroundStyle(.cyan)
                     }
                     if help {
-                        Text("Marcar parede → aponte a mira para cada canto → Adicionar ponto. Siga o contorno em ordem. Excluir área: marque dois cantos opostos de cada porta, janela ou armário. Confira as linhas e toque em Aplicar.\n\nA pintura só aparece onde duas leituras de profundidade confirmam a parede. Áreas desconhecidas ficam vazias: mostre de outro ângulo. Coplanaridade não identifica uma porta fechada; marque a exclusão.\n\nCenários: escolha Bosque, Bosque noturno ou Estúdio, toque no piso/mesa mapeados. Toque no objeto para selecionar e novamente para interagir. Arraste, use pinça e gire com dois dedos.\n\nUse Remover para liberar uma passagem. As medidas são estimativas. Não detecta automaticamente todos os armários ou batentes.\n\nModelos: Poly Haven e Microsoft/Khronos, CC0. Licenças incluídas. Meta de 60 FPS, redução térmica para 30. \(controller.notice)")
+                        Text("Marcar parede → aponte a mira para cada canto → Adicionar ponto. Siga o contorno em ordem. Excluir área: marque dois cantos opostos de cada porta, janela ou armário. Confira as linhas e toque em Aplicar.\n\nA pintura só aparece onde duas leituras de profundidade confirmam a parede. Áreas desconhecidas ficam vazias: mostre de outro ângulo. Coplanaridade não identifica uma porta fechada; marque a exclusão.\n\nCenários: escolha um dos seis cenários ou abra o catálogo de 20 objetos, toque no piso/mesa mapeados. Toque no objeto para selecionar e novamente para interagir. Arraste, use pinça e gire com dois dedos.\n\nUse Remover para liberar uma passagem. As medidas são estimativas. Não detecta automaticamente todos os armários ou batentes.\n\nModelos: Poly Haven e autores do catálogo Khronos. Créditos e licenças CC0/CC BY incluídos. Meta de 60 FPS, redução térmica para 30. \(controller.notice)")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }.padding(14).background(.ultraThinMaterial,in:RoundedRectangle(cornerRadius:20))
@@ -538,6 +542,7 @@ private struct WallCameraView: UIViewRepresentable {
                 controller.panel.onSpotify = { job in model.requestSpatialSpotify(job) }
                 controller.panel.onAction = { action in
                     switch action {
+                    case .model(let id): objectsTab=true;controller.spatial.setModel(id);controller.panel.close()
                     case .scene(let theme): objectsTab=true;controller.spatial.setTheme(theme);controller.panel.close()
                     case .studio(let mode): controller.panel.close();model.openStudio(mode)
                     case .command(let text): Task { await model.runSpatialCommand(text) }
@@ -552,7 +557,7 @@ private struct WallCameraView: UIViewRepresentable {
                 if active { controller.measureMode = .none }
             }
             .onChange(of:model.wallARRequest) { _,_ in consume() }
-            .onReceive(controller.panel.$visible) { panelVisible=$0 }
+            .onReceive(controller.panel.$visible) { panelVisible=$0;controller.spatial.panelBlocking=$0 }
             .onReceive(controller.panel.$status) { panelStatus=$0 }
             .onChange(of:model.spatialPanelResponse) { _,data in if let data { controller.panel.receive(data) } }
             .onChange(of:model.message) { _,text in controller.panel.showResult(text) }
