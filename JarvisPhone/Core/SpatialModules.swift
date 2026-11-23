@@ -59,5 +59,5 @@ enum SpatialModule: String, CaseIterable {
 }
 
 enum SpatialPanelAction {
-    case activateSpotify, model(String), module(SpatialModule), command(String), studio(String), scene(SpatialTheme), spotify(String,String?), playlist(String,String), track(String,String), library, playSelection, page(Int), cardsPage(Int), dragHandle, refresh, reposition, close
+    case switchOutput, activateSpotify, model(String), module(SpatialModule), command(String), studio(String), scene(SpatialTheme), spotify(String,String?), playlist(String,String), track(String,String), library, playSelection, page(Int), cardsPage(Int), dragHandle, refresh, reposition, close
 }

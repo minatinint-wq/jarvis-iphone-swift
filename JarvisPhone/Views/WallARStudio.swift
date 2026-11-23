@@ -488,7 +488,7 @@ private struct WallCameraView: UIViewRepresentable {
                     VStack(alignment:.leading,spacing:6) {
                         Text(panelStatus).font(.caption).lineLimit(3)
                         Text(controller.handStatus).font(.caption2).foregroundStyle(.cyan)
-                        Text("Aponte por 2 segundos para clicar. Faça pinça para mover o painel. Abra a mão para circular livremente.").font(.caption2).foregroundStyle(.secondary)
+                        Text("Aponte por 2 segundos para clicar. Pinça move o painel. Com dois dedos em V, deslize para os lados para virar a página. Mão aberta fica livre.").font(.caption2).foregroundStyle(.secondary)
                         HStack {
                             Button("Menor",systemImage:"minus.magnifyingglass") { controller.panel.resize(0.82) }
                             Button("Centralizar",systemImage:"scope") { controller.panel.reposition() }

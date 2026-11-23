@@ -204,6 +204,16 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertEqual(event(0.12,31,"play"),[.press("play")])
         XCTAssertEqual(event(.nan,32,nil),[.cancel])
     }
+    func testMenuSwipeNeedsDirectionAndRelease() {
+        var swipe=SpatialPageSwipe()
+        func update(_ x:Double,_ y:Double,_ t:Double)->Int? { swipe.update(point:CGPoint(x:x,y:y),time:t) }
+        XCTAssertNil(update(0.6,0.5,0)); XCTAssertNil(update(0.52,0.52,0.1))
+        XCTAssertEqual(update(0.38,0.53,0.2),1); XCTAssertNil(update(0.12,0.53,0.3))
+        XCTAssertNil(swipe.update(point:nil,time:0.4)); XCTAssertNil(update(0.2,0.5,0.5))
+        XCTAssertEqual(update(0.4,0.51,0.75),-1)
+        XCTAssertNil(swipe.update(point:nil,time:0.8)); XCTAssertNil(update(0.5,0.2,1))
+        XCTAssertNil(update(0.7,0.6,1.2))
+    }
     func testOpenPalmIsFreeAndCurledFingersAllowPointing() {
         var joints=[CGPoint?](repeating:nil,count:21)
         for base in [5,9,13,17] {

@@ -78,6 +78,8 @@ enum SpatialPanelGeometry {
     private var dragOffset=SIMD3<Float>.zero
     private var dragDepth:Float=0
     private var dragging=false
+    private var swipe = SpatialPageSwipe()
+    private var pcOutput = (UserDefaults.standard.string(forKey:"spatialSpotifyOutput") ?? "pc") == "pc"
     var onWeb: ((SpatialModule)->Void)?
     private var needsSpotify = false
     var onAction: ((SpatialPanelAction)->Void)?
@@ -149,12 +151,12 @@ enum SpatialPanelGeometry {
     }
     func setTracking(_ good: Bool) {
         trackingGood=good
-        if !good { if dragging { finishDrag() };handGesture.reset() }
+        if !good { swipe=SpatialPageSwipe(); if dragging { finishDrag() };handGesture.reset() }
         root?.isHidden = !good || !visible
     }
     func close() {
         contextRevision += 1;navigationContext=nil
-        handGesture.reset();dragging=false;hovered=nil
+        handGesture.reset();swipe=SpatialPageSwipe();dragging=false;hovered=nil
         timeout?.cancel();pending=nil;visible=false
         if let anchor { view.session.remove(anchor:anchor) };anchor=nil
         root?.removeFromParentNode();root=nil;actions.removeAll()
@@ -183,6 +185,13 @@ enum SpatialPanelGeometry {
     func hand(_ sample:SpatialHandSample?) {
         guard visible,root?.isHidden==false else { handGesture.reset();return }
         let time=sample?.time ?? ProcessInfo.processInfo.systemUptime
+        if let sample, sample.menuPose, sample.ratio >= 0.48, !dragging, view.bounds.width > 0, view.bounds.height > 0 {
+            handGesture.reset()
+            let pos=CGPoint(x:sample.point.x/view.bounds.width,y:sample.point.y/view.bounds.height)
+            if let page=swipe.update(point:pos,time:time), pending == nil { activate(.cardsPage(page)) }
+            return
+        }
+        swipe=SpatialPageSwipe()
         let node=sample.flatMap { selectionNode($0.point) }
         let target=node?.name.flatMap { actions[$0] == nil ? nil : $0 }
         if hovered !== node {
@@ -232,6 +241,13 @@ enum SpatialPanelGeometry {
     private func activate(_ action: SpatialPanelAction) {
         contextRevision += 1
         switch action {
+        case .switchOutput:
+            guard pending == nil else { return }
+            pcOutput.toggle()
+            UserDefaults.standard.set(pcOutput ? "pc" : "phone",forKey:"spatialSpotifyOutput")
+            needsSpotify=false
+            status=pcOutput ? "Saída selecionada: este PC." : "Saída selecionada: este iPhone."
+            render()
         case .dragHandle: break
         case .cardsPage(let delta):cardPage=max(0,min(max(0,(items().count-1)/4),cardPage+delta));render()
         case .module(let target): open(target,tracking:true)
@@ -275,7 +291,7 @@ enum SpatialPanelGeometry {
     func request(_ action: String, playlist: String? = nil, track:String? = nil) {
         guard pending==nil else { status="Aguarde a confirmação do pedido anterior.";render();return }
         let id=UUID().uuidString;pending=id;status="Consultando o Spotify…";render()
-        var job: [String:Any]=["requestId":id,"action":action,"offset":offset]
+        var job: [String:Any]=["requestId":id,"action":action,"offset":offset,"output":pcOutput ? "pc" : "phone"]
         if let playlist { job["playlistId"]=playlist }
         if let track { job["trackId"]=track }
         onSpotify?(job)
@@ -347,7 +363,7 @@ enum SpatialPanelGeometry {
             rows.append(selectedPlaylist == nil ? ("Atualizar","arrow.clockwise",.refresh) : ("Minhas playlists","chevron.left",.library))
             if offset>0 { rows.append(("Página anterior","chevron.left",.page(-6))) }
             if hasNext { rows.append((selectedPlaylist == nil ? "Mais playlists" : "Mais faixas","chevron.right",.page(6))) }
-            if needsSpotify { rows.insert(("Ativar Spotify no iPhone","iphone",.activateSpotify),at:0) }
+            if needsSpotify && !pcOutput { rows.insert(("Ativar Spotify no iPhone","iphone",.activateSpotify),at:0) }
             return rows
         case .phone:
             return [("Acender lanterna","flashlight.on.fill",.command("ligue a lanterna do iPhone")),("Apagar lanterna","flashlight.off.fill",.command("desligue a lanterna do iPhone")),("Tela 30%","sun.min",.command("ajuste o brilho do iPhone para 30%")),("Tela 70%","sun.max",.command("ajuste o brilho do iPhone para 70%")),("Volume 20%","speaker.wave.1",.command("volume do iPhone em 20%")),("Volume 60%","speaker.wave.2",.command("volume do iPhone em 60%")),("Bateria","battery.100",.command("qual a bateria do iPhone")),("Abrir Spotify","arrow.up.right",.command("configurar spotify deste iphone"))]
@@ -375,6 +391,7 @@ enum SpatialPanelGeometry {
         var rows=Array(items().dropFirst(cardPage*4).prefix(4))+transportItems()
         if cardPage>0 { rows.append(("Página anterior de cartões","chevron.left",.cardsPage(-1))) }
         if (cardPage+1)*4<items().count { rows.append(("Mais cartões","chevron.right",.cardsPage(1))) }
+        if module == .spotify { rows.append((pcOutput ? "Usar iPhone" : "Usar PC","speaker.wave.2",.switchOutput)) }
         rows.append(("Central JARVIS","square.grid.2x2",.module(.dashboard)))
         return rows
     }
@@ -424,6 +441,10 @@ enum SpatialPanelGeometry {
         let count=max(1,(items().count+3)/4)
         plate("Central · \(cardPage+1)/\(count)","square.grid.2x2",width:0.38,height:0.065,x:0,y:-0.19,color:color,action:.module(.dashboard))
         if cardPage+1<count { plate("","chevron.right",width:0.09,height:0.065,x:0.265,y:-0.19,color:color,action:.cardsPage(1)) }
-        plate(module == .spotify ? (selectedTrack?.name ?? selectedPlaylist?.name ?? "Suas playlists") : "Pinça para mover", "",width:width,height:0.055,x:0,y:-0.255,color:.clear)
+        if module == .spotify {
+            plate(pcOutput ? "Saída: PC · trocar" : "Saída: iPhone · trocar","speaker.wave.2",width:width,height:0.055,x:0,y:-0.255,color:color,action:.switchOutput)
+        } else {
+            plate("Dois dedos: deslize para mudar de página","",width:width,height:0.055,x:0,y:-0.255,color:.clear)
+        }
     }
 }

@@ -49,3 +49,24 @@ struct SpatialGesture {
         return []
     }
 }
+
+/// Horizontal movement of the two-finger pose, in fractions of the viewport.
+struct SpatialPageSwipe {
+    private var origin: CGPoint?
+    private var started = 0.0
+    private var lastTime: Double?
+    private var fired = false
+
+    mutating func update(point: CGPoint?, time: Double) -> Int? {
+        guard let point, time.isFinite else { self = Self(); return nil }
+        if let lastTime, time < lastTime || time-lastTime > 0.35 { self = Self() }
+        lastTime=time
+        guard let origin else { self.origin=point; started=time; return nil }
+        guard !fired else { return nil }
+        let dx=point.x-origin.x, dy=point.y-origin.y
+        if time-started > 1.2 || abs(dy)>0.14 { self.origin=point; started=time; return nil }
+        guard time-started >= 0.12, abs(dx)>=0.18, abs(dx)>1.5*abs(dy) else { return nil }
+        fired=true
+        return dx < 0 ? 1 : -1
+    }
+}

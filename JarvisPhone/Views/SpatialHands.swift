@@ -6,6 +6,7 @@ import UIKit
 struct SpatialHandSample {
     let point:CGPoint
     let ratio:Double
+    let menuPose:Bool
     let pointing:Bool
     let world:SIMD3<Float>?
     let time:Double
@@ -21,7 +22,7 @@ enum SpatialHandMath {
         default:return p
         }
     }
-    static func pointing(_ joints: [CGPoint?]) -> Bool {
+    static func pointing(_ joints: [CGPoint?], twoFingers: Bool = false) -> Bool {
         guard joints.count == 21 else { return false }
         // Cosine at PIP in display coordinates: a straight finger approaches 1.
         func extensionScore(_ base: Int) -> CGFloat? {
@@ -33,6 +34,10 @@ enum SpatialHandMath {
             return (a.x*b.x+a.y*b.y)/length
         }
         guard let index = extensionScore(5), index > 0.60 else { return false }
+        if twoFingers {
+            guard let middle=extensionScore(9), middle > 0.60, let ring=extensionScore(13), let little=extensionScore(17) else { return false }
+            return ring < 0.5 && little < 0.5
+        }
         let others = [9,13,17].compactMap(extensionScore)
         return others.count >= 2 && others.allSatisfy { $0 < 0.5 }
     }
@@ -165,7 +170,7 @@ enum SpatialHandMath {
                 self.bones.path=path.cgPath
                 let pointing = SpatialHandMath.pointing(result)
                 self.report(amount == nil ? "Mostre a mão inteira." : amount! < 0.28 ? "Pinça · arrastar" : pointing ? "Indicador · mantenha sobre o alvo" : "Mão livre")
-                self.onSample?(SpatialHandSample(point:p,ratio:amount ?? .nan,pointing:pointing,world:location,time:stamp))
+                self.onSample?(SpatialHandSample(point:p,menuPose:SpatialHandMath.pointing(result,twoFingers:true),ratio:amount ?? .nan,pointing:pointing,world:location,time:stamp))
             }
         }
     }
