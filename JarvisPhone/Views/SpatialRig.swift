@@ -62,8 +62,25 @@ import SwiftUI
             guard let geometry=node.geometry,let count=geometry.sources(for:.vertex).first?.vectorCount else { throw CocoaError(.fileReadCorruptFile) }
             let data=try Data(contentsOf:url)
             guard data.count==count*20 else { throw CocoaError(.fileReadCorruptFile) }
-            let indices=SCNGeometrySource(data:data,semantic:.boneIndices,vectorCount:count,usesFloatComponents:false,componentsPerVector:4,bytesPerComponent:1,dataOffset:0,dataStride:20)
-            let weights=SCNGeometrySource(data:data,semantic:.boneWeights,vectorCount:count,usesFloatComponents:true,componentsPerVector:4,bytesPerComponent:4,dataOffset:4,dataStride:20)
+            // SCNSkinner requires packed integer indices (UInt16), rather than
+            // the compact interleaved UInt8 representation in the disk resource.
+            var indexBytes=Data(),weightBytes=Data()
+            indexBytes.reserveCapacity(count*8);weightBytes.reserveCapacity(count*16)
+            for vertex in 0..<count {
+                var total:Float=0
+                for component in 0..<4 {
+                    let index=data[vertex*20+component]
+                    guard Int(index)<joints.count else { throw CocoaError(.fileReadCorruptFile) }
+                    indexBytes.append(index);indexBytes.append(0)
+                    let weight=data.withUnsafeBytes { $0.loadUnaligned(fromByteOffset:vertex*20+4+component*4,as:Float.self) }
+                    guard weight.isFinite,weight>=0,weight<=1.001 else { throw CocoaError(.fileReadCorruptFile) }
+                    total+=weight
+                }
+                guard abs(total-1)<0.002 else { throw CocoaError(.fileReadCorruptFile) }
+                weightBytes.append(data.subdata(in:(vertex*20+4)..<(vertex*20+20)))
+            }
+            let indices=SCNGeometrySource(data:indexBytes,semantic:.boneIndices,vectorCount:count,usesFloatComponents:false,componentsPerVector:4,bytesPerComponent:2,dataOffset:0,dataStride:8)
+            let weights=SCNGeometrySource(data:weightBytes,semantic:.boneWeights,vectorCount:count,usesFloatComponents:true,componentsPerVector:4,bytesPerComponent:4,dataOffset:0,dataStride:16)
             let skinner=SCNSkinner(baseGeometry:geometry,bones:joints,boneInverseBindTransforms:inverse,boneWeights:weights,boneIndices:indices)
             skinner.skeleton=skeleton;node.skinner=skinner;root.addChildNode(node)
         }

@@ -45,6 +45,8 @@ enum WallMeasureMode { case none, outline, opening }
     @Published var lensLabel="1×"
     private var prefersUltraWide=true
     private var recoveryTimer:Task<Void,Never>?
+    private var recoveryDelay:Duration = .seconds(20)
+    private var pendingMapReset=false
     private let coaching=ARCoachingOverlayView()
     @Published var measureMode = WallMeasureMode.none
     @Published var pointsCount = 0
@@ -194,11 +196,12 @@ enum WallMeasureMode { case none, outline, opening }
 
     private func run(reset: Bool = false) {
         guard foreground, !stopped, !fatal else { return }
+        let shouldReset=reset || pendingMapReset
         let config = ARWorldTrackingConfiguration()
         config.planeDetection = [.horizontal,.vertical]
         config.sceneReconstruction = .meshWithClassification
         config.environmentTexturing = .automatic
-        if !mapStarted || reset { config.initialWorldMap=initialMap;mapStarted=true }
+        if !mapStarted || shouldReset { config.initialWorldMap=initialMap;mapStarted=true }
         if ARWorldTrackingConfiguration.supportsFrameSemantics(.smoothedSceneDepth) {
             config.frameSemantics.insert(.smoothedSceneDepth)
         }
@@ -214,7 +217,8 @@ enum WallMeasureMode { case none, outline, opening }
             config.videoFormat=format;lensLabel=format.captureDeviceType == .builtInUltraWideCamera ? "0,5×" : "1×"
         }
         if prefersUltraWide && ultra.isEmpty { notice="A câmera 0,5× não foi oferecida pelo ARKit nesta configuração. A sessão usa \(lensLabel)." }
-        view.session.run(config,options:reset ? [.resetTracking,.removeExistingAnchors] : [])
+        view.session.run(config,options:shouldReset ? [.resetTracking,.removeExistingAnchors] : [])
+        pendingMapReset=false
         view.isPlaying = true
         armRecoveryTimer()
     }
@@ -230,7 +234,7 @@ enum WallMeasureMode { case none, outline, opening }
     private func armRecoveryTimer() {
         guard recoveryTimer == nil,(!tracking || spatial.recovering) else { return }
         recoveryTimer=Task { [weak self] in
-            try? await Task.sleep(for:.seconds(20))
+            try? await Task.sleep(for:self?.recoveryDelay ?? .seconds(20))
             guard !Task.isCancelled,let self,!self.stopped,(!self.tracking || self.spatial.recovering) else { return }
             self.localizationTimedOut=true;self.status="O mapa ainda não foi reencontrado. Tente o mapa salvo ou inicie outro mapeamento."
             self.savedMaps=await Task.detached { SpatialArchive.savedMaps() }.value
@@ -251,7 +255,7 @@ enum WallMeasureMode { case none, outline, opening }
                 self.spatial.resetLiveScene(newWorld:source == nil)
                 self.occluders.values.forEach { $0.removeFromParentNode() };self.occluders.removeAll();self.planes.removeAll();self.meshUpdated.removeAll()
                 self.initialMap=source == nil ? nil : try await self.spatial.loadMap()
-                self.mapStarted=false;self.fatal=false;self.recoveryBusy=false;self.spatial.finishMapChange()
+                self.mapStarted=false;self.pendingMapReset=true;self.fatal=false;self.recoveryBusy=false;self.spatial.finishMapChange()
                 self.status=source == nil ? "Novo mapeamento. Mostre piso, cantos e detalhes das paredes." : "Reconhecendo o mapa salvo. Volte ao ambiente onde ele foi gravado."
                 if !self.stopped { self.run(reset:true) }
             } catch {
@@ -266,6 +270,13 @@ enum WallMeasureMode { case none, outline, opening }
         localizationTimedOut=true;coachingOverlayView.setActive(false,animated:true)
         savedMaps=SpatialArchive.savedMaps()
     }
+    #if DEBUG
+    func previewRecovery(tracking: Bool,anchorsPending: Bool,delay: Duration) {
+        self.tracking=tracking;recoveryDelay=delay
+        if anchorsPending { spatial.restoredPanel=SpatialPanelRecord(anchor:UUID(),module:"dashboard",scale:0.5) }
+        armRecoveryTimer()
+    }
+    #endif
 
     func setForeground(_ active: Bool) {
         foreground = active

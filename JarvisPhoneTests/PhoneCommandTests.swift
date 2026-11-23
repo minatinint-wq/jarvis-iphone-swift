@@ -7,6 +7,20 @@ import ARKit
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    @MainActor func testRecoveryOffersExitWhenTrackingOrSavedAnchorsCannotReturn() async throws {
+        for tracking in [false,true] {
+            let controller=WallARController()
+            controller.previewRecovery(tracking:tracking,anchorsPending:tracking,delay:.milliseconds(30))
+            XCTAssertFalse(controller.localizationTimedOut)
+            try await Task.sleep(for:.milliseconds(120))
+            XCTAssertTrue(controller.localizationTimedOut)
+            controller.stop()
+        }
+        let stopped=WallARController()
+        stopped.previewRecovery(tracking:false,anchorsPending:false,delay:.milliseconds(30))
+        stopped.stop();try await Task.sleep(for:.milliseconds(120))
+        XCTAssertFalse(stopped.localizationTimedOut)
+    }
     @MainActor func testAnimatedCharactersRenderDistinctPoses() throws {
         guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
         let format=UIGraphicsImageRendererFormat();format.scale=1
@@ -85,7 +99,11 @@ final class PhoneCommandTests: XCTestCase {
             XCTAssertFalse(jointA === jointB)
             var skins=0
             a.enumerateChildNodes { node,_ in
-                if let skinner=node.skinner { skins+=1;XCTAssertGreaterThan(skinner.bones.count,20);XCTAssertNotNil(skinner.skeleton) }
+                if let skinner=node.skinner {
+                    skins+=1;XCTAssertGreaterThan(skinner.bones.count,20);XCTAssertNotNil(skinner.skeleton)
+                    XCTAssertEqual(skinner.boneIndices.bytesPerComponent,2)
+                    XCTAssertEqual(skinner.boneWeights.vectorCount,skinner.boneIndices.vectorCount)
+                }
             }
             XCTAssertGreaterThan(skins,0)
             XCTAssertNotNil(jointA.animation(forKey:"rig-motion"))
