@@ -42,7 +42,7 @@ enum WallARCommand: Equatable {
     static func needsInterpretation(_ input: String) -> Bool {
         let s=PhoneIntentPhrases.normalized(input)
         guard s.range(of:#"\b(nao|nunca|nem|explique|se eu)\b"#,options:.regularExpression)==nil else { return false }
-        return s.range(of:#"^(?:abre|abra|abrir|mostra|mostre|mostrar|exibe|exiba|exibir|quero ver|quero abrir|me leva|me leve|volta|volte|voltar|vai para|va para|entra|entre|seleciona|selecione|selecionar|escolhe|escolha|fecha|feche|fechar|play|retoma|retome|pausa|pause|proxima faixa|faixa anterior|mais playlists|mais faixas|toca essa|toque essa|toca a selecionada|toque a selecionada)\b"#,options:.regularExpression) != nil
+        return s.range(of:#"^(?:abre|abra|abrir|ver|mostra|mostre|mostrar|exibe|exiba|exibir|me leva|me leve|volta|volte|voltar|vai para|va para|entra|entre|seleciona|selecione|selecionar|escolhe|escolha|fecha|feche|fechar|play|retoma|retome|pausa|pause|proxima faixa|faixa anterior|mais playlists|mais faixas|toca essa|toque essa|toca a selecionada|toque a selecionada)\b"#,options:.regularExpression) != nil
     }
 
     static func parse(_ input: String, inStudio: Bool) -> Self? {
