@@ -208,6 +208,7 @@ enum SpatialTheme: String, CaseIterable {
 
     func chooseRoom(_ name: String) {
         guard !recovering else { persistenceStatus="Espere a relocalização antes de identificar outro ambiente.";return }
+        selected=nil;hasSelection=false;placing=false;markSelection()
         if let room=rooms.first(where: { $0.name == name }) { currentRoom=room.id;roomName=room.name;return }
         guard rooms.count<32,let camera=view.session.currentFrame?.camera.transform else { return }
         var origin=matrix_identity_float4x4;origin.columns.3=camera.columns.3

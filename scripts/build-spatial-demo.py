@@ -65,7 +65,7 @@ def export(identifier, title, height):
     measured = max(p[2] for p in bounds) - min(p[2] for p in bounds)
     assert abs(measured - height) < 0.001, (identifier, measured, height)
     assert abs(min(p[2] for p in bounds)) < 0.001
-    specs.append({"id": identifier, "title": title, "author": "JARVIS project", "license": "CC0-1.0", "source": "Blender procedural metric demo", "heightMeters": height, "triangles": triangles, "parts": parts, "files": files})
+    specs.append({"id": identifier, "title": title, "author": "JARVIS project", "license": "Project-generated", "source": "Blender procedural metric demo", "heightMeters": height, "triangles": triangles, "parts": parts, "files": files})
     bpy.ops.export_scene.gltf(filepath=str(OUTPUT / f"{identifier}.glb"), export_format="GLB")
     bpy.ops.wm.save_as_mainfile(filepath=str(OUTPUT / f"{identifier}.blend"))
     bpy.ops.object.select_all(action="SELECT")
