@@ -44,7 +44,7 @@ final class PhoneCommandTests: XCTestCase {
         let root=SCNNode(),occluder=SCNNode(geometry:SCNPlane(width:2,height:2)),button=SCNNode(geometry:SCNPlane(width:1,height:1))
         occluder.categoryBitMask=2;occluder.position.z=0.2;button.categoryBitMask=4
         root.addChildNode(occluder);root.addChildNode(button)
-        let hits=root.hitTestWithSegment(from:SCNVector3(0,0,1),to:SCNVector3(0,0,-1),options:[.categoryBitMask:4])
+        let hits=root.hitTestWithSegment(from:SCNVector3(0,0,1),to:SCNVector3(0,0,-1),options:[SCNHitTestOption.categoryBitMask.rawValue:4])
         XCTAssertTrue(hits.first?.node === button)
     }
     @MainActor func testInteractiveScenariosHaveWorkingActions() throws {
