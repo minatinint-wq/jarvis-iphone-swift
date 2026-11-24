@@ -7,6 +7,11 @@ on:
     branches: ['build/xtool-iphone-20261115']
 
   workflow_dispatch:
+    inputs:
+      ui_only:
+        description: 'Compilar ajuste visual após validação completa do núcleo'
+        type: boolean
+        default: false
 
 permissions:
 
@@ -104,6 +109,7 @@ jobs:
           if-no-files-found: error
 
       - name: Abrir a tela inicial no simulador
+        if: ${{ !inputs.ui_only }}
 
         run: |
 
@@ -128,7 +134,7 @@ jobs:
           xcrun simctl io "$id" screenshot "$RUNNER_TEMP/assistant.png"
 
       - name: Exportar evidência visual dos materiais AR
-        if: always()
+        if: always() && !inputs.ui_only
         run: |
           if [ -d "$RUNNER_TEMP/wall-tests.xcresult" ]; then
             xcrun xcresulttool export attachments --path "$RUNNER_TEMP/wall-tests.xcresult" --output-path "$RUNNER_TEMP/wall-attachments"
@@ -136,7 +142,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
 
-        if: always()
+        if: always() && !inputs.ui_only
 
         with:
 

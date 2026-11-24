@@ -663,6 +663,7 @@ private struct WallCameraView: UIViewRepresentable {
     @Environment(\.scenePhase) private var scenePhase
     @State private var help = false
     @State private var objectsTab = false
+    @AppStorage("jarvis.ar.toolsExpanded") private var toolsExpanded = true
     @State private var panelVisible = false
     @State private var webModule: SpatialModule?
     @State private var panelStatus = ""
@@ -709,12 +710,17 @@ private struct WallCameraView: UIViewRepresentable {
                             Button("Centralizar",systemImage:"scope") { controller.panel.reposition() }
                         }.buttonStyle(.bordered).controlSize(.small)
                     }.padding(12).frame(maxWidth:.infinity,alignment:.leading).background(.black.opacity(0.8),in:RoundedRectangle(cornerRadius:14))
-                } else {
+                } else if toolsExpanded {
                 VStack(alignment:.leading,spacing:12) {
+                    HStack(spacing:8) {
                     Picker("Ferramenta",selection:$objectsTab) {
                         Text("Medir e pintar").tag(false)
                         Text("Cenários 3D").tag(true)
                     }.pickerStyle(.segmented)
+                    Button { toolsExpanded=false } label: {
+                        Image(systemName:"xmark").frame(minWidth:36,minHeight:36)
+                    }.buttonStyle(.plain).accessibilityLabel("Recolher ferramentas AR")
+                    }
                     if objectsTab {
                         SpatialControls(world:controller.spatial)
                     } else {
@@ -756,6 +762,14 @@ private struct WallCameraView: UIViewRepresentable {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }.padding(14).background(.ultraThinMaterial,in:RoundedRectangle(cornerRadius:20))
+                } else {
+                    HStack {
+                        Button { toolsExpanded=true } label: {
+                            Label("Ferramentas",systemImage:"slider.horizontal.3").font(.subheadline.weight(.medium)).padding(12)
+                        }.buttonStyle(.plain).background(.black.opacity(0.75),in:Capsule())
+                            .accessibilityLabel("Abrir ferramentas de cenários 3D, medir e pintar")
+                        Spacer()
+                    }
                 }
             }.padding(12)
             }
