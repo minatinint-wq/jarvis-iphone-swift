@@ -66,6 +66,7 @@ final class PhoneCommandTests: XCTestCase {
             let view=controller.view
             view.scene.background.contents=UIColor(white:0.06,alpha:1)
             let camera=SCNNode();camera.camera=SCNCamera()
+            camera.camera?.zNear=0.01;camera.camera?.zFar=20;camera.camera?.fieldOfView=60
             // An independent synthetic camera is required: an ARSCNView owns
             // and overwrites its camera pose even without a real AR frame.
             let panel=SpatialPanel(view:view);panel.preview(.dashboard);panel.setTracking(true)
