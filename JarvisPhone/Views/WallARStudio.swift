@@ -743,7 +743,7 @@ private struct WallCameraView: UIViewRepresentable {
     @State private var confirmAction: PhoneAction?
     var body: some View {
         ZStack {
-            WallCameraView(controller:controller).ignoresSafeArea(edges:.bottom).allowsHitTesting(webModule == nil && !controller.recoveryBusy)
+            WallCameraView(controller:controller).ignoresSafeArea(edges:controller.headset ? .all : .bottom).allowsHitTesting(webModule == nil && !controller.recoveryBusy)
             if !panelVisible && (!controller.selected || controller.measureMode != .none) {
                 Image(systemName:"plus").font(.title.weight(.ultraLight)).foregroundStyle(.white)
                     .shadow(color:.black,radius:2).allowsHitTesting(false)

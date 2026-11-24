@@ -42,8 +42,14 @@ final class PhoneCommandTests: XCTestCase {
         let host=SpatialHeadsetSurface(controller:controller)
         host.frame=CGRect(x:0,y:0,width:900,height:400)
         let session=controller.view.session
+        controller.view.isPlaying=false
         host.configure(headset:true);host.layoutIfNeeded()
         let right=try XCTUnwrap(host.secondary)
+        XCTAssertFalse(right.isPlaying)
+        controller.view.isPlaying=true;controller.view.preferredFramesPerSecond=30
+        host.configure(headset:true)
+        XCTAssertTrue(right.isPlaying);XCTAssertEqual(right.preferredFramesPerSecond,30)
+        controller.view.isPlaying=false;host.configure(headset:true);XCTAssertFalse(right.isPlaying)
         XCTAssertTrue(right.session === session);XCTAssertTrue(right.scene === controller.view.scene)
         XCTAssertTrue(session.delegate === controller)
         XCTAssertEqual(controller.view.frame.width,450);XCTAssertEqual(right.frame.width,450)
