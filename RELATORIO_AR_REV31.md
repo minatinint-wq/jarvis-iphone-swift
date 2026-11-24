@@ -41,3 +41,5 @@ Teste físico ainda necessário: dois minutos sem mãos; palma aberta e pinça; 
 Referências técnicas: https://developer.apple.com/documentation/scenekit/scnview/renderscontinuously e https://developer.apple.com/documentation/scenekit/scncamera/znear .
 
 O IPA original passou em scripts/check-ipa.py --with-extension. O pacote personalizado preserva 21 recursos visuais anteriores: ele é validado pelo manifesto da preparação, conferindo as substituições e os hashes de 9 mapas e 362 arquivos espaciais. O validador do IPA original compara a malha com a fonte e não se aplica sem adaptação à malha pessoal preservada.
+
+Teste físico posterior: o usuário confirmou que, mesmo na horizontal, as duas áreas pareciam um vídeo contínuo. O visor da revisão 31 não foi aprovado. A revisão 32 substitui a segunda ARSCNView por composição explícita e valida a câmera YCbCr e a cena 3D nos dois olhos.
