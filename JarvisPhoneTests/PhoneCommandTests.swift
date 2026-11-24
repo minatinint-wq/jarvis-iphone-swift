@@ -159,7 +159,8 @@ final class PhoneCommandTests: XCTestCase {
         _=gesture.update(ratio:1,pointing:false,target:nil,time:2.9)
         XCTAssertTrue(gesture.update(ratio:0.1,pointing:false,target:"desktop",time:3).isEmpty)
         XCTAssertEqual(gesture.update(ratio:0.1,pointing:false,target:"desktop",time:3.2),[.press("desktop")])
-        XCTAssertEqual(gesture.update(ratio:.nan,pointing:false,target:nil,time:3.3),[.cancel])
+        XCTAssertTrue(gesture.update(ratio:.nan,pointing:false,target:nil,time:3.3).isEmpty)
+        XCTAssertEqual(gesture.update(ratio:.nan,pointing:false,target:nil,time:3.6),[.cancel])
     }
     func testSpatialArchiveRoundTripRejectsDuplicateIDsAndInvalidTransforms() throws {
         let room=SpatialRoom(id:UUID(),name:"Quarto",origin:SpatialArchive.values(matrix_identity_float4x4))

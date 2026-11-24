@@ -62,6 +62,15 @@ jobs:
 
         run: swift scripts/probe-bank.swift JarvisPhone/Resources/JarvisInstruments.sf2
 
+      - name: Validar mãos reais, pinça e continuidade de rastreamento
+        run: |
+          mkdir -p /tmp/hand-fixtures
+          for image in pointing_up thumb_up cats_and_dogs; do
+            curl -fLsS --retry 2 "https://storage.googleapis.com/mediapipe-assets/$image.jpg" -o "/tmp/hand-fixtures/$image.jpg"
+          done
+          swiftc JarvisPhone/Core/SpatialGesture.swift JarvisPhone/Core/HandPoseInput.swift scripts/probe-hand-control.swift -o /tmp/hand-probe
+          /tmp/hand-probe /tmp/hand-fixtures
+
       - name: Compilar IPA arm64 com xtool
 
         run: |
