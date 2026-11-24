@@ -1,5 +1,7 @@
 # JARVIS AR — revisão 30
 
+Retorno físico em 24/11/2026: o usuário relatou afastamento e retorno do painel, com e sem mãos, e necessidade frequente de Novo mapa. A revisão 30 não foi considerada aprovada para estabilidade. Investigação e alterações seguintes registradas na revisão 31.
+
 Código do aplicativo: 4894508a9d840f5732ea7167379a41d8789d7ef0. Pacote 1.2.0 (30), compilação 45304006676 aprovada. A revisão 29 voltou a apresentar lentidão após começar funcionando, conforme teste do usuário; não foi aprovada no uso sustentado.
 
 ## Ambiente fixo por padrão
