@@ -58,12 +58,18 @@ final class PhoneCommandTests: XCTestCase {
             let view=controller.view
             view.scene.background.contents=UIColor(white:0.06,alpha:1)
             let camera=SCNNode();camera.camera=SCNCamera();camera.position=SCNVector3(0,0,1)
-            view.scene.rootNode.addChildNode(camera);view.pointOfView=camera;right.pointOfView=camera
+            // An independent synthetic camera is required: an ARSCNView owns
+            // and overwrites its camera pose even without a real AR frame.
+            view.scene.rootNode.addChildNode(camera)
             let panel=SpatialPanel(view:view);panel.preview(.dashboard);panel.setTracking(true)
             let renderer=SCNRenderer(device:device,options:nil);renderer.scene=view.scene;renderer.pointOfView=camera
             let left=renderer.snapshot(atTime:0,with:CGSize(width:450,height:400),antialiasingMode:.multisampling2X)
-            let other=SCNRenderer(device:device,options:nil);other.scene=right.scene;other.pointOfView=right.pointOfView
+            let other=SCNRenderer(device:device,options:nil);other.scene=right.scene;other.pointOfView=camera
             let rightImage=other.snapshot(atTime:0,with:CGSize(width:450,height:400),antialiasingMode:.multisampling2X)
+            for eye in [left,rightImage] {
+                let data=try XCTUnwrap(eye.cgImage?.dataProvider?.data) as Data
+                XCTAssertGreaterThan(Set(data).count,16,"The eye must contain rendered content, not only its background")
+            }
             let format=UIGraphicsImageRendererFormat();format.scale=1
             let image=UIGraphicsImageRenderer(size:CGSize(width:900,height:400),format:format).image { _ in
                 left.draw(in:CGRect(x:0,y:0,width:450,height:400));rightImage.draw(in:CGRect(x:450,y:0,width:450,height:400))
