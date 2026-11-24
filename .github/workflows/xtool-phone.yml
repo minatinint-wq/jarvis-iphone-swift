@@ -8,6 +8,10 @@ on:
 
   workflow_dispatch:
     inputs:
+      gpu_probe:
+        description: 'Verify the production compositor directly on Metal without a simulator'
+        type: boolean
+        default: false
       ui_only:
         description: 'Compilar ajuste visual após validação completa do núcleo'
         type: boolean
@@ -19,7 +23,30 @@ permissions:
 
 jobs:
 
+  gpu:
+    if: ${{ inputs.gpu_probe }}
+    runs-on: macos-26
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render and inspect actual GPU output
+        timeout-minutes: 3
+        run: |
+          set -o pipefail
+          python3 scripts/headset-gpu-probe.py
+          swiftc -parse-as-library -swift-version 5 HeadsetGPUProbe.swift -o /tmp/headset-gpu-probe
+          /tmp/headset-gpu-probe 2>&1 | tee gpu-probe.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: JARVIS-VRBox-GPU
+          path: |
+            gpu-probe.log
+            JARVIS-VRBOX-GPU*.png
+
   iphone:
+
+    if: ${{ !inputs.gpu_probe }}
 
     runs-on: macos-26
 
