@@ -1,0 +1,11 @@
+name: Native skeletal format probe
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: macos-26
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift scripts/probe-native-skinner.swift JarvisPhone/Resources
