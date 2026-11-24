@@ -122,6 +122,11 @@ enum WallMeasureMode { case none, outline, opening }
         hands.onSample = { [weak self] sample in
             guard let self else { return }
             if self.desktop.inputBlocked { return }
+            guard self.tracking,!self.spatial.recovering,!self.recoveryBusy else {
+                self.palmRecall=SpatialPalmRecall()
+                self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
+                self.hands.showProgress(0);return
+            }
             let palm=sample?.palmPoint ?? sample?.point
             let over=palm.map { self.panel.contains($0) || self.desktop.contains($0) } ?? false
             let candidate: String?
@@ -469,7 +474,9 @@ enum WallMeasureMode { case none, outline, opening }
         if good && !comparing { spatial.stepSimulation(frame.timestamp) }
         panel.setTracking(good)
         desktop.setTracking(good && !spatial.recovering)
-        hands.update(frame,view:view,enabled:good && !webWindowVisible && (panel.visible || spatial.active || desktop.visible))
+        // Vision's 2D skeleton does not need a mapped room or an active module.
+        // Spatial actions remain gated in onSample above, separately from drawing.
+        hands.update(frame,view:view,enabled:!webWindowVisible && !fatal)
         if tracking != good {
             tracking = good; setVisible(good && !comparing)
             status = good ? (selected ? "Parede fixada. Pode mudar o material por voz." : "Toque na parede ou diga “essa parede”.") : "Recuperando posição. Mova devagar e mostre detalhes do ambiente."

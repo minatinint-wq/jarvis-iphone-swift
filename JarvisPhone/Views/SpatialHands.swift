@@ -111,16 +111,20 @@ enum SpatialHandMath {
     private(set) var hasHand=false
     private(set) var hasDepth=false
     private let cursor=UIView(frame:CGRect(x:0,y:0,width:24,height:24))
+    private let overlay=UIView()
     private let bones=CAShapeLayer()
     var onSample:((SpatialHandSample?)->Void)?
     var onQuality:((String)->Void)?
     private var quality=""
     init(view:ARSCNView) {
         handRequest.maximumHandCount=2
+        overlay.frame=view.bounds;overlay.autoresizingMask=[.flexibleWidth,.flexibleHeight]
+        overlay.isUserInteractionEnabled=false;overlay.backgroundColor = .clear;overlay.isOpaque=false
+        view.addSubview(overlay)
         cursor.isUserInteractionEnabled=false;cursor.layer.cornerRadius=12;cursor.layer.borderWidth=2;cursor.layer.borderColor=UIColor.cyan.cgColor
-        cursor.backgroundColor=UIColor.cyan.withAlphaComponent(0.18);cursor.isHidden=true;view.addSubview(cursor)
-        bones.strokeColor=UIColor.cyan.withAlphaComponent(0.65).cgColor;bones.fillColor=UIColor.clear.cgColor;bones.lineWidth=1.3
-        view.layer.addSublayer(bones)
+        cursor.backgroundColor=UIColor.cyan.withAlphaComponent(0.18);cursor.isHidden=true;overlay.addSubview(cursor)
+        bones.strokeColor=UIColor.cyan.withAlphaComponent(0.85).cgColor;bones.fillColor=UIColor.clear.cgColor;bones.lineWidth=1.8
+        overlay.layer.addSublayer(bones)
         dwellRing.path = UIBezierPath(ovalIn:cursor.bounds.insetBy(dx: -3,dy: -3)).cgPath
         dwellRing.strokeColor = UIColor.white.cgColor
         dwellRing.fillColor = nil
@@ -138,7 +142,10 @@ enum SpatialHandMath {
     func reset() { showProgress(0);generation+=1;cursor.isHidden=true;bones.path=nil;smoothed=nil;smoothedWorld=nil;smoothedPalm=nil;lastRawTip=nil;onSample?(nil) }
     private func report(_ text:String) { let now=ProcessInfo.processInfo.systemUptime;if text != quality,now-lastReport>0.3 { lastReport=now;quality=text;onQuality?(text) } }
     func update(_ frame:ARFrame,view:ARSCNView,enabled:Bool) {
+        overlay.isHidden = !enabled
         guard enabled else { if wasEnabled { reset() };wasEnabled=false;return };wasEnabled=true
+        if view.subviews.last !== overlay { view.bringSubviewToFront(overlay) }
+        bones.frame=overlay.bounds
         let interval=ProcessInfo.processInfo.thermalState == .serious ? 0.125 : 1.0/15
         guard !busy,frame.timestamp-lastFrame>=interval else { return }
         busy=true;lastFrame=frame.timestamp
