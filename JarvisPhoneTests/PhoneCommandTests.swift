@@ -485,7 +485,8 @@ final class PhoneCommandTests: XCTestCase {
         for tick in 5...30 { XCTAssertTrue(event(1,tick,"play").isEmpty) }
         XCTAssertTrue(event(0.12,31,"play").isEmpty)
         XCTAssertEqual(event(0.12,33,"play"),[.press("play")])
-        XCTAssertEqual(event(.nan,34,nil),[.cancel])
+        XCTAssertTrue(event(.nan,34,nil).isEmpty) // Pause briefly; never drag stale coordinates.
+        XCTAssertEqual(event(.nan,37,nil),[.cancel])
     }
     func testMenuSwipeNeedsDirectionAndRelease() {
         var swipe=SpatialPageSwipe()

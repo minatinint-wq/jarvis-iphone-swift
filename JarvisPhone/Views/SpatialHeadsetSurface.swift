@@ -31,7 +31,11 @@ import SceneKit
         controller?.hands.reset()
         if headset {
             let right=ARSCNView(frame:.zero,options:[SCNView.Option.preferredRenderingAPI.rawValue:SCNRenderingAPI.metal.rawValue])
+            let session=primary.session,owner=session.delegate,queue=session.delegateQueue
             right.session=primary.session;right.scene=primary.scene
+            // ARSCNView's session setter replaces the public delegate. The
+            // world/hand owner must keep receiving the sole session's events.
+            session.delegate=owner;session.delegateQueue=queue
             right.pointOfView=primary.pointOfView
             right.automaticallyUpdatesLighting=false;right.autoenablesDefaultLighting=false
             right.preferredFramesPerSecond=60;right.antialiasingMode = .multisampling2X
@@ -42,10 +46,12 @@ import SceneKit
             controller?.hands.mirrorOverlay(in:right)
         } else {
             controller?.hands.mirrorOverlay(in:nil)
+            let session=primary.session,owner=session.delegate,queue=session.delegateQueue
             // Detach this renderer from the shared session before releasing it.
             // Pausing the shared session here would also stop the primary eye.
             secondary?.isPlaying=false;secondary?.session=ARSession()
             secondary?.scene=SCNScene();secondary?.removeFromSuperview();secondary=nil
+            session.delegate=owner;session.delegateQueue=queue
             primary.antialiasingMode = .multisampling4X
         }
         setNeedsLayout()
