@@ -45,6 +45,8 @@ enum WallMeasureMode { case none, outline, opening }
     @Published var lensLabel="1×"
     @Published var scanning=false
     @Published var headset=false
+    private(set) var videoRunning=false
+    var onHeadsetFrame:((ARFrame)->Void)?
     private var interactionReady=false
     private var poseStability=SpatialPoseStability()
     private var activeVideoFormat: ARConfiguration.VideoFormat?
@@ -233,7 +235,7 @@ enum WallMeasureMode { case none, outline, opening }
         if let activeVideoFormat { config.videoFormat=activeVideoFormat }
         view.session.run(config,options:shouldReset ? [.resetTracking,.removeExistingAnchors] : [])
         pendingMapReset=false
-        view.isPlaying = true;view.rendersContinuously=true
+        videoRunning=true;view.isPlaying = !headset;view.rendersContinuously = !headset
         frameLink?.isPaused=false
         armRecoveryTimer()
     }
@@ -279,6 +281,7 @@ enum WallMeasureMode { case none, outline, opening }
 
     func setHeadset(_ value: Bool) {
         headset=value;hands.reset()
+        view.isPlaying=videoRunning && !value;view.rendersContinuously=view.isPlaying
         guard let scene=view.window?.windowScene else { return }
         scene.keyWindow?.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
         scene.requestGeometryUpdate(.iOS(interfaceOrientations:value ? .landscapeRight : .portrait)) { [weak self] _ in
@@ -291,7 +294,7 @@ enum WallMeasureMode { case none, outline, opening }
         guard started,!recoveryBusy else { return };recoveryBusy=true;localizationTimedOut=false
         scanTask?.cancel();scanTask=nil;scanning=false
         recoveryTimer?.cancel();recoveryTimer=nil
-        spatial.stopMoving();frameLink?.isPaused=true;view.session.pause();view.isPlaying=false;view.rendersContinuously=false;tracking=false;interactionReady=false;poseStability.reset();_ = gate.update(normal:false,at:0);setVisible(false);desktop.setTracking(false)
+        spatial.stopMoving();frameLink?.isPaused=true;videoRunning=false;view.session.pause();view.isPlaying=false;view.rendersContinuously=false;tracking=false;interactionReady=false;poseStability.reset();_ = gate.update(normal:false,at:0);setVisible(false);desktop.setTracking(false)
         Task { [weak self] in
             guard let self else { return }
             do {
@@ -335,7 +338,7 @@ enum WallMeasureMode { case none, outline, opening }
             spatial.saveMap(force:false)
             spatial.requireSurfaceConfirmation()
             desktop.setTracking(false)
-            view.session.pause(); view.isPlaying = false;view.rendersContinuously=false
+            videoRunning=false;view.session.pause(); view.isPlaying = false;view.rendersContinuously=false
             tracking = false;interactionReady=false;poseStability.reset(); _ = gate.update(normal:false, at:0); setVisible(false)
         }
     }
@@ -348,7 +351,7 @@ enum WallMeasureMode { case none, outline, opening }
         spatial.saveMap(force:false)
         stopped = true
         hands.reset()
-        view.session.pause(); view.isPlaying = false;view.rendersContinuously=false
+        videoRunning=false;view.session.pause(); view.isPlaying = false;view.rendersContinuously=false
         view.session.delegate = nil; view.delegate = nil
         onFeedback = nil
         panel.close(recordChange:false)
@@ -557,6 +560,7 @@ enum WallMeasureMode { case none, outline, opening }
         }
         if good,spatial.objectCount>0,!spatial.supportsConfirmed { status=spatial.persistenceStatus }
         if scanning && approved && good && frame.timestamp-lastDepthUpdate>0.5 { updateDepth(frame) }
+        if headset { onHeadsetFrame?(frame) }
         cameraFrames += 1
         if frame.timestamp-lastMetric >= 1 {
             let fps = performance.sample()
@@ -566,7 +570,7 @@ enum WallMeasureMode { case none, outline, opening }
             lastMetric = frame.timestamp; cameraFrames = 0
             let thermal = ProcessInfo.processInfo.thermalState
             if thermal == .critical {
-                fatal = true;frameLink?.isPaused=true;interactionReady=false;tracking=false; setVisible(false); view.session.pause(); view.isPlaying = false;view.rendersContinuously=false
+                fatal = true;frameLink?.isPaused=true;interactionReady=false;tracking=false; setVisible(false); videoRunning=false;view.session.pause(); view.isPlaying = false;view.rendersContinuously=false
                 status = "iPhone quente. AR pausado; feche e deixe o aparelho esfriar."; return
             }
             spatial.setThermal(thermal)
@@ -887,7 +891,7 @@ private struct WallCameraView: UIViewRepresentable {
             }
             if controller.headset && !immersive {
                 VStack {
-                    HStack(spacing:0) {
+                    HStack(spacing:24) {
                         ForEach(0..<2,id:\.self) { _ in
                             HStack {
                                 Button("Sair VR") { controller.setHeadset(false) }.buttonStyle(.bordered)

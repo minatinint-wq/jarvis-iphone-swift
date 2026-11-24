@@ -114,6 +114,11 @@ enum SpatialHandMath {
     private(set) var hasDepth=false
     private let cursor=UIView(frame:CGRect(x:0,y:0,width:24,height:24))
     private let overlay=UIView()
+    private weak var homeView:UIView?
+    func presentOverlay(in host:UIView?) {
+        guard let target=host ?? homeView else { return }
+        overlay.removeFromSuperview();overlay.frame=target.bounds;target.addSubview(overlay)
+    }
     private let bones=CAShapeLayer()
     private var skeletonVisible=true
     func setSkeletonVisible(_ visible:Bool) { skeletonVisible=visible;bones.isHidden = !visible;mirrorBones?.isHidden = !visible }
@@ -149,6 +154,7 @@ enum SpatialHandMath {
     var onQuality:((String)->Void)?
     private var quality=""
     init(view:ARSCNView) {
+        homeView=view
         handRequest.maximumHandCount=2
         overlay.frame=view.bounds;overlay.autoresizingMask=[.flexibleWidth,.flexibleHeight]
         overlay.isUserInteractionEnabled=false;overlay.backgroundColor = .clear;overlay.isOpaque=false
@@ -178,7 +184,7 @@ enum SpatialHandMath {
         overlay.isHidden = !enabled
         syncMirror()
         guard enabled else { if wasEnabled { reset() };wasEnabled=false;return };wasEnabled=true
-        if view.subviews.last !== overlay { view.bringSubviewToFront(overlay) }
+        if overlay.superview === view,view.subviews.last !== overlay { view.bringSubviewToFront(overlay) }
         bones.frame=overlay.bounds
         let now=ProcessInfo.processInfo.systemUptime
         if busy {

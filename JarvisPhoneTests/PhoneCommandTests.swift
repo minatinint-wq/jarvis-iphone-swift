@@ -3,6 +3,7 @@ import SwiftUI
 import AVFoundation
 import SceneKit
 import Metal
+import CoreVideo
 import ARKit
 @testable import JarvisPhone
 
@@ -92,64 +93,78 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertFalse(gate.update(position:SIMD3(1,0,0),forward:SIMD3(0,0,1),time:5))
     }
     @MainActor func testHeadsetSharesOneCameraSessionAndRestoresFullViewport() async throws {
-        let controller=WallARController()
-        // Keep the actual owner alive and inspect the exact shared session.
-        let host=SpatialHeadsetSurface(controller:controller)
+        let controller=WallARController(),host=SpatialHeadsetSurface(controller:controller)
         host.frame=CGRect(x:0,y:0,width:900,height:400)
         let session=controller.view.session
-        controller.view.isPlaying=false
         host.configure(headset:true);host.layoutIfNeeded()
-        let right=try XCTUnwrap(host.secondary)
-        XCTAssertFalse(right.isPlaying);XCTAssertFalse(right.rendersContinuously)
-        controller.view.isPlaying=true;controller.view.rendersContinuously=true;controller.view.preferredFramesPerSecond=30
-        host.configure(headset:true)
-        XCTAssertTrue(right.isPlaying);XCTAssertTrue(right.rendersContinuously);XCTAssertEqual(right.preferredFramesPerSecond,30)
-        controller.view.isPlaying=false;controller.view.rendersContinuously=false;host.configure(headset:true)
-        XCTAssertFalse(right.isPlaying);XCTAssertFalse(right.rendersContinuously)
-        XCTAssertTrue(right.session === session);XCTAssertTrue(right.scene === controller.view.scene)
-        // Exercise the same anchor input used by the actual currentFrame pump;
-        // the simulator cannot synthesize camera callbacks through ARKit's proxy.
+        XCTAssertNotNil(host.output);XCTAssertNotNil(host.compositor)
+        XCTAssertTrue(controller.view.isHidden);XCTAssertFalse(controller.view.isPlaying)
+        XCTAssertFalse(controller.view.rendersContinuously)
+        XCTAssertTrue(controller.view.session === session)
+        XCTAssertEqual(host.eyeFrames[0].width,438);XCTAssertEqual(host.eyeFrames[1].minX,462)
+        XCTAssertEqual(controller.view.frame.width,438)
         let anchor=ARAnchor(name:"headset-event-probe",transform:simd_float4x4(SIMD4(1,0,0,0),SIMD4(0,1,0,0),SIMD4(0,0,1,0),SIMD4(0.3,0,0,1)))
         let marker=SCNNode();controller.worldAnchor=anchor;controller.painted=marker
-        marker.position=SCNVector3(-9,0,0)
-        controller.receiveTrackedAnchors([anchor])
-        try await Task.sleep(for:.milliseconds(50))
-        XCTAssertEqual(marker.position.x,0.3,accuracy:0.001,"Session anchor events must reach the world owner")
-        XCTAssertEqual(controller.view.frame.width,450);XCTAssertEqual(right.frame.width,450)
-        XCTAssertEqual(right.frame.minX,450)
-        if let device=MTLCreateSystemDefaultDevice() {
-            let view=controller.view
-            view.scene.background.contents=UIColor(white:0.06,alpha:1)
-            let camera=SCNNode();camera.camera=SCNCamera()
-            camera.camera?.zNear=0.01;camera.camera?.zFar=20;camera.camera?.fieldOfView=60
-            // An independent synthetic camera is required: an ARSCNView owns
-            // and overwrites its camera pose even without a real AR frame.
-            let panel=SpatialPanel(view:view);panel.preview(.dashboard);panel.setTracking(true)
-            let panelRoot=try XCTUnwrap(view.scene.rootNode.childNodes.first { $0.childNodes.contains { $0.geometry is SCNPlane } })
-            panelRoot.simdTransform=try XCTUnwrap(SpatialPanelGeometry.upright(camera:matrix_identity_float4x4,distance:0.9))
-            let renderer=SCNRenderer(device:device,options:nil);renderer.scene=view.scene;renderer.pointOfView=camera
-            let left=renderer.snapshot(atTime:0,with:CGSize(width:450,height:400),antialiasingMode:.multisampling2X)
-            let other=SCNRenderer(device:device,options:nil);other.scene=right.scene;other.pointOfView=camera
-            let rightImage=other.snapshot(atTime:0,with:CGSize(width:450,height:400),antialiasingMode:.multisampling2X)
-            for eye in [left,rightImage] {
-                let data=try XCTUnwrap(eye.cgImage?.dataProvider?.data) as Data
-                XCTAssertGreaterThan(Set(data).count,16,"The eye must contain rendered content, not only its background")
-            }
-            let format=UIGraphicsImageRendererFormat();format.scale=1
-            let image=UIGraphicsImageRenderer(size:CGSize(width:900,height:400),format:format).image { _ in
-                left.draw(in:CGRect(x:0,y:0,width:450,height:400));rightImage.draw(in:CGRect(x:450,y:0,width:450,height:400))
-            }
-            let attachment=XCTAttachment(image:image);attachment.name="VRBox-synthetic-monoscopic-layout";attachment.lifetime = .keepAlways;add(attachment)
-            panel.close()
-        }
+        controller.receiveTrackedAnchors([anchor]);XCTAssertEqual(marker.position.x,0.3,accuracy:0.001)
         host.configure(headset:false);host.layoutIfNeeded()
-        XCTAssertNil(host.secondary);XCTAssertTrue(controller.view.session === session)
-        XCTAssertEqual(controller.view.frame.width,900)
-        marker.position=SCNVector3(-9,0,0)
-        controller.receiveTrackedAnchors([anchor])
-        try await Task.sleep(for:.milliseconds(50))
-        XCTAssertEqual(marker.position.x,0.3,accuracy:0.001,"Exiting the visor must preserve event delivery")
+        XCTAssertNil(host.output);XCTAssertFalse(controller.view.isHidden)
+        XCTAssertTrue(controller.view.session === session);XCTAssertEqual(controller.view.frame.width,900)
+        marker.position=SCNVector3(-9,0,0);controller.receiveTrackedAnchors([anchor])
+        XCTAssertEqual(marker.position.x,0.3,accuracy:0.001)
         controller.stop()
+    }
+    @MainActor func testHeadsetCompositorRepeatsWholeCameraAndScenePerEye() throws {
+        guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
+        let compositor=try SpatialEyeCompositor(device:device)
+        var pixelBuffer:CVPixelBuffer?
+        let properties:[CFString:Any]=[kCVPixelBufferMetalCompatibilityKey:true,kCVPixelBufferIOSurfacePropertiesKey:[:]]
+        let attributes=properties as CFDictionary
+        XCTAssertEqual(CVPixelBufferCreate(nil,32,32,kCVPixelFormatType_420YpCbCr8BiPlanarFullRange,attributes,&pixelBuffer),kCVReturnSuccess)
+        let pixels=try XCTUnwrap(pixelBuffer)
+        CVPixelBufferLockBaseAddress(pixels,[])
+        let colors:[(UInt8,UInt8,UInt8)]=[(76,85,255),(150,44,21),(29,255,107),(226,0,149)]
+        let y=try XCTUnwrap(CVPixelBufferGetBaseAddressOfPlane(pixels,0)).assumingMemoryBound(to:UInt8.self)
+        let uv=try XCTUnwrap(CVPixelBufferGetBaseAddressOfPlane(pixels,1)).assumingMemoryBound(to:UInt8.self)
+        for row in 0..<32 { for x in 0..<32 { y[row*CVPixelBufferGetBytesPerRowOfPlane(pixels,0)+x]=colors[x/8].0 } }
+        for row in 0..<16 { for x in 0..<16 {
+            let i=row*CVPixelBufferGetBytesPerRowOfPlane(pixels,1)+x*2
+            uv[i]=colors[x/4].1;uv[i+1]=colors[x/4].2
+        } }
+        CVPixelBufferUnlockBaseAddress(pixels,[])
+        let size=CGSize(width:820,height:400),eyes=SpatialEyeLayout.frames(size:size,gap:20)
+        let scene=SCNScene(),cube=SCNNode(geometry:SCNBox(width:0.16,height:0.16,length:0.16,chamferRadius:0))
+        cube.position=SCNVector3(0,0,-1);cube.geometry?.firstMaterial?.lightingModel = .constant;cube.geometry?.firstMaterial?.diffuse.contents=UIColor.white;scene.rootNode.addChildNode(cube)
+        let f:Float=1/tan(.pi/6),projection=simd_float4x4(SIMD4(f,0,0,0),SIMD4(0,f,0,0),SIMD4(0,0,-1.001,-1),SIMD4(0,0,-0.02001,0))
+        for rotated in [false,true] {
+            let spec=MTLTextureDescriptor.texture2DDescriptor(pixelFormat:.bgra8Unorm,width:820,height:400,mipmapped:false)
+            spec.storageMode = .shared;spec.usage = .renderTarget
+            let target=try XCTUnwrap(device.makeTexture(descriptor:spec)),command=try XCTUnwrap(compositor.queue.makeCommandBuffer())
+            let world=try XCTUnwrap(compositor.renderWorld(scene:scene,transform:matrix_identity_float4x4,projection:projection,size:eyes[0].size,time:0,command:command))
+            let transform=rotated ? CGAffineTransform(a:-1,b:0,c:0,d:-1,tx:1,ty:1) : .identity
+            XCTAssertTrue(compositor.compose(pixels:pixels,displayToCamera:transform,world:world,destination:target,eyes:eyes,command:command))
+            command.commit();command.waitUntilCompleted();XCTAssertEqual(command.status,.completed)
+            var bytes=[UInt8](repeating:0,count:820*400*4)
+            bytes.withUnsafeMutableBytes { target.getBytes($0.baseAddress!,bytesPerRow:820*4,from:MTLRegionMake2D(0,0,820,400),mipmapLevel:0) }
+            var mismatch=0
+            for row in 0..<400 { for x in 0..<400 {
+                let a=(row*820+x)*4,b=(row*820+420+x)*4
+                if bytes[a..<a+4] != bytes[b..<b+4] { mismatch+=1 }
+            } }
+            XCTAssertEqual(mismatch,0,"Each eye must contain the same complete composite")
+            for x in 400..<420 { XCTAssertEqual(Array(bytes[(200*820+x)*4..<(200*820+x)*4+4]),[0,0,0,255]) }
+            func rgb(_ x:Int,_ row:Int)->[UInt8] { let i=(row*820+x)*4;return [bytes[i+2],bytes[i+1],bytes[i]] }
+            let expected=rotated ? [[1,1,0],[0,0,1],[0,1,0],[1,0,0]] : [[1,0,0],[0,1,0],[0,0,1],[1,1,0]]
+            for stripe in 0..<4 { let sample=rgb(stripe*100+50,360);for channel in 0..<3 {
+                if expected[stripe][channel]==1 { XCTAssertGreaterThan(sample[channel],180) } else { XCTAssertLessThan(sample[channel],80) }
+            } }
+            XCTAssertTrue(rgb(200,200).allSatisfy { $0>200 },"The 3D object must be composed over the camera in both eyes")
+            let info=CGBitmapInfo.byteOrder32Little.union(CGBitmapInfo(rawValue:CGImageAlphaInfo.premultipliedFirst.rawValue))
+            let provider=try XCTUnwrap(CGDataProvider(data:Data(bytes) as CFData))
+            let image=UIImage(cgImage:try XCTUnwrap(CGImage(width:820,height:400,bitsPerComponent:8,bitsPerPixel:32,bytesPerRow:820*4,space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:info,provider:provider,decode:nil,shouldInterpolate:false,intent:.defaultIntent)))
+            let name=rotated ? "JARVIS-VRBOX-GPU-ROTATED" : "JARVIS-VRBOX-GPU"
+            let attachment=XCTAttachment(image:image);attachment.name=name;attachment.lifetime = .keepAlways;add(attachment)
+            try image.pngData()?.write(to:URL(fileURLWithPath:NSTemporaryDirectory()).appendingPathComponent(name+".png"))
+        }
     }
     func testHeadsetVoiceCommandsAndNegation() {
         XCTAssertEqual(WallARCommand.parse("Jarvis, ativar VR Box",inStudio:false),.headset(true))

@@ -12,6 +12,10 @@ on:
         description: 'Run complete XCTest and export evidence; device package is validated by xtool workflow'
         type: boolean
         default: false
+      only_testing:
+        description: 'Optional XCTest identifiers, one per line'
+        type: string
+        default: ''
   push:
     branches: [main]
 
@@ -56,13 +60,23 @@ jobs:
           PY
       - name: Compile and run XCTest
         shell: bash
+        env:
+          TEST_FILTER: ${{ inputs.only_testing }}
         run: |
           set -o pipefail
+          args=()
+          while IFS= read -r test; do
+            if [ -n "$test" ]; then args+=("-only-testing:$test"); fi
+          done <<< "$TEST_FILTER"
           xcodebuild -project JarvisPhone.xcodeproj -scheme JarvisPhone \
             -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}' \
             -parallel-testing-enabled NO \
             -derivedDataPath .build -resultBundlePath TestResults.xcresult \
-            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee xcodebuild.log
+            CODE_SIGNING_ALLOWED=NO "${args[@]}" test 2>&1 | tee xcodebuild.log
+      - name: Preserve raw GPU test frames
+        if: always()
+        run: |
+          find "$HOME/Library/Developer/CoreSimulator/Devices/${{ steps.simulator.outputs.udid }}/data/Containers/Data/Application" -name 'JARVIS-VRBOX-GPU*.png' -exec cp '{}' . \;
       - name: Export test screenshots
         if: always()
         run: xcrun xcresulttool export attachments --path TestResults.xcresult --output-path TestAttachments
@@ -103,6 +117,7 @@ jobs:
             xcodebuild.log
             TestResults.xcresult
             TestAttachments
+            JARVIS-VRBOX-GPU*.png
             JARVIS-IPHONE-SIMULADOR.png
             JarvisPhone-Simulator.zip
             device-build.log
