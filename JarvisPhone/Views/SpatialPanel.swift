@@ -265,7 +265,6 @@ enum SpatialPanelGeometry {
             case .drag:
                 guard let root,let sample else { continue }
                 if !dragging { if let anchor { view.session.remove(anchor:anchor) };anchor=nil;dragging=true }
-                if let factor=pinchZoom.update(span:sample.palmSpan,depth:handDepth(sample),time:sample.time) { resize(factor) }
                 let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),dragDepth))
                 let destination=SIMD3(p.x,p.y,p.z)+dragOffset
                 if let frame=view.session.currentFrame,let query=view.raycastQuery(from:sample.point,allowing:.existingPlaneGeometry,alignment:.any),let hit=view.session.raycast(query).first {

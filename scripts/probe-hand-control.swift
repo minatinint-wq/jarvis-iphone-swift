@@ -4,6 +4,17 @@ import CoreImage
 
 @main struct HandControlProbe {
     static func main() throws {
+        var slowPose=SpatialPoseStability()
+        for tick in 0...30 { precondition(slowPose.update(position:SIMD3(0,0,0),forward:SIMD3(0,0,1),time:Double(tick)*0.5)) }
+        var dual=SpatialDualPinchScale(),size:Float=1
+        for tick in 0...30 {
+            let distance=100+Double(tick)*5
+            size *= dual.update(points:[CGPoint(x:0,y:0),CGPoint(x:distance,y:0)],time:Double(tick)*0.1) ?? 1
+        }
+        precondition(size>2 && dual.active)
+        _=dual.update(points:nil,time:3.2);precondition(dual.active)
+        _=dual.update(points:nil,time:3.5);precondition(!dual.active)
+        print("VR_SLOW_FRAME_AND_DUAL_PINCH_OK normal tracking tolerates slow callbacks; both pinches resize; loss releases safely")
         var frames=SpatialFrameGate()
         precondition(frames.accept(10));precondition(!frames.accept(10));precondition(!frames.accept(9));precondition(!frames.accept(.nan));precondition(frames.accept(10.1))
         var pose=SpatialPoseStability()

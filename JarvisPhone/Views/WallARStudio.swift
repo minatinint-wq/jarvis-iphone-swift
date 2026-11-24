@@ -45,6 +45,10 @@ enum WallMeasureMode { case none, outline, opening }
     @Published var lensLabel="1×"
     @Published var scanning=false
     @Published var headset=false
+    @Published var headsetStatus="Preparando visor"
+    private var dualScale=SpatialDualPinchScale()
+    private var dualScaleTarget:String?
+    private var touchScaleTarget:String?
     private(set) var videoRunning=false
     var onHeadsetFrame:((ARFrame)->Void)?
     private var interactionReady=false
@@ -133,10 +137,20 @@ enum WallMeasureMode { case none, outline, opening }
             guard let self else { return }
             if self.desktop.inputBlocked { return }
             guard self.interactionReady,!self.spatial.recovering,!self.recoveryBusy else {
-                self.palmRecall=SpatialPalmRecall()
+                self.palmRecall=SpatialPalmRecall();self.dualScale=SpatialDualPinchScale();self.dualScaleTarget=nil
                 self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
                 self.hands.showProgress(0);return
             }
+            let factor=self.dualScale.update(points:sample?.dualPinch,time:sample?.time ?? ProcessInfo.processInfo.systemUptime)
+            if self.dualScale.active {
+                if self.dualScaleTarget==nil,let points=sample?.dualPinch,points.count==2 {
+                    self.dualScaleTarget=self.scaleTarget(at:CGPoint(x:(points[0].x+points[1].x)/2,y:(points[0].y+points[1].y)/2))
+                }
+                self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
+                if let factor,let target=self.dualScaleTarget { self.resize(target,factor:factor) }
+                self.hands.showProgress(0);self.handStatus="Duas pinças: afaste para aumentar, aproxime para diminuir.";return
+            }
+            self.dualScaleTarget=nil
             let palm=sample?.palmPoint ?? sample?.point
             let over=palm.map { self.panel.contains($0) || self.desktop.contains($0) } ?? false
             let candidate: String?
@@ -161,6 +175,17 @@ enum WallMeasureMode { case none, outline, opening }
         }
         hands.onQuality = { [weak self] in self?.handStatus=$0 }
         spatial.attach()
+        spatial.onWindowPinch={ [weak self] gesture in
+            guard let self,self.interactionReady else { return false }
+            if gesture.state == .began {
+                let point=gesture.location(in:self.view)
+                self.touchScaleTarget=self.desktop.contains(point) ? "desktop" : self.panel.contains(point) ? "panel" : nil
+            }
+            guard let target=self.touchScaleTarget else { return false }
+            if gesture.state == .changed { self.resize(target,factor:Float(gesture.scale));gesture.scale=1 }
+            if gesture.state == .ended || gesture.state == .cancelled { self.touchScaleTarget=nil }
+            return true
+        }
         spatial.onAttackRequest = { [weak self] in self?.requestWallAttack() }
         spatial.onImpact = { [weak self] point in self?.showWallImpact(point) }
         view.session.delegate = self
@@ -235,11 +260,22 @@ enum WallMeasureMode { case none, outline, opening }
         if let activeVideoFormat { config.videoFormat=activeVideoFormat }
         view.session.run(config,options:shouldReset ? [.resetTracking,.removeExistingAnchors] : [])
         pendingMapReset=false
-        videoRunning=true;view.isPlaying = !headset;view.rendersContinuously = !headset
+        videoRunning=true;view.isPlaying = true;view.rendersContinuously = true
         frameLink?.isPaused=false
         armRecoveryTimer()
     }
 
+    private func scaleTarget(at point:CGPoint)->String? {
+        if desktop.contains(point) { return "desktop" }
+        if panel.contains(point) { return "panel" }
+        if spatial.hasSelection { return "world" }
+        if lastWindow=="desktop",desktop.visible { return "desktop" }
+        return panel.visible ? "panel" : desktop.visible ? "desktop" : nil
+    }
+    private func resize(_ target:String,factor:Float) {
+        guard factor.isFinite,factor>0 else { return }
+        switch target { case "desktop":desktop.resize(factor);case "panel":panel.resize(factor);default:spatial.resizeSelected(factor) }
+    }
     func selectLens(ultra: Bool) {
         guard !recoveryBusy else { return }
         if ultra && !ARWorldTrackingConfiguration.supportedVideoFormats.contains(where:{$0.captureDeviceType == .builtInUltraWideCamera && $0.captureDevicePosition == .back}) {
@@ -281,7 +317,7 @@ enum WallMeasureMode { case none, outline, opening }
 
     func setHeadset(_ value: Bool) {
         headset=value;hands.reset()
-        view.isPlaying=videoRunning && !value;view.rendersContinuously=view.isPlaying
+        view.isPlaying=videoRunning;view.rendersContinuously=view.isPlaying
         guard let scene=view.window?.windowScene else { return }
         scene.keyWindow?.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
         scene.requestGeometryUpdate(.iOS(interfaceOrientations:value ? .landscapeRight : .portrait)) { [weak self] _ in
@@ -551,6 +587,7 @@ enum WallMeasureMode { case none, outline, opening }
         desktop.setTracking(good && !spatial.recovering)
         // Vision's 2D skeleton does not need a mapped room or an active module.
         // Spatial actions remain gated in onSample above, separately from drawing.
+        if headset { onHeadsetFrame?(frame) }
         hands.update(frame,view:view,enabled:!webWindowVisible && !fatal)
         if tracking != good {
             if !good { spatial.requireSurfaceConfirmation() }
@@ -560,10 +597,22 @@ enum WallMeasureMode { case none, outline, opening }
         }
         if good,spatial.objectCount>0,!spatial.supportsConfirmed { status=spatial.persistenceStatus }
         if scanning && approved && good && frame.timestamp-lastDepthUpdate>0.5 { updateDepth(frame) }
-        if headset { onHeadsetFrame?(frame) }
         cameraFrames += 1
         if frame.timestamp-lastMetric >= 1 {
             let fps = performance.sample()
+            if headset {
+                if normal && stablePose { headsetStatus=spatial.recovering ? "Câmera ativa · mostre o cômodo salvo" : "AR · câmera ativa" }
+                else if normal { headsetStatus="Câmera ativa · estabilizando movimento" }
+                else {
+                    switch frame.camera.trackingState {
+                    case .limited(.insufficientFeatures):headsetStatus="Aponte para cantos com boa luz"
+                    case .limited(.excessiveMotion):headsetStatus="Mova a cabeça mais devagar"
+                    case .limited(.relocalizing):headsetStatus="Câmera ativa · reconhecendo cômodo"
+                    default:headsetStatus="Câmera ativa · iniciando rastreamento"
+                    }
+                }
+                NSLog("[SpatialVR] normal=%d stable=%d recovering=%d renderedFPS=%d",normal ? 1 : 0,stablePose ? 1 : 0,spatial.recovering ? 1 : 0,fps)
+            }
             if scanning { spatial.recordPerformance(fps:fps,frame:frame,handLatencyMS:hands.latencyMS,handFound:hands.hasHand,handDepth:hands.hasDepth) }
             let mode=scanning ? "leitura temporária" : "ambiente fixo"
             metrics = fps > 0 ? "\(fps) FPS · \(mode)" : mode
@@ -896,7 +945,7 @@ private struct WallCameraView: UIViewRepresentable {
                             HStack {
                                 Button("Sair VR") { controller.setHeadset(false) }.buttonStyle(.bordered)
                                 Spacer()
-                                Text(controller.tracking ? "AR · câmera única" : "Recuperando posição").font(.caption2)
+                                Text(controller.headsetStatus).font(.caption2)
                             }.padding(12).frame(maxWidth:.infinity)
                         }
                     }

@@ -35,6 +35,10 @@ struct SpatialDesktopRecord: Codable {
     }
     private var dragging=false
     var isDragging: Bool { dragging }
+    func resize(_ factor:Float) {
+        guard visible,tracking,let root,factor.isFinite,factor>0 else { return }
+        root.simdScale=SIMD3(repeating:min(2,max(0.25,root.simdScale.x*factor)));onChange?()
+    }
     private var offset=SIMD3<Float>.zero
     private var dragDepth:Float=0
     private var tracking=false
@@ -184,9 +188,6 @@ struct SpatialDesktopRecord: Codable {
                 }
             case .drag:
                 if let sample {
-                    if let factor=pinchZoom.update(span:sample.palmSpan,depth:handDepth(sample),time:sample.time) {
-                        root.simdScale=SIMD3(repeating:min(2,max(0.25,root.simdScale.x*factor)));onChange?()
-                    }
                     let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),dragDepth))
                     root.simdWorldPosition=SIMD3(p.x,p.y,p.z)+offset
                 }

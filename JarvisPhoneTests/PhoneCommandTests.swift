@@ -8,6 +8,25 @@ import ARKit
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    func testNormalTrackingDoesNotRecoverForeverBecauseRenderFramesAreSlow() {
+        var pose=SpatialPoseStability(),gate=WallTrackingGate()
+        for tick in 0...20 {
+            let time=Double(tick)*0.5
+            let stable=pose.update(position:SIMD3(0,0,0),forward:SIMD3(0,0,1),time:time)
+            XCTAssertTrue(stable)
+            if tick>1 { XCTAssertTrue(gate.update(normal:stable,at:time)) }
+            else { _=gate.update(normal:stable,at:time) }
+        }
+    }
+    func testTwoPinchesResizeWithoutReusingAReleasedHand() {
+        var gate=SpatialDualPinchScale(),scale:Float=1
+        for tick in 0...30 {
+            scale *= gate.update(points:[CGPoint(x:0,y:0),CGPoint(x:100+tick*5,y:0)],time:Double(tick)*0.1) ?? 1
+        }
+        XCTAssertGreaterThan(scale,2);XCTAssertTrue(gate.active)
+        XCTAssertNil(gate.update(points:nil,time:3.2));XCTAssertTrue(gate.active)
+        XCTAssertNil(gate.update(points:nil,time:3.5));XCTAssertFalse(gate.active)
+    }
     @MainActor func testCleanProjectionLeavesOneIconAndDwellOpensRadialOnce() throws {
         let view=ARSCNView(frame:CGRect(x:0,y:0,width:600,height:900));view.scene=SCNScene()
         let camera=SCNNode();camera.camera=SCNCamera();camera.position=SCNVector3(0,0,1)
@@ -90,7 +109,7 @@ final class PhoneCommandTests: XCTestCase {
             XCTAssertFalse(gate.update(position:SIMD3(1,0,0),forward:SIMD3(0,0,1),time:Double(tick)/60))
         }
         XCTAssertTrue(gate.update(position:SIMD3(1,0,0),forward:SIMD3(0,0,1),time:110.0/60))
-        XCTAssertFalse(gate.update(position:SIMD3(1,0,0),forward:SIMD3(0,0,1),time:5))
+        XCTAssertTrue(gate.update(position:SIMD3(1,0,0),forward:SIMD3(0,0,1),time:5),"A late frame alone is not a localization failure")
     }
     @MainActor func testHeadsetSharesOneCameraSessionAndRestoresFullViewport() async throws {
         let controller=WallARController(),host=SpatialHeadsetSurface(controller:controller)
@@ -98,7 +117,7 @@ final class PhoneCommandTests: XCTestCase {
         let session=controller.view.session
         host.configure(headset:true);host.layoutIfNeeded()
         XCTAssertNotNil(host.output);XCTAssertNotNil(host.compositor)
-        XCTAssertTrue(controller.view.isHidden);XCTAssertFalse(controller.view.isPlaying)
+        XCTAssertFalse(controller.view.isHidden);XCTAssertFalse(controller.view.isPlaying)
         XCTAssertFalse(controller.view.rendersContinuously)
         XCTAssertTrue(controller.view.session === session)
         XCTAssertEqual(host.eyeFrames[0].width,438);XCTAssertEqual(host.eyeFrames[1].minX,462)

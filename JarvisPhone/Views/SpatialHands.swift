@@ -14,6 +14,7 @@ struct SpatialHandSample {
     var openPalm = false
     var palmPoint: CGPoint? = nil
     var palmSpan: Double? = nil
+    var dualPinch:[CGPoint]? = nil
 }
 
 enum SpatialHandMath {
@@ -207,6 +208,7 @@ enum SpatialHandMath {
             autoreleasepool {
             let luminance=Self.luminance(pixels)
             var positions:[CGPoint?]=[];var ratio:Double?;var rawTip:CGPoint?;var rawPalm:CGPoint?;var detectorError=false
+            var dualPinch:[CGPoint]?
             do {
                 let image=HandPoseInput.prepare(CIImage(cvPixelBuffer:pixels),luminance:luminance)
                 try VNImageRequestHandler(ciImage:image,orientation:imageOrientation).perform([request])
@@ -214,6 +216,17 @@ enum SpatialHandMath {
                 let candidates=(request.results ?? []).compactMap { hand -> [VNHumanHandPoseObservation.JointName:VNRecognizedPoint]? in
                     guard let joints=try? hand.recognizedPoints(.all),HandPoseInput.recognizable(joints.values.map(\.confidence)) else { return nil };return joints
                 }
+                let pinches=candidates.compactMap { joints -> CGPoint? in
+                    guard let a=joints[.thumbTip],let b=joints[.indexTip],min(a.confidence,b.confidence)>=HandPoseInput.pinchConfidence else { return nil }
+                    let raw=keys.map { key -> CGPoint? in
+                        guard let joint=joints[key],joint.confidence>=HandPoseInput.jointConfidence else { return nil }
+                        return SpatialHandMath.rawPoint(joint.location,orientation:imageOrientation)
+                    }
+                    guard let ratio=SpatialHandMath.pinchRatio(raw,size:resolution),ratio<0.40,let thumb=raw[4],let index=raw[8] else { return nil }
+                    let q=CGPoint(x:(thumb.x+index.x)/2,y:(thumb.y+index.y)/2).applying(transform)
+                    return CGPoint(x:q.x*size.width,y:q.y*size.height)
+                }
+                if pinches.count==2 { dualPinch=pinches.sorted { $0.x<$1.x } }
                 let joints=candidates.min { a,b in
                     func score(_ j:[VNHumanHandPoseObservation.JointName:VNRecognizedPoint])->CGFloat {
                         let visible=j.values.filter { $0.confidence>=HandPoseInput.jointConfidence }
@@ -240,7 +253,7 @@ enum SpatialHandMath {
                     }
                 }
             } catch { detectorError=true }
-            let result=positions,amount=ratio,tip=rawTip,palm=rawPalm,failed=detectorError
+            let result=positions,amount=ratio,tip=rawTip,palm=rawPalm,failed=detectorError,both=dualPinch
             Task { @MainActor [weak self] in
                 guard let self else { return };self.busy=false
                 defer { self.syncMirror() }
@@ -279,7 +292,7 @@ enum SpatialHandMath {
                 let palmPoint=palm.map { raw -> CGPoint in let q=raw.applying(transform);return CGPoint(x:q.x*size.width,y:q.y*size.height) }
                 let span:Double?
                 if let a=result[5],let b=result[17] { span=Double(hypot(a.x-b.x,a.y-b.y)/sqrt(max(1,size.width*size.height))) } else { span=nil }
-                self.onSample?(SpatialHandSample(point:p,ratio:amount ?? .nan,menuPose:SpatialHandMath.pointing(result,twoFingers:true),pointing:pointing,time:stamp,worldPoint:self.smoothedWorld,palmWorld:self.smoothedPalm,openPalm:SpatialHandMath.openPalm(result),palmPoint:palmPoint,palmSpan:span))
+                self.onSample?(SpatialHandSample(point:p,ratio:amount ?? .nan,menuPose:SpatialHandMath.pointing(result,twoFingers:true),pointing:pointing,time:stamp,worldPoint:self.smoothedWorld,palmWorld:self.smoothedPalm,openPalm:SpatialHandMath.openPalm(result),palmPoint:palmPoint,palmSpan:span,dualPinch:both))
             }
             }
         }

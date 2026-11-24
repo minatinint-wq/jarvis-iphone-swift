@@ -1,0 +1,9 @@
+JARVIS — revisão 33 — recuperação do VR e redimensionamento
+
+O visor continua dividido em duas imagens completas. A renderização passa a uma fila de trabalho própria, com no máximo um quadro pendente; esperas da GPU não bloqueiam o rastreamento, a voz ou as mãos. A vista do ARKit continua ativa por baixo, sem renderizar a geometria dos objetos. Um quadro lento, sozinho, não é mais motivo para recuperar a posição.
+
+Faça uma pinça com polegar e indicador em cada mão. Mantenha as duas pinças fechadas e afaste as mãos para ampliar a janela ou objeto selecionado; aproxime para reduzir. Solte as pinças para terminar. Uma perda breve de uma mão não transforma imediatamente o gesto em arraste.
+
+Sem o visor: dois dedos sobre a tela abrem e fecham o zoom. Isso também funciona nas janelas do PC e nos painéis projetados. Uma pinça com uma mão no ar continua movendo a janela, sem mudar seu tamanho pela distância até a câmera.
+
+Teste físico: entrar no VR no mesmo cômodo, girar lentamente a cabeça e observar se a câmera permanece ao vivo durante a recuperação. O texto do visor distingue pouca luz, movimento rápido e reconhecimento do cômodo. A recuperação real do mapa continua preservando as âncoras; esta revisão não libera interação com posições não confiáveis.

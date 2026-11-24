@@ -143,6 +143,7 @@ enum SpatialTheme: String, CaseIterable {
     @Published var active=false
     @Published var selectedModel:String?
     var panelBlocking=false
+    var onWindowPinch:((UIPinchGestureRecognizer)->Bool)?
     private var radii:[UUID:Float]=[:]
     @Published var placing=false
     @Published var status="Escolha um cenário e toque em uma área livre do piso ou de uma mesa."
@@ -608,7 +609,6 @@ enum SpatialTheme: String, CaseIterable {
                 guard let id=UUID(uuidString:key),let node=objects[id],let sample else { continue }
                 let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),handDepth))
                 handDragging=id;node.simdPosition=SIMD3(p.x,p.y,p.z)+handOffset
-                if let factor=pinchZoom.update(span:sample.palmSpan,depth:pinchDistance(sample),time:sample.time) { resizeSelected(factor) }
             case .release:
                 pinchZoom=SpatialPinchZoom()
                 if let id=handDragging { reanchor(id);handDragging=nil }
@@ -683,6 +683,7 @@ enum SpatialTheme: String, CaseIterable {
         if gesture.state == .ended || gesture.state == .cancelled { reanchor(id) }
     }
     @objc private func pinch(_ gesture: UIPinchGestureRecognizer) {
+        if onWindowPinch?(gesture)==true { return }
         guard active,!panelBlocking,visibility, let id=selected,let node=objects[id],let support=supports[id],let plane=planes[support] else { return }
         if gesture.state == .began { initialScale=node.simdScale.x }
         let scale=min(2,max(0.25,initialScale*Float(gesture.scale)))

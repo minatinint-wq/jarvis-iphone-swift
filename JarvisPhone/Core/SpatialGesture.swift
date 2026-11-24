@@ -24,7 +24,7 @@ struct SpatialPoseStability {
         let next=simd_normalize(forward)
         if let old=self.time,let previous,let direction {
             let dt=time-old
-            if dt<=0 || dt>0.25 { settleUntil=time+0.8 }
+            if dt<=0 { settleUntil=time+0.8 }
             else {
                 let distance=simd_distance(position,previous)
                 let angle=acos(min(1,max(-1,simd_dot(direction,next))))
@@ -33,6 +33,35 @@ struct SpatialPoseStability {
         }
         previous=position;direction=next;self.time=time
         return time>=settleUntil
+    }
+}
+
+/// Two closed pinches own resizing. Separation changes scale; brief occlusion
+/// never turns the remaining hand into an accidental drag or click.
+struct SpatialDualPinchScale {
+    private var start:Double?
+    private var began=0.0
+    private var lastSeen = -Double.infinity
+    private var filtered=1.0
+    private var applied=1.0
+    private(set) var active=false
+    mutating func update(points:[CGPoint]?,time:Double)->Float? {
+        guard time.isFinite else { self=Self();return nil }
+        guard let points,points.count==2 else {
+            if time-lastSeen>0.3 { self=Self() };return nil
+        }
+        let distance=hypot(points[0].x-points[1].x,points[0].y-points[1].y)
+        guard distance.isFinite,distance>=40 else { return nil }
+        if start==nil || time-lastSeen>0.35 || time<lastSeen {
+            start=Double(distance);began=time;filtered=1;applied=1
+        }
+        lastSeen=time;active=true
+        guard time-began>=0.15,let start else { return nil }
+        filtered+=(Double(distance)/start-filtered)*0.35
+        let desired=min(4,max(0.25,filtered))
+        guard abs(log(desired/applied))>0.035 else { return nil }
+        let next=min(applied*1.12,max(applied/1.12,desired))
+        let factor=next/applied;applied=next;return Float(factor)
     }
 }
 
