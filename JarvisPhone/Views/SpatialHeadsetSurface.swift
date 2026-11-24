@@ -24,8 +24,9 @@ import SceneKit
     required init?(coder:NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     func configure(headset:Bool) {
+        let playing=primary.isPlaying && primary.rendersContinuously && controller?.foreground == true && controller?.fatal == false && controller?.stopped == false
         secondary?.preferredFramesPerSecond=primary.preferredFramesPerSecond
-        secondary?.isPlaying=primary.isPlaying && controller?.foreground == true && controller?.fatal == false && controller?.stopped == false
+        secondary?.isPlaying=playing;secondary?.rendersContinuously=playing
         guard self.headset != headset else { return }
         self.headset=headset
         controller?.hands.reset()
@@ -39,7 +40,7 @@ import SceneKit
             right.pointOfView=primary.pointOfView
             right.automaticallyUpdatesLighting=false;right.autoenablesDefaultLighting=false
             right.preferredFramesPerSecond=60;right.antialiasingMode = .multisampling2X
-            right.rendersContinuously=true;right.isPlaying=primary.isPlaying
+            right.rendersContinuously=playing;right.isPlaying=playing
             right.addGestureRecognizer(UITapGestureRecognizer(target:self,action:#selector(tapRight(_:))))
             secondary=right;insertSubview(right,belowSubview:divider)
             primary.antialiasingMode = .multisampling2X

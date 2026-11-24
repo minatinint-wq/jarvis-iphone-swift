@@ -45,11 +45,12 @@ final class PhoneCommandTests: XCTestCase {
         controller.view.isPlaying=false
         host.configure(headset:true);host.layoutIfNeeded()
         let right=try XCTUnwrap(host.secondary)
-        XCTAssertFalse(right.isPlaying)
-        controller.view.isPlaying=true;controller.view.preferredFramesPerSecond=30
+        XCTAssertFalse(right.isPlaying);XCTAssertFalse(right.rendersContinuously)
+        controller.view.isPlaying=true;controller.view.rendersContinuously=true;controller.view.preferredFramesPerSecond=30
         host.configure(headset:true)
-        XCTAssertTrue(right.isPlaying);XCTAssertEqual(right.preferredFramesPerSecond,30)
-        controller.view.isPlaying=false;host.configure(headset:true);XCTAssertFalse(right.isPlaying)
+        XCTAssertTrue(right.isPlaying);XCTAssertTrue(right.rendersContinuously);XCTAssertEqual(right.preferredFramesPerSecond,30)
+        controller.view.isPlaying=false;controller.view.rendersContinuously=false;host.configure(headset:true)
+        XCTAssertFalse(right.isPlaying);XCTAssertFalse(right.rendersContinuously)
         XCTAssertTrue(right.session === session);XCTAssertTrue(right.scene === controller.view.scene)
         XCTAssertTrue(session.delegate === controller)
         XCTAssertEqual(controller.view.frame.width,450);XCTAssertEqual(right.frame.width,450)

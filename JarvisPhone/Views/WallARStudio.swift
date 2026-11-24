@@ -164,7 +164,7 @@ enum WallMeasureMode { case none, outline, opening }
         view.antialiasingMode = .multisampling4X
         view.automaticallyUpdatesLighting = false
         view.autoenablesDefaultLighting = false
-        view.rendersContinuously = true
+        view.rendersContinuously = false; view.isPlaying=false
         light.type = .ambient; light.intensity = stableLight
         let node = SCNNode(); node.light = light
         view.scene.rootNode.addChildNode(node)
@@ -223,7 +223,7 @@ enum WallMeasureMode { case none, outline, opening }
         if let activeVideoFormat { config.videoFormat=activeVideoFormat }
         view.session.run(config,options:shouldReset ? [.resetTracking,.removeExistingAnchors] : [])
         pendingMapReset=false
-        view.isPlaying = true
+        view.isPlaying = true;view.rendersContinuously=true
         armRecoveryTimer()
     }
 
@@ -280,7 +280,7 @@ enum WallMeasureMode { case none, outline, opening }
         guard started,!recoveryBusy else { return };recoveryBusy=true;localizationTimedOut=false
         scanTask?.cancel();scanTask=nil;scanning=false
         recoveryTimer?.cancel();recoveryTimer=nil
-        spatial.stopMoving();view.session.pause();tracking=false;interactionReady=false;poseStability.reset();_ = gate.update(normal:false,at:0);setVisible(false);desktop.setTracking(false)
+        spatial.stopMoving();view.session.pause();view.isPlaying=false;view.rendersContinuously=false;tracking=false;interactionReady=false;poseStability.reset();_ = gate.update(normal:false,at:0);setVisible(false);desktop.setTracking(false)
         Task { [weak self] in
             guard let self else { return }
             do {
@@ -323,7 +323,7 @@ enum WallMeasureMode { case none, outline, opening }
             spatial.saveMap(force:false)
             spatial.requireSurfaceConfirmation()
             desktop.setTracking(false)
-            view.session.pause(); view.isPlaying = false
+            view.session.pause(); view.isPlaying = false;view.rendersContinuously=false
             tracking = false;interactionReady=false;poseStability.reset(); _ = gate.update(normal:false, at:0); setVisible(false)
         }
     }
@@ -335,7 +335,7 @@ enum WallMeasureMode { case none, outline, opening }
         spatial.saveMap(force:false)
         stopped = true
         hands.reset()
-        view.session.pause(); view.isPlaying = false
+        view.session.pause(); view.isPlaying = false;view.rendersContinuously=false
         view.session.delegate = nil; view.delegate = nil
         onFeedback = nil
         panel.close(recordChange:false)
@@ -544,7 +544,7 @@ enum WallMeasureMode { case none, outline, opening }
             lastMetric = frame.timestamp; cameraFrames = 0
             let thermal = ProcessInfo.processInfo.thermalState
             if thermal == .critical {
-                fatal = true; setVisible(false); view.session.pause(); view.isPlaying = false
+                fatal = true; setVisible(false); view.session.pause(); view.isPlaying = false;view.rendersContinuously=false
                 status = "iPhone quente. AR pausado; feche e deixe o aparelho esfriar."; return
             }
             spatial.setThermal(thermal)
@@ -592,6 +592,7 @@ enum WallMeasureMode { case none, outline, opening }
         }
     }
     func sessionWasInterrupted(_ session: ARSession) {
+        view.isPlaying=false;view.rendersContinuously=false
         interactionReady=false;poseStability.reset()
         spatial.requireSurfaceConfirmation()
         tracking = false; _ = gate.update(normal:false,at:0); setVisible(false)
@@ -614,6 +615,7 @@ enum WallMeasureMode { case none, outline, opening }
         }
     }
     func session(_ session: ARSession, didFailWithError error: Error) {
+        view.isPlaying=false;view.rendersContinuously=false
         interactionReady=false
         fatal = true; setVisible(false); status = "AR indisponível: \(error.localizedDescription). Feche e reabra este modo."
     }
