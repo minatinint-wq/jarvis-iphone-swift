@@ -1,0 +1,16 @@
+JARVIS · revisão 28 · teste no iPhone 13 Pro Max
+
+1. Diga “abrir modo AR”. Mostre detalhes das paredes e do piso, movendo o iPhone devagar. Uma parede lisa, reflexiva ou sem luz fornece poucas referências.
+2. Se a recuperação não concluir em 20 segundos, aparece Recuperar ambiente. “Tentar mapa salvo” reinicia a tentativa do mesmo mapa. “Novo mapa” pede confirmação e guarda o mapa anterior em “Restaurar outro mapa”. Também é possível abrir essas opções pelo botão de mapa no topo. Não é preciso reinstalar nem apagar os dados do app.
+3. Abra um painel. Indicador estendido sobre um botão por mais de 2 segundos clica uma vez. Pinça segura move a janela; solte para fixar. Esses gestos continuam funcionando sem profundidade da ponta do dedo.
+4. Se o painel ficou de lado ou fora da câmera: mostre a palma aberta numa região livre da imagem por 1 segundo. A última janela volta para a frente. Relaxe a mão antes do próximo gesto.
+5. Para ampliar/reduzir: mostre a palma SOBRE a janela, espere aproximadamente meio segundo e aproxime a mão para ampliar ou afaste para diminuir. Use movimentos lentos. Sem profundidade confiável, o tamanho aparente da palma ajuda a estimar o movimento. Não é uma medição métrica nessa alternativa.
+6. O seletor de lente tenta 0,5× quando o ARKit fornece esse formato. Caso não forneça, a tela informa 1× e o motivo. Não simula zoom nem remove o rastreamento para fingir 0,5×.
+7. Cenários 3D → Robô animado ou Raposa animada → toque em área livre do piso mapeado. Selecione o personagem. Use Acenar/Dançar/Andar/Parar ou Observar/Correr. Robô em escala de 1,70 m e raposa 45 cm. Modelos prontos com esqueletos e animações; créditos no app.
+8. Impacto experimental: marque e aplique o recorte de uma parede livre, excluindo portas/janelas. Selecione o robô e aponte a mira para a parede à altura da mão dele. Toque Impacto na parede. Ele só caminha quando existe piso medido livre até o alvo; a rachadura é um efeito virtual recortado. “Reparar parede” remove o efeito. Não é simulação física estrutural.
+9. Salve o mapa, saia e volte. Os objetos aguardam as âncoras e a confirmação da superfície; não devem saltar para a câmera. Faça também o teste de fechar totalmente o processo. Se a relocalização falhar, use a recuperação do passo 2.
+
+Os testes de software e imagens renderizadas não substituem a validação de gestos, lente e mapa no aparelho. Não marcar como aprovado antes do teste físico.
+
+10. No bloco Medir e pintar / Cenários 3D, toque no X ao lado do seletor. Ele recolhe o bloco e deixa o botão Ferramentas. Toque em Ferramentas para abrir novamente. A escolha fica lembrada e os objetos continuam ativos.
+11. Mostre a mão mesmo durante o mapeamento ou sem um módulo aberto: o esqueleto 2D pode ser reconhecido. Os comandos espaciais só são liberados quando a posição e as âncoras estiverem recuperadas. A correção precisa ser conferida com a sua câmera e iluminação.
