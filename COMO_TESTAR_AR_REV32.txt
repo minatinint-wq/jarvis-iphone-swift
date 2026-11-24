@@ -1,0 +1,11 @@
+JARVIS — revisão 32 — correção do visor VR Box
+
+1. Abra Espaço AR e ative o ícone de óculos. Gire o iPhone para a horizontal.
+2. Agora há uma faixa preta entre os olhos. Cada lado deve mostrar a mesma imagem completa do quarto e o mesmo objeto AR na mesma posição relativa. Não é a metade esquerda do quarto em um olho e a direita no outro.
+3. Olhe um objeto fácil de reconhecer: ele precisa aparecer inteiro nos dois lados, inclusive próximo às bordas. O mesmo vale para os cartões e o cursor da mão.
+4. Abra o modo limpo pelo olho riscado da projeção. O ícone deve existir nos dois lados. Indicador sobre ele por mais de 2 s abre o radial; solte e repita para recolher.
+5. Sair VR ou a voz “sair do VR Box” retorna à câmera normal. A sessão e o mapa continuam os mesmos.
+
+O renderizador usa uma captura ARKit e uma composição por quadro (câmera YCbCr + cena 3D) na GPU. O quadro composto é repetido integralmente em duas áreas separadas. Não há conversão do vídeo para UIImage a cada quadro nem segunda captura de câmera.
+
+É vídeo monocular duplicado. Ainda não há profundidade binocular ou correção óptica calibrada para as lentes do seu suporte. A abertura da câmera, o conforto e o alinhamento da mão precisam do teste no iPhone/VR Box.

@@ -64,6 +64,7 @@ jobs:
           TEST_FILTER: ${{ inputs.only_testing }}
         run: |
           set -o pipefail
+          xcrun simctl boot '${{ steps.simulator.outputs.udid }}' 2>/dev/null || true
           args=()
           while IFS= read -r test; do
             if [ -n "$test" ]; then args+=("-only-testing:$test"); fi

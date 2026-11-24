@@ -113,6 +113,7 @@ enum SpatialEyeLayout {
     private var headset=false
     private var viewport=CGSize.zero
     private var pendingFrame:ARFrame?
+    private var lastPresented = -Double.infinity
     var eyeFrames:[CGRect] { SpatialEyeLayout.frames(size:bounds.size) }
     init(controller:WallARController) {
         self.controller=controller;primary=controller.view
@@ -128,11 +129,12 @@ enum SpatialEyeLayout {
             do {
                 guard let device=MTLCreateSystemDefaultDevice() else { throw CocoaError(.coderInvalidValue) }
                 let compositor=try SpatialEyeCompositor(device:device)
+                compositor.renderer.delegate=primary.delegate
                 let output=MTKView(frame:bounds,device:device);output.colorPixelFormat = .bgra8Unorm
                 output.delegate=self
                 output.isPaused=true;output.enableSetNeedsDisplay=false;output.isUserInteractionEnabled=false
                 originalCamera=primary.pointOfView;originalBackground=primary.scene.background.contents
-                self.compositor=compositor;self.output=output;self.headset=true
+                self.compositor=compositor;self.output=output;self.headset=true;lastPresented = -.infinity
                 primary.isPlaying=false;primary.rendersContinuously=false;primary.isHidden=true
                 primary.pointOfView=compositor.camera
                 addSubview(output);addSubview(leftOverlay);addSubview(rightOverlay)
@@ -161,6 +163,8 @@ enum SpatialEyeLayout {
     }
     private func render(_ frame:ARFrame) {
         guard headset,controller?.videoRunning == true,let output else { return }
+        let interval=1/Double(max(1,primary.preferredFramesPerSecond))
+        guard frame.timestamp-lastPresented>=interval-0.001 else { return };lastPresented=frame.timestamp
         pendingFrame=frame;output.draw();pendingFrame=nil
     }
     func mtkView(_ view:MTKView,drawableSizeWillChange size:CGSize) {}
