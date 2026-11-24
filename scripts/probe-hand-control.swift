@@ -4,6 +4,18 @@ import CoreImage
 
 @main struct HandControlProbe {
     static func main() throws {
+        var pose=SpatialPoseStability()
+        for tick in 0...60 { precondition(pose.update(position:SIMD3(Float(tick)*0.001,0,0),forward:SIMD3(0,0,1),time:Double(tick)/60)) }
+        precondition(!pose.update(position:SIMD3(1,0,0),forward:SIMD3(0,0,1),time:61.0/60))
+        for tick in 62...107 { precondition(!pose.update(position:SIMD3(1,0,0),forward:SIMD3(0,0,1),time:Double(tick)/60)) }
+        precondition(pose.update(position:SIMD3(1,0,0),forward:SIMD3(0,0,1),time:110.0/60))
+        var stationary=SpatialPinchZoom()
+        stationary.begin(span:0.2,depth:nil,time:0)
+        for tick in 1...600 { precondition(stationary.update(span:0.2*(1+sin(Double(tick))*0.035),depth:nil,time:Double(tick)*0.1)==nil) }
+        stationary.begin(span:0.2,depth:0.6,time:61)
+        precondition(stationary.update(span:0.6,depth:nil,time:61.1)==nil)
+        precondition(stationary.update(span:0.6,depth:0.6,time:61.2)==nil)
+        print("SPATIAL_STABILITY_OK pose jumps settle; stationary pinch has no cumulative zoom; no source switching")
         var gate=WallTrackingGate()
         precondition(!gate.update(normal:true,at:0))
         precondition(gate.update(normal:true,at:0.7))

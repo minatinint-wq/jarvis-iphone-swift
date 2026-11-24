@@ -225,12 +225,8 @@ enum SpatialPanelGeometry {
     func hand(_ sample:SpatialHandSample?) {
         guard visible,root?.isHidden==false else { handGesture.reset();return }
         let time=sample?.time ?? ProcessInfo.processInfo.systemUptime
-        if let sample,sample.openPalm,let frame=view.session.currentFrame {
-            let camera=SIMD3(frame.camera.transform.columns.3.x,frame.camera.transform.columns.3.y,frame.camera.transform.columns.3.z)
-            let over=localHit(sample.palmPoint ?? sample.point) != nil
-            let depth=palmCalibration.estimate(target:over ? "panel" : nil,span:sample.palmSpan,measured:sample.palmWorld.map { Double(simd_distance(camera,$0)) })
-            if let multiplier=palmScale.update(target:over ? "panel" : nil,depth:depth,time:time) { resize(multiplier) }
-        } else { palmScale=SpatialPalmScale();palmCalibration=SpatialPalmCalibration() }
+        // Open palm is a free hand, never an implicit resize operation.
+        palmScale=SpatialPalmScale();palmCalibration=SpatialPalmCalibration()
         if let sample, sample.menuPose, sample.ratio >= 0.48, !dragging, view.bounds.width > 0, view.bounds.height > 0 {
             handGesture.reset()
             let pos=CGPoint(x:sample.point.x/view.bounds.width,y:sample.point.y/view.bounds.height)

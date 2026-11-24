@@ -115,6 +115,33 @@ enum SpatialHandMath {
     private let cursor=UIView(frame:CGRect(x:0,y:0,width:24,height:24))
     private let overlay=UIView()
     private let bones=CAShapeLayer()
+    private var mirror:UIView?
+    private var mirrorBones:CAShapeLayer?
+    private var mirrorCursor:UIView?
+    private var mirrorRing:CAShapeLayer?
+    func mirrorOverlay(in host:UIView?) {
+        mirror?.removeFromSuperview();mirror=nil;mirrorBones=nil;mirrorCursor=nil;mirrorRing=nil
+        guard let host else { return }
+        let overlay=UIView(frame:host.bounds);overlay.autoresizingMask=[.flexibleWidth,.flexibleHeight]
+        overlay.isUserInteractionEnabled=false;overlay.backgroundColor = .clear
+        let bones=CAShapeLayer();bones.strokeColor=self.bones.strokeColor;bones.fillColor=UIColor.clear.cgColor;bones.lineWidth=1.8
+        overlay.layer.addSublayer(bones)
+        let cursor=UIView(frame:self.cursor.bounds);cursor.layer.cornerRadius=12;cursor.layer.borderWidth=2
+        cursor.backgroundColor=self.cursor.backgroundColor;overlay.addSubview(cursor)
+        let ring=CAShapeLayer();ring.path=dwellRing.path;ring.strokeColor=UIColor.white.cgColor;ring.fillColor=nil;ring.lineWidth=3
+        cursor.layer.addSublayer(ring);host.addSubview(overlay)
+        mirror=overlay;mirrorBones=bones;mirrorCursor=cursor;mirrorRing=ring
+        syncMirror()
+    }
+    private func syncMirror() {
+        guard let mirror else { return }
+        CATransaction.begin();CATransaction.setDisableActions(true)
+        mirror.isHidden=overlay.isHidden
+        mirrorBones?.frame=mirror.bounds;mirrorBones?.path=bones.path;mirrorBones?.opacity=bones.opacity
+        mirrorCursor?.center=cursor.center;mirrorCursor?.isHidden=cursor.isHidden
+        mirrorCursor?.layer.borderColor=cursor.layer.borderColor;mirrorRing?.strokeEnd=dwellRing.strokeEnd
+        CATransaction.commit()
+    }
     var onSample:((SpatialHandSample?)->Void)?
     var onQuality:((String)->Void)?
     private var quality=""
@@ -139,12 +166,14 @@ enum SpatialHandMath {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         dwellRing.strokeEnd = CGFloat(value)
+        mirrorRing?.strokeEnd = CGFloat(value)
         CATransaction.commit()
     }
-    func reset() { showProgress(0);generation+=1;lastFrame = -.infinity;cursor.isHidden=true;bones.path=nil;smoothed=nil;smoothedWorld=nil;smoothedPalm=nil;lastRawTip=nil;onSample?(nil) }
+    func reset() { showProgress(0);generation+=1;lastFrame = -.infinity;cursor.isHidden=true;bones.path=nil;smoothed=nil;smoothedWorld=nil;smoothedPalm=nil;lastRawTip=nil;onSample?(nil);syncMirror() }
     private func report(_ text:String) { let now=ProcessInfo.processInfo.systemUptime;if text != quality,now-lastReport>0.3 { lastReport=now;quality=text;onQuality?(text) } }
     func update(_ frame:ARFrame,view:ARSCNView,enabled:Bool) {
         overlay.isHidden = !enabled
+        syncMirror()
         guard enabled else { if wasEnabled { reset() };wasEnabled=false;return };wasEnabled=true
         if view.subviews.last !== overlay { view.bringSubviewToFront(overlay) }
         bones.frame=overlay.bounds
@@ -205,6 +234,7 @@ enum SpatialHandMath {
             let result=positions,amount=ratio,tip=rawTip,palm=rawPalm,failed=detectorError
             Task { @MainActor [weak self] in
                 guard let self else { return };self.busy=false
+                defer { self.syncMirror() }
                 guard self.generation==ticket else { return }
                 let now=ProcessInfo.processInfo.systemUptime
                 self.latencyMS=(now-stamp)*1000;self.hasHand=false;self.hasDepth=false

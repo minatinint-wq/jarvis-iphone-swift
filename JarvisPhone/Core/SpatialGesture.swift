@@ -1,4 +1,31 @@
 import Foundation
+import simd
+
+/// Reject discontinuous camera poses without smoothing or delaying head motion.
+/// A relocalization correction must settle before spatial input becomes active.
+struct SpatialPoseStability {
+    private var previous: SIMD3<Float>?
+    private var direction: SIMD3<Float>?
+    private var time: Double?
+    private var settleUntil = -Double.infinity
+    mutating func reset() { self=Self() }
+    mutating func update(position: SIMD3<Float>,forward: SIMD3<Float>,time: Double) -> Bool {
+        guard time.isFinite,position.x.isFinite,position.y.isFinite,position.z.isFinite,
+              forward.x.isFinite,forward.y.isFinite,forward.z.isFinite,simd_length(forward)>0.5 else { reset();return false }
+        let next=simd_normalize(forward)
+        if let old=self.time,let previous,let direction {
+            let dt=time-old
+            if dt<=0 || dt>0.25 { settleUntil=time+0.8 }
+            else {
+                let distance=simd_distance(position,previous)
+                let angle=acos(min(1,max(-1,simd_dot(direction,next))))
+                if distance>max(0.18,Float(dt)*3) || angle>max(0.65,Float(dt)*10) { settleUntil=time+0.8 }
+            }
+        }
+        previous=position;direction=next;self.time=time
+        return time>=settleUntil
+    }
+}
 
 /// A pinch owns its original target until release. Only pointing can activate it.
 struct SpatialGesture {
@@ -149,25 +176,34 @@ struct SpatialPinchZoom {
     private var span: Double?
     private var initialDepth=0.5
     private var metric=false
-    private var filtered=0.5
-    private var applied=0.5
+    private var filtered=1.0
+    private var applied=1.0
     private var lastTime: Double?
     mutating func begin(span: Double?,depth: Double?,time: Double) {
         self=Self();self.span=span.flatMap { $0.isFinite && $0>0.015 ? $0 : nil }
         if let depth,depth.isFinite,(0.15...2).contains(depth) { initialDepth=depth;metric=true }
-        filtered=initialDepth;applied=initialDepth;lastTime=time
+        filtered=1;applied=1;lastTime=time
     }
     mutating func update(span: Double?,depth: Double?,time: Double) -> Float? {
         guard let lastTime,time.isFinite,time>=lastTime,time-lastTime<0.45 else { self=Self();return nil }
+        let dt=time-lastTime
         self.lastTime=time
         let value:Double
-        if metric,let depth,depth.isFinite,(0.15...2).contains(depth) { value=depth }
-        else if let original=self.span,let span,span.isFinite,span>0.015 { value=min(2,max(0.15,initialDepth*original/span)) }
+        if metric {
+            guard let depth,depth.isFinite,(0.15...2).contains(depth) else { return nil }
+            value=initialDepth/depth
+        }
+        else if let original=self.span,let span,span.isFinite,span>0.015 { value=span/original }
         else { return nil }
-        filtered=filtered*0.65+value*0.35
-        guard abs(applied-filtered)>0.025 else { return nil }
-        let factor=Float(exp((applied-filtered)*2.5));applied=filtered
-        return min(1.25,max(0.8,factor))
+        guard (0.25...4).contains(value),dt>0 else { return nil }
+        // A fixed origin avoids cumulative zoom from small palm-width noise.
+        let alpha=1-exp(-dt/0.18)
+        filtered+=(value-filtered)*alpha
+        guard abs(log(filtered/applied))>0.09 else { return nil }
+        let limit=exp(min(0.08,dt*0.8))
+        let factor=min(limit,max(1/limit,filtered/applied))
+        applied*=factor
+        return Float(factor)
     }
 }
 

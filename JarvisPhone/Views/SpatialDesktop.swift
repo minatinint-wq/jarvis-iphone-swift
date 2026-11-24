@@ -172,13 +172,7 @@ struct SpatialDesktopRecord: Codable {
         guard visible,tracking,!inputBlocked,let root else { return false }
         let target=sample.flatMap { local($0.openPalm ? ($0.palmPoint ?? $0.point) : $0.point) }
         guard target != nil || dragging else { _=gesture.update(ratio:.nan,pointing:false,target:nil,time:ProcessInfo.processInfo.systemUptime);return false }
-        if let sample,sample.openPalm,let frame=view.session.currentFrame {
-            let camera=SIMD3(frame.camera.transform.columns.3.x,frame.camera.transform.columns.3.y,frame.camera.transform.columns.3.z)
-            let depth=palmCalibration.estimate(target:"desktop",span:sample.palmSpan,measured:sample.palmWorld.map { Double(simd_distance(camera,$0)) })
-            if let factor=palmScale.update(target:"desktop",depth:depth,time:sample.time) {
-                root.simdScale=SIMD3(repeating:min(2,max(0.25,root.simdScale.x*factor)));onChange?()
-            }
-        } else { palmScale=SpatialPalmScale();palmCalibration=SpatialPalmCalibration() }
+        palmScale=SpatialPalmScale();palmCalibration=SpatialPalmCalibration()
         for event in gesture.update(ratio:sample?.ratio ?? .nan,pointing:sample?.pointing == true,target:target != nil ? "desktop" : nil,time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {
             switch event {
             case .press:

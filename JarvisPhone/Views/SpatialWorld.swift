@@ -593,10 +593,7 @@ enum SpatialTheme: String, CaseIterable {
     func hand(_ sample:SpatialHandSample?) {
         guard active,!panelBlocking,visibility,!placing,!recovering else { handGesture.reset();palmScale=SpatialPalmScale();return }
         let id=sample.flatMap { hit($0.point) }
-        if let sample,sample.openPalm,let palm=sample.palmWorld,let selected,selected==id,let frame=view.session.currentFrame {
-            let camera=SIMD3(frame.camera.transform.columns.3.x,frame.camera.transform.columns.3.y,frame.camera.transform.columns.3.z)
-            if let factor=palmScale.update(target:selected.uuidString,depth:Double(simd_distance(camera,palm)),time:sample.time) { resizeSelected(factor) }
-        } else { palmScale=SpatialPalmScale() }
+        palmScale=SpatialPalmScale()
         for event in handGesture.update(ratio:sample?.ratio ?? .nan,pointing:sample?.pointing == true,target:id?.uuidString,time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {
             switch event {
             case .press(let key):

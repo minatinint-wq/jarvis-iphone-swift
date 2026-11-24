@@ -44,6 +44,10 @@ enum WallMeasureMode { case none, outline, opening }
     @Published var savedMaps:[URL]=[]
     @Published var lensLabel="1×"
     @Published var scanning=false
+    @Published var headset=false
+    private var interactionReady=false
+    private var poseStability=SpatialPoseStability()
+    private var activeVideoFormat: ARConfiguration.VideoFormat?
     private var scanTask:Task<Void,Never>?
     private var prefersUltraWide=true
     private var recoveryTimer:Task<Void,Never>?
@@ -124,7 +128,7 @@ enum WallMeasureMode { case none, outline, opening }
         hands.onSample = { [weak self] sample in
             guard let self else { return }
             if self.desktop.inputBlocked { return }
-            guard self.tracking,!self.spatial.recovering,!self.recoveryBusy else {
+            guard self.interactionReady,!self.spatial.recovering,!self.recoveryBusy else {
                 self.palmRecall=SpatialPalmRecall()
                 self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
                 self.hands.showProgress(0);return
@@ -206,14 +210,17 @@ enum WallMeasureMode { case none, outline, opening }
         let config = SpatialCaptureProfile.configuration(scanning:scanning)
         if !mapStarted || shouldReset { config.initialWorldMap=initialMap;mapStarted=true }
         // Prefer moderate camera resolution at 60 Hz rather than 4K capture + AI.
+        if activeVideoFormat == nil {
         let available=ARWorldTrackingConfiguration.supportedVideoFormats
         let ultra=available.filter { $0.captureDevicePosition == .back && $0.captureDeviceType == .builtInUltraWideCamera }
         let candidates=prefersUltraWide && !ultra.isEmpty ? ultra : available.filter { $0.captureDeviceType == .builtInWideAngleCamera }
         let fast=candidates.filter { $0.framesPerSecond == 60 }
         if let format=(fast.isEmpty ? candidates : fast).min(by:{$0.imageResolution.width<$1.imageResolution.width}) {
-            config.videoFormat=format;lensLabel=format.captureDeviceType == .builtInUltraWideCamera ? "0,5×" : "1×"
+            activeVideoFormat=format;lensLabel=format.captureDeviceType == .builtInUltraWideCamera ? "0,5×" : "1×"
         }
         if prefersUltraWide && ultra.isEmpty { notice="A câmera 0,5× não foi oferecida pelo ARKit nesta configuração. A sessão usa \(lensLabel)." }
+        }
+        if let activeVideoFormat { config.videoFormat=activeVideoFormat }
         view.session.run(config,options:shouldReset ? [.resetTracking,.removeExistingAnchors] : [])
         pendingMapReset=false
         view.isPlaying = true
@@ -225,7 +232,7 @@ enum WallMeasureMode { case none, outline, opening }
         if ultra && !ARWorldTrackingConfiguration.supportedVideoFormats.contains(where:{$0.captureDeviceType == .builtInUltraWideCamera && $0.captureDevicePosition == .back}) {
             notice="O iOS não disponibilizou 0,5× para esta sessão AR.";return
         }
-        prefersUltraWide=ultra;spatial.stopMoving();hands.reset();spatial.requireSurfaceConfirmation();run()
+        prefersUltraWide=ultra;activeVideoFormat=nil;spatial.stopMoving();hands.reset();spatial.requireSurfaceConfirmation();run()
     }
 
     func toggleScan() {
@@ -246,17 +253,34 @@ enum WallMeasureMode { case none, outline, opening }
         recoveryTimer=Task { [weak self] in
             try? await Task.sleep(for:self?.recoveryDelay ?? .seconds(20))
             guard !Task.isCancelled,let self,!self.stopped,(!self.tracking || self.spatial.recovering) else { return }
-            self.localizationTimedOut=true;self.status="O mapa ainda não foi reencontrado. Tente o mapa salvo ou inicie outro mapeamento."
+            self.localizationTimedOut=true;self.status="A referência ainda está sendo recuperada. Mostre detalhes do mesmo local; não precisa apagar o mapa."
             self.savedMaps=await Task.detached { SpatialArchive.savedMaps() }.value
             self.recoveryTimer=nil
         }
+    }
+
+    func retryLocalization() {
+        guard started,!stopped,!recoveryBusy,!fatal else { return }
+        recoveryTimer?.cancel();recoveryTimer=nil;localizationTimedOut=false
+        status="Retomando a mesma sessão e suas âncoras. Mostre detalhes do ambiente original."
+        run() // Deliberately no resetTracking or removeExistingAnchors.
+    }
+
+    func setHeadset(_ value: Bool) {
+        headset=value;hands.reset()
+        guard let scene=view.window?.windowScene else { return }
+        scene.keyWindow?.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
+        scene.requestGeometryUpdate(.iOS(interfaceOrientations:value ? .landscapeRight : .portrait)) { [weak self] _ in
+            Task { @MainActor in self?.notice="Gire o iPhone na horizontal e confira se o bloqueio de rotação está desligado." }
+        }
+        notice=value ? "VR Box: câmera única, duas vistas iguais. Deixe a câmera traseira livre; ajuste as lentes no visor." : "Modo de mão única."
     }
 
     func changeMap(restore source: URL?) {
         guard started,!recoveryBusy else { return };recoveryBusy=true;localizationTimedOut=false
         scanTask?.cancel();scanTask=nil;scanning=false
         recoveryTimer?.cancel();recoveryTimer=nil
-        spatial.stopMoving();view.session.pause();tracking=false;_ = gate.update(normal:false,at:0);setVisible(false);desktop.setTracking(false)
+        spatial.stopMoving();view.session.pause();tracking=false;interactionReady=false;poseStability.reset();_ = gate.update(normal:false,at:0);setVisible(false);desktop.setTracking(false)
         Task { [weak self] in
             guard let self else { return }
             do {
@@ -291,7 +315,7 @@ enum WallMeasureMode { case none, outline, opening }
 
     func setForeground(_ active: Bool) {
         foreground = active
-        if active && started && !recoveryBusy && !localizationTimedOut { run() }
+        if active && started && !recoveryBusy { run() }
         else if !active {
             scanTask?.cancel();scanTask=nil;scanning=false
             recoveryTimer?.cancel();recoveryTimer=nil
@@ -300,11 +324,12 @@ enum WallMeasureMode { case none, outline, opening }
             spatial.requireSurfaceConfirmation()
             desktop.setTracking(false)
             view.session.pause(); view.isPlaying = false
-            tracking = false; _ = gate.update(normal:false, at:0); setVisible(false)
+            tracking = false;interactionReady=false;poseStability.reset(); _ = gate.update(normal:false, at:0); setVisible(false)
         }
     }
 
     func stop() {
+        if headset { setHeadset(false) }
         scanTask?.cancel();scanTask=nil;scanning=false
         recoveryTimer?.cancel();recoveryTimer=nil
         spatial.saveMap(force:false)
@@ -321,6 +346,10 @@ enum WallMeasureMode { case none, outline, opening }
 
     @objc private func tapped(_ gesture: UITapGestureRecognizer) {
         let point=gesture.location(in:view)
+        tap(at:point)
+    }
+    func tap(at point:CGPoint) {
+        guard interactionReady else { return }
         if desktop.tap(point) { return }
         if panel.visible { _=panel.hit(point);return }
         if measureMode != .none { addPoint(at:point) }
@@ -401,6 +430,7 @@ enum WallMeasureMode { case none, outline, opening }
         guard !recoveryBusy else { return }
         switch command {
         case .open: break
+        case .headset(let enabled): setHeadset(enabled)
         case .select:
             if select() { feedback("Marque os cantos da parede e as áreas que devem ficar livres.") }
             else { feedback(status) }
@@ -478,7 +508,10 @@ enum WallMeasureMode { case none, outline, opening }
         case .limited(.insufficientFeatures),.limited(.excessiveMotion): normal=false;transient=true
         default: normal=false;transient=false
         }
-        let good = gate.update(normal:normal,at:frame.timestamp,transient:transient)
+        let pose=frame.camera.transform
+        let stablePose=poseStability.update(position:SIMD3(pose.columns.3.x,pose.columns.3.y,pose.columns.3.z),forward:SIMD3(pose.columns.2.x,pose.columns.2.y,pose.columns.2.z),time:frame.timestamp)
+        let good = gate.update(normal:normal && stablePose,at:frame.timestamp,transient:transient && stablePose)
+        interactionReady=good && normal && stablePose
         if coaching.isActive == good { coaching.setActive(!good,animated:true) }
         if good && !spatial.recovering { recoveryTimer?.cancel();recoveryTimer=nil;localizationTimedOut=false }
         // No periodic world-map snapshots or surface updates in the hand mode.
@@ -559,6 +592,7 @@ enum WallMeasureMode { case none, outline, opening }
         }
     }
     func sessionWasInterrupted(_ session: ARSession) {
+        interactionReady=false;poseStability.reset()
         spatial.requireSurfaceConfirmation()
         tracking = false; _ = gate.update(normal:false,at:0); setVisible(false)
         status = "AR interrompido. A pintura reaparece após recuperar a posição."
@@ -572,6 +606,7 @@ enum WallMeasureMode { case none, outline, opening }
             // The frame gate tolerates a short hand occlusion, without resetting Vision.
             if !tracking { armRecoveryTimer() }
         default:
+            interactionReady=false;poseStability.reset()
             spatial.requireSurfaceConfirmation()
             tracking=false;_ = gate.update(normal:false,at:0);setVisible(false)
             status="Relocalizando. Volte ao ambiente anterior e mostre o piso e detalhes das paredes."
@@ -579,6 +614,7 @@ enum WallMeasureMode { case none, outline, opening }
         }
     }
     func session(_ session: ARSession, didFailWithError error: Error) {
+        interactionReady=false
         fatal = true; setVisible(false); status = "AR indisponível: \(error.localizedDescription). Feche e reabra este modo."
     }
 
@@ -660,6 +696,7 @@ private final class WallRenderMeter: NSObject, ARSCNViewDelegate {
             if controller.recoveryBusy { ProgressView("Preparando mapa…") }
             else {
                 HStack {
+                    Button("Recuperar sem apagar") { controller.retryLocalization() }
                     Button("Tentar mapa salvo") { controller.changeMap(restore:SpatialArchive.file) }
                         .disabled(!FileManager.default.fileExists(atPath:SpatialArchive.file.path))
                     Button("Novo mapa") { confirmNew=true }
@@ -687,8 +724,8 @@ private final class WallRenderMeter: NSObject, ARSCNViewDelegate {
 
 private struct WallCameraView: UIViewRepresentable {
     let controller: WallARController
-    func makeUIView(context: Context) -> ARSCNView { controller.view }
-    func updateUIView(_ view: ARSCNView, context: Context) {}
+    func makeUIView(context: Context) -> SpatialHeadsetSurface { SpatialHeadsetSurface(controller:controller) }
+    func updateUIView(_ view: SpatialHeadsetSurface, context: Context) { view.configure(headset:controller.headset) }
 }
 
 @MainActor struct WallARStudio: View {
@@ -713,7 +750,7 @@ private struct WallCameraView: UIViewRepresentable {
             }
             if let webModule {
                 SpatialWebWindow(module:webModule) { self.webModule=nil;controller.panel.open(.dashboard,tracking:controller.tracking) }.id(webModule.rawValue)
-            } else {
+            } else if !controller.headset {
             VStack(spacing:10) {
                 HStack {
                     Label(controller.tracking ? "POSIÇÃO ESTÁVEL" : "MAPEANDO",systemImage:controller.tracking ? "viewfinder" : "viewfinder.circle")
@@ -726,6 +763,7 @@ private struct WallCameraView: UIViewRepresentable {
                         Button("1× · principal") { controller.selectLens(ultra:false) }
                     }
                     Button { controller.localizationTimedOut.toggle();controller.savedMaps=SpatialArchive.savedMaps() } label: { Image(systemName:"map") }.accessibilityLabel("Recuperar mapa")
+                    Button { controller.setHeadset(true) } label: { Image(systemName:"visionpro") }.accessibilityLabel("Ativar VR Box horizontal")
                 }.font(.caption.monospaced()).padding(12).background(.black.opacity(0.72),in:RoundedRectangle(cornerRadius:14))
                 HStack {
                     Text(controller.metrics).font(.caption2.monospaced()).foregroundStyle(.secondary)
@@ -743,7 +781,7 @@ private struct WallCameraView: UIViewRepresentable {
                     VStack(alignment:.leading,spacing:6) {
                         Text(panelStatus).font(.caption).lineLimit(3)
                         Text(controller.handStatus).font(.caption2).foregroundStyle(.cyan)
-                        Text("Indicador por 2 s clica. Pinça segura: mova para arrastar, aproxime da câmera para ampliar e afaste para reduzir. Palma fora por 1 s traz a janela desenquadrada.").font(.caption2).foregroundStyle(.secondary)
+                        Text("Indicador por 2 s clica. Só a pinça altera tamanho e posição. Palma aberta não redimensiona; fora do painel por 1 s traz uma janela desenquadrada.").font(.caption2).foregroundStyle(.secondary)
                         HStack {
                             Button("Todos os módulos",systemImage:"list.bullet") { search="";menuSheet = .directory }
                             Button("Menor",systemImage:"minus.magnifyingglass") { controller.panel.resize(0.82) }
@@ -813,7 +851,23 @@ private struct WallCameraView: UIViewRepresentable {
                 }
             }.padding(12)
             }
+            if controller.headset {
+                VStack {
+                    HStack(spacing:0) {
+                        ForEach(0..<2,id:\.self) { _ in
+                            HStack {
+                                Button("Sair VR") { controller.setHeadset(false) }.buttonStyle(.bordered)
+                                Spacer()
+                                Text(controller.tracking ? "AR · câmera única" : "Recuperando posição").font(.caption2)
+                            }.padding(12).frame(maxWidth:.infinity)
+                        }
+                    }
+                    Spacer()
+                }
+            }
         }.background(.black).foregroundStyle(.white)
+            .toolbar(controller.headset ? .hidden : .visible,for:.navigationBar)
+            .statusBarHidden(controller.headset)
             .task {
                 controller.onFeedback = { text in model.wallARFeedback(text) }
                 controller.panel.onWeb = { target in

@@ -38,7 +38,7 @@ enum WallARCommand: Equatable {
     case open, select, finish(WallFinish), undo, clear, compare, close
     case measure, point, opening, approve, theme(SpatialTheme), interact, removeObject, panel(SpatialModule), navigate(String)
     case model(String), resizeObject(Float), moveObject(Float,Float), saveMap, room(String), desktop
-    case character(String)
+    case character(String), headset(Bool)
 
     /// Only navigation-like speech enters the spatial interpreter; ordinary tools stay available.
     static func needsInterpretation(_ input: String) -> Bool {
@@ -50,6 +50,8 @@ enum WallARCommand: Equatable {
     static func parse(_ input: String, inStudio: Bool) -> Self? {
         let s = PhoneIntentPhrases.normalized(input)
         guard !s.isEmpty, s.range(of: #"\b(nao|nunca|nem|talvez|disse|dizer|dissesse|se)\b"#, options: .regularExpression) == nil else { return nil }
+        if ["modo vr box","vr box","ativar vr box","abrir vr box","modo oculos","ativar modo oculos"].contains(s) { return .headset(true) }
+        if inStudio,["sair do vr box","sair vr","desativar vr box","modo celular","sair do modo oculos"].contains(s) { return .headset(false) }
         if s.range(of: #"^(?:(?:abre|abra|abrir|ativa|ative|ativar) (?:o )?)?(?:modo ar|realidade aumentada|pintura ar|parede ar|pintar parede)$"#, options: .regularExpression) != nil { return .open }
         if let module=SpatialModule.opening(input), inStudio || s.range(of:#"\b(painel|modulo|modulos|central|interface|controles)\b"#,options:.regularExpression) != nil { return .panel(module) }
         let scenes: [String:SpatialTheme] = ["abre o bosque":.forest,"abre a floresta":.forest,"cria uma floresta neste quarto":.forest,"coloca uma floresta":.forest,"cenario floresta":.forest,"cenario bosque":.forest,"bosque noturno":.enchanted,"floresta encantada":.enchanted,"cenario noturno":.enchanted,"cenario estudio":.studio,"abre o estudio ar":.studio,"coloca o radio":.studio,"cenario garagem":.garage,"abrir garagem":.garage,"abre a garagem":.garage,"cenario sala":.lounge,"sala interativa":.lounge,"jardim aquatico":.aquarium,"cenario aquario":.aquarium]

@@ -7,6 +7,75 @@ import ARKit
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    func testStationaryPinchNoiseDoesNotAccumulateZoomAndDepthDoesNotSwitchSources() {
+        var zoom=SpatialPinchZoom()
+        zoom.begin(span:0.2,depth:nil,time:0)
+        for tick in 1...600 {
+            let span=0.2*(1+sin(Double(tick))*0.035)
+            XCTAssertNil(zoom.update(span:span,depth:nil,time:Double(tick)*0.1))
+        }
+        zoom.begin(span:0.2,depth:0.6,time:61)
+        XCTAssertNil(zoom.update(span:0.6,depth:nil,time:61.1))
+        XCTAssertNil(zoom.update(span:0.6,depth:0.6,time:61.2))
+        var size:Float=1
+        for tick in 1...20 {
+            let factor=zoom.update(span:0.6,depth:0.6-Double(tick)*0.015,time:61.2+Double(tick)*0.1) ?? 1
+            XCTAssertLessThanOrEqual(factor,1.084);size*=factor
+        }
+        XCTAssertGreaterThan(size,1.5)
+    }
+    func testCameraPoseJumpWaitsToSettleWithoutFreezingNormalMovement() {
+        var gate=SpatialPoseStability()
+        for tick in 0...60 {
+            XCTAssertTrue(gate.update(position:SIMD3(Float(tick)*0.001,0,0),forward:SIMD3(0,0,1),time:Double(tick)/60))
+        }
+        XCTAssertFalse(gate.update(position:SIMD3(1,0,0),forward:SIMD3(0,0,1),time:61.0/60))
+        for tick in 62...107 {
+            XCTAssertFalse(gate.update(position:SIMD3(1,0,0),forward:SIMD3(0,0,1),time:Double(tick)/60))
+        }
+        XCTAssertTrue(gate.update(position:SIMD3(1,0,0),forward:SIMD3(0,0,1),time:110.0/60))
+        XCTAssertFalse(gate.update(position:SIMD3(1,0,0),forward:SIMD3(0,0,1),time:5))
+    }
+    @MainActor func testHeadsetSharesOneCameraSessionAndRestoresFullViewport() throws {
+        let controller=WallARController()
+        // Keep the actual owner alive and inspect the exact shared session.
+        let host=SpatialHeadsetSurface(controller:controller)
+        host.frame=CGRect(x:0,y:0,width:900,height:400)
+        let session=controller.view.session
+        host.configure(headset:true);host.layoutIfNeeded()
+        let right=try XCTUnwrap(host.secondary)
+        XCTAssertTrue(right.session === session);XCTAssertTrue(right.scene === controller.view.scene)
+        XCTAssertTrue(session.delegate === controller)
+        XCTAssertEqual(controller.view.frame.width,450);XCTAssertEqual(right.frame.width,450)
+        XCTAssertEqual(right.frame.minX,450)
+        if let device=MTLCreateSystemDefaultDevice() {
+            let view=controller.view
+            view.scene.background.contents=UIColor(white:0.06,alpha:1)
+            let camera=SCNNode();camera.camera=SCNCamera();camera.position=SCNVector3(0,0,1)
+            view.scene.rootNode.addChildNode(camera);view.pointOfView=camera;right.pointOfView=camera
+            let panel=SpatialPanel(view:view);panel.preview(.dashboard);panel.setTracking(true)
+            let renderer=SCNRenderer(device:device,options:nil);renderer.scene=view.scene;renderer.pointOfView=camera
+            let left=renderer.snapshot(atTime:0,with:CGSize(width:450,height:400),antialiasingMode:.multisampling2X)
+            let other=SCNRenderer(device:device,options:nil);other.scene=right.scene;other.pointOfView=right.pointOfView
+            let rightImage=other.snapshot(atTime:0,with:CGSize(width:450,height:400),antialiasingMode:.multisampling2X)
+            let format=UIGraphicsImageRendererFormat();format.scale=1
+            let image=UIGraphicsImageRenderer(size:CGSize(width:900,height:400),format:format).image { _ in
+                left.draw(in:CGRect(x:0,y:0,width:450,height:400));rightImage.draw(in:CGRect(x:450,y:0,width:450,height:400))
+            }
+            let attachment=XCTAttachment(image:image);attachment.name="VRBox-synthetic-monoscopic-layout";attachment.lifetime = .keepAlways;add(attachment)
+            panel.close()
+        }
+        host.configure(headset:false);host.layoutIfNeeded()
+        XCTAssertNil(host.secondary);XCTAssertTrue(controller.view.session === session)
+        XCTAssertEqual(controller.view.frame.width,900);XCTAssertTrue(session.delegate === controller)
+        controller.stop()
+    }
+    func testHeadsetVoiceCommandsAndNegation() {
+        XCTAssertEqual(WallARCommand.parse("Jarvis, ativar VR Box",inStudio:false),.headset(true))
+        XCTAssertEqual(WallARCommand.parse("modo óculos",inStudio:false),.headset(true))
+        XCTAssertEqual(WallARCommand.parse("sair do VR Box",inStudio:true),.headset(false))
+        XCTAssertNil(WallARCommand.parse("não ativar VR Box",inStudio:true))
+    }
     @MainActor func testRecoveryOffersExitWhenTrackingOrSavedAnchorsCannotReturn() async throws {
         for tracking in [false,true] {
             let controller=WallARController()
