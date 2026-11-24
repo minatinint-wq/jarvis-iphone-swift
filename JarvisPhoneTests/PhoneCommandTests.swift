@@ -7,6 +7,12 @@ import ARKit
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    func testFrameCallbackAndDisplayPollDoNotDuplicateOrReplayFrames() {
+        var gate=SpatialFrameGate()
+        XCTAssertTrue(gate.accept(10));XCTAssertFalse(gate.accept(10))
+        XCTAssertFalse(gate.accept(9));XCTAssertFalse(gate.accept(.nan))
+        XCTAssertTrue(gate.accept(10.02));XCTAssertFalse(gate.accept(10.02))
+    }
     func testStationaryPinchNoiseDoesNotAccumulateZoomAndDepthDoesNotSwitchSources() {
         var zoom=SpatialPinchZoom()
         zoom.begin(span:0.2,depth:nil,time:0)
@@ -52,12 +58,12 @@ final class PhoneCommandTests: XCTestCase {
         controller.view.isPlaying=false;controller.view.rendersContinuously=false;host.configure(headset:true)
         XCTAssertFalse(right.isPlaying);XCTAssertFalse(right.rendersContinuously)
         XCTAssertTrue(right.session === session);XCTAssertTrue(right.scene === controller.view.scene)
-        // ARKit may expose an SDK forwarding delegate. Verify actual callbacks,
-        // rather than identity of that implementation detail.
+        // Exercise the same anchor input used by the actual currentFrame pump;
+        // the simulator cannot synthesize camera callbacks through ARKit's proxy.
         let anchor=ARAnchor(name:"headset-event-probe",transform:simd_float4x4(SIMD4(1,0,0,0),SIMD4(0,1,0,0),SIMD4(0,0,1,0),SIMD4(0.3,0,0,1)))
         let marker=SCNNode();controller.worldAnchor=anchor;controller.painted=marker
         marker.position=SCNVector3(-9,0,0)
-        session.delegate?.session?(session,didUpdate:[anchor])
+        controller.receiveTrackedAnchors([anchor])
         try await Task.sleep(for:.milliseconds(50))
         XCTAssertEqual(marker.position.x,0.3,accuracy:0.001,"Session anchor events must reach the world owner")
         XCTAssertEqual(controller.view.frame.width,450);XCTAssertEqual(right.frame.width,450)
@@ -91,7 +97,7 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertNil(host.secondary);XCTAssertTrue(controller.view.session === session)
         XCTAssertEqual(controller.view.frame.width,900)
         marker.position=SCNVector3(-9,0,0)
-        session.delegate?.session?(session,didUpdate:[anchor])
+        controller.receiveTrackedAnchors([anchor])
         try await Task.sleep(for:.milliseconds(50))
         XCTAssertEqual(marker.position.x,0.3,accuracy:0.001,"Exiting the visor must preserve event delivery")
         controller.stop()

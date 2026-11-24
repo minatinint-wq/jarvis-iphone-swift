@@ -4,6 +4,8 @@ import CoreImage
 
 @main struct HandControlProbe {
     static func main() throws {
+        var frames=SpatialFrameGate()
+        precondition(frames.accept(10));precondition(!frames.accept(10));precondition(!frames.accept(9));precondition(!frames.accept(.nan));precondition(frames.accept(10.1))
         var pose=SpatialPoseStability()
         for tick in 0...60 { precondition(pose.update(position:SIMD3(Float(tick)*0.001,0,0),forward:SIMD3(0,0,1),time:Double(tick)/60)) }
         precondition(!pose.update(position:SIMD3(1,0,0),forward:SIMD3(0,0,1),time:61.0/60))

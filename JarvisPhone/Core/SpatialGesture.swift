@@ -1,6 +1,15 @@
 import Foundation
 import simd
 
+/// The SDK callback and display-link fallback share one monotonic frame input.
+struct SpatialFrameGate {
+    private var last = -Double.infinity
+    mutating func accept(_ timestamp:Double) -> Bool {
+        guard timestamp.isFinite,timestamp>last else { return false }
+        last=timestamp;return true
+    }
+}
+
 /// Reject discontinuous camera poses without smoothing or delaying head motion.
 /// A relocalization correction must settle before spatial input becomes active.
 struct SpatialPoseStability {

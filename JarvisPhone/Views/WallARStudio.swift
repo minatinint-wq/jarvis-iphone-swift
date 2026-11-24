@@ -48,6 +48,8 @@ enum WallMeasureMode { case none, outline, opening }
     private var interactionReady=false
     private var poseStability=SpatialPoseStability()
     private var activeVideoFormat: ARConfiguration.VideoFormat?
+    private var frameLink:CADisplayLink?
+    private var frameInput=SpatialFrameGate()
     private var scanTask:Task<Void,Never>?
     private var prefersUltraWide=true
     private var recoveryTimer:Task<Void,Never>?
@@ -171,6 +173,10 @@ enum WallMeasureMode { case none, outline, opening }
         UIDevice.current.isBatteryMonitoringEnabled=true
         let tap = UITapGestureRecognizer(target:self, action:#selector(tapped(_:)))
         view.addGestureRecognizer(tap)
+        let ticker=WallFrameTicker();ticker.owner=self
+        let link=CADisplayLink(target:ticker,selector:#selector(WallFrameTicker.tick(_:)))
+        link.preferredFrameRateRange=CAFrameRateRange(minimum:30,maximum:60,preferred:60)
+        link.isPaused=true;link.add(to:.main,forMode:.common);frameLink=link
     }
 
     func start() async {
@@ -224,6 +230,7 @@ enum WallMeasureMode { case none, outline, opening }
         view.session.run(config,options:shouldReset ? [.resetTracking,.removeExistingAnchors] : [])
         pendingMapReset=false
         view.isPlaying = true;view.rendersContinuously=true
+        frameLink?.isPaused=false
         armRecoveryTimer()
     }
 
@@ -280,7 +287,7 @@ enum WallMeasureMode { case none, outline, opening }
         guard started,!recoveryBusy else { return };recoveryBusy=true;localizationTimedOut=false
         scanTask?.cancel();scanTask=nil;scanning=false
         recoveryTimer?.cancel();recoveryTimer=nil
-        spatial.stopMoving();view.session.pause();view.isPlaying=false;view.rendersContinuously=false;tracking=false;interactionReady=false;poseStability.reset();_ = gate.update(normal:false,at:0);setVisible(false);desktop.setTracking(false)
+        spatial.stopMoving();frameLink?.isPaused=true;view.session.pause();view.isPlaying=false;view.rendersContinuously=false;tracking=false;interactionReady=false;poseStability.reset();_ = gate.update(normal:false,at:0);setVisible(false);desktop.setTracking(false)
         Task { [weak self] in
             guard let self else { return }
             do {
@@ -317,6 +324,7 @@ enum WallMeasureMode { case none, outline, opening }
         foreground = active
         if active && started && !recoveryBusy { run() }
         else if !active {
+            frameLink?.isPaused=true
             scanTask?.cancel();scanTask=nil;scanning=false
             recoveryTimer?.cancel();recoveryTimer=nil
             spatial.stopMoving()
@@ -329,6 +337,7 @@ enum WallMeasureMode { case none, outline, opening }
     }
 
     func stop() {
+        frameLink?.invalidate();frameLink=nil
         if headset { setHeadset(false) }
         scanTask?.cancel();scanTask=nil;scanning=false
         recoveryTimer?.cancel();recoveryTimer=nil
@@ -500,8 +509,16 @@ enum WallMeasureMode { case none, outline, opening }
         if !visible { hands.showProgress(0) }
     }
 
-    func session(_ session: ARSession, didUpdate frame: ARFrame) {
-        guard foreground, !stopped,!recoveryBusy else { return }
+    fileprivate func pollFrame() {
+        guard foreground,!stopped,!fatal,let frame=view.session.currentFrame else { return }
+        receive(frame)
+    }
+    func session(_ session: ARSession, didUpdate frame: ARFrame) { receive(frame) }
+    private func receive(_ frame: ARFrame) {
+        guard foreground, !stopped,!recoveryBusy,!fatal,frameInput.accept(frame.timestamp) else { return }
+        // Reading existing anchor poses is distinct from scanning surfaces or
+        // rebuilding meshes. This also recovers callbacks hidden by a renderer.
+        receiveTrackedAnchors(frame.anchors)
         let normal: Bool,transient: Bool
         switch frame.camera.trackingState {
         case .normal: normal=true;transient=false
@@ -544,11 +561,12 @@ enum WallMeasureMode { case none, outline, opening }
             lastMetric = frame.timestamp; cameraFrames = 0
             let thermal = ProcessInfo.processInfo.thermalState
             if thermal == .critical {
-                fatal = true; setVisible(false); view.session.pause(); view.isPlaying = false;view.rendersContinuously=false
+                fatal = true;frameLink?.isPaused=true;interactionReady=false;tracking=false; setVisible(false); view.session.pause(); view.isPlaying = false;view.rendersContinuously=false
                 status = "iPhone quente. AR pausado; feche e deixe o aparelho esfriar."; return
             }
             spatial.setThermal(thermal)
             view.preferredFramesPerSecond = thermal == .serious || ProcessInfo.processInfo.isLowPowerModeEnabled ? 30 : 60
+            frameLink?.preferredFrameRateRange=CAFrameRateRange(minimum:30,maximum:Float(view.preferredFramesPerSecond),preferred:Float(view.preferredFramesPerSecond))
             if thermal == .serious { notice = "iPhone aquecendo: renderização limitada a 30 FPS." }
             if let estimate = frame.lightEstimate {
                 let target = CGFloat(min(600,max(120,estimate.ambientIntensity * 0.35)))
@@ -559,6 +577,7 @@ enum WallMeasureMode { case none, outline, opening }
 
     func session(_ session: ARSession, didAdd anchors: [ARAnchor]) { update(anchors) }
     func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) { update(anchors) }
+    func receiveTrackedAnchors(_ anchors:[ARAnchor]) { update(anchors) }
     private func update(_ anchors: [ARAnchor]) {
         guard !stopped else { return }
         for anchor in anchors {
@@ -615,6 +634,7 @@ enum WallMeasureMode { case none, outline, opening }
         }
     }
     func session(_ session: ARSession, didFailWithError error: Error) {
+        frameLink?.isPaused=true;tracking=false
         view.isPlaying=false;view.rendersContinuously=false
         interactionReady=false
         fatal = true; setVisible(false); status = "AR indisponível: \(error.localizedDescription). Feche e reabra este modo."
@@ -672,6 +692,11 @@ enum WallMeasureMode { case none, outline, opening }
 }
 
 /// Render callbacks are on SceneKit's render thread. Publish only a one-second sample.
+@MainActor private final class WallFrameTicker:NSObject {
+    weak var owner:WallARController?
+    @objc func tick(_ link:CADisplayLink) { owner?.pollFrame() }
+}
+
 private final class WallRenderMeter: NSObject, ARSCNViewDelegate {
     private let lock = NSLock()
     private var count = 0
