@@ -1,9 +1,8 @@
-JARVIS AR — última entrega: 1.2.0 (28)
-Instalação confirmada pelo serviço da Apple.
-Código: 4045e5a5e9dfd7a584d4ccf40d2d207f5b779643
-Workflow arm64: 45297351130 — aprovado.
-Núcleo: 76 testes iOS aprovados em 45293101345. Ajustes visuais da 28 compilados sem repetir a suíte.
-Recursos: apoio dos pés e renders nativos aprovados em 45296407681.
-Guia: COMO_TESTAR_AR_REV28.txt
-Relatório: RELATORIO_AR_REV28.md
-Teste físico da revisão 28 pendente do usuário.
+JARVIS AR — última entrega: 1.2.0 (29)
+Instalação confirmada: VERIFIED_JARVIS_BUILD=29
+Código: 38350312154a758453dc813aa0e998500d33a085
+Workflow: 45300746833 aprovado.
+Compilação arm64, extensão, recursos e testes direcionados de mãos/gestos aprovados.
+Teste físico da revisão 29 pendente do usuário.
+Guia: COMO_TESTAR_AR_REV29.txt
+Relatório: RELATORIO_AR_REV29.md

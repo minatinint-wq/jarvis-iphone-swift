@@ -35,3 +35,6 @@ Na revisão 25, o usuário confirmou clique/pinça e retorno ao mesmo lugar ao s
 O motor permanece ARKit + SceneKit com detecção local por Vision. Não foi integrado Godot nem RoomPlan. Blender 5.3.0 prepara as malhas e animações fora do aparelho. O funcionamento e as limitações anteriores estão detalhados em RELATORIO_AR_REV25.md e RELATORIO_AR_REV26.md.
 
 Arquivos desta etapa: Views/WallARStudio.swift, Views/SpatialHands.swift, configuração de versão e workflow, recursos de animação e seus manifestos, scripts de conversão/verificação e os guias desta entrega. Nenhuma credencial é incluída nos relatórios.
+
+
+Após instalar a revisão 28, o usuário relatou que a detecção da mão começou e parou. Esse teste físico falhou. A revisão 29 trata a continuidade, a rigidez dos pontos e o zoom na pinça; ver RELATORIO_AR_REV29.md.
