@@ -10,10 +10,11 @@ import ARKit
 final class PhoneCommandTests: XCTestCase {
     func testProjectedTypingKeepsItsShortDwellAfterResetAndScrollingHasNoClickEvent() {
         var key=SpatialGesture(dwellDuration:0.55)
-        _=key.update(ratio:1,pointing:true,target:"q",time:0)
-        XCTAssertEqual(key.update(ratio:1,pointing:true,target:"q",time:0.6),[.click("q")])
-        key.reset();_=key.update(ratio:1,pointing:true,target:"q",time:1)
-        XCTAssertEqual(key.update(ratio:1,pointing:true,target:"q",time:1.6),[.click("q")])
+        var typed:[SpatialGesture.Event]=[]
+        for tick in 0...6 { typed += key.update(ratio:1,pointing:true,target:"q",time:Double(tick)*0.1) }
+        XCTAssertEqual(typed,[.click("q")]);key.reset();typed=[]
+        for tick in 10...16 { typed += key.update(ratio:1,pointing:true,target:"q",time:Double(tick)*0.1) }
+        XCTAssertEqual(typed,[.click("q")])
         var scroll=SpatialDesktopScroll()
         XCTAssertNil(scroll.update(point:CGPoint(x:0.5,y:0.5),time:0))
         XCTAssertLessThan(scroll.update(point:CGPoint(x:0.5,y:0.4),time:0.1) ?? 0,0)
@@ -57,6 +58,15 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertFalse(jobs.isEmpty);XCTAssertTrue(jobs.allSatisfy { $0["action"] as? String == "scroll" })
         XCTAssertEqual(desktop.previewPosition,original);XCTAssertFalse(desktop.isDragging)
         desktop.close(recordChange:false)
+    }
+    @MainActor func testMovingIndexOnDesktopDoesNotClickAfterTwoSeconds() {
+        let view=ARSCNView(frame:CGRect(x:0,y:0,width:600,height:900));view.scene=SCNScene()
+        let camera=SCNNode();camera.camera=SCNCamera();camera.position=SCNVector3(0,0,1)
+        camera.camera?.zNear=0.01;camera.camera?.zFar=10;camera.camera?.fieldOfView=60;view.scene.rootNode.addChildNode(camera);view.pointOfView=camera
+        let desktop=SpatialDesktop(view:view);desktop.preview()
+        var jobs:[[String:Any]]=[];desktop.send={jobs.append($0)}
+        for tick in 0...30 { _=desktop.hand(SpatialHandSample(point:CGPoint(x:260+tick*2,y:450),ratio:1,menuPose:false,pointing:true,time:Double(tick)*0.1)) }
+        XCTAssertTrue(jobs.isEmpty);desktop.close(recordChange:false)
     }
     func testNormalTrackingDoesNotRecoverForeverBecauseRenderFramesAreSlow() {
         var pose=SpatialPoseStability(),gate=WallTrackingGate()
@@ -236,6 +246,9 @@ final class PhoneCommandTests: XCTestCase {
         }
     }
     func testHeadsetVoiceCommandsAndNegation() {
+        XCTAssertEqual(WallARCommand.parse("recuperar sem apagar",inStudio:true),.recover)
+        XCTAssertEqual(WallARCommand.parse("abrir teclado",inStudio:true),.keyboard(true))
+        XCTAssertEqual(WallARCommand.parse("fechar teclado",inStudio:true),.keyboard(false))
         XCTAssertEqual(WallARCommand.parse("Jarvis, ativar VR Box",inStudio:false),.headset(true))
         XCTAssertEqual(WallARCommand.parse("modo óculos",inStudio:false),.headset(true))
         XCTAssertEqual(WallARCommand.parse("sair do VR Box",inStudio:true),.headset(false))

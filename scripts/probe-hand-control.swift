@@ -16,10 +16,12 @@ import CoreImage
         _=dual.update(points:nil,time:3.5);precondition(!dual.active)
         print("VR_SLOW_FRAME_AND_DUAL_PINCH_OK normal tracking tolerates slow callbacks; both pinches resize; loss releases safely")
         var typing=SpatialGesture(dwellDuration:0.55)
-        _=typing.update(ratio:1,pointing:true,target:"q",time:0)
-        precondition(typing.update(ratio:1,pointing:true,target:"q",time:0.6)==[.click("q")])
-        typing.reset();_=typing.update(ratio:1,pointing:true,target:"q",time:1)
-        precondition(typing.update(ratio:1,pointing:true,target:"q",time:1.6)==[.click("q")])
+        var typed:[SpatialGesture.Event]=[]
+        for tick in 0...6 { typed += typing.update(ratio:1,pointing:true,target:"q",time:Double(tick)*0.1) }
+        precondition(typed == [.click("q")])
+        typing.reset();typed=[]
+        for tick in 10...16 { typed += typing.update(ratio:1,pointing:true,target:"q",time:Double(tick)*0.1) }
+        precondition(typed == [.click("q")])
         var scrolling=SpatialDesktopScroll()
         precondition(scrolling.update(point:CGPoint(x:0.5,y:0.5),time:0)==nil)
         precondition((scrolling.update(point:CGPoint(x:0.5,y:0.4),time:0.1) ?? 0)<0)

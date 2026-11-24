@@ -210,7 +210,8 @@ struct SpatialDesktopRecord: Codable {
         if let node=control(point) { if let key=node.name.flatMap({projectedKeys[$0]}) { activate(key) };return true }
         guard let p=local(point) else { return false };input(["action":"click","x":Double(p.x),"y":Double(p.y)]);return true
     }
-    func toggleKeyboard() { keyboardVisible.toggle();automaticKeyboard=false;autoFocusHandled=focusToken;keyGesture.reset();renderControls() }
+    func showKeyboard(_ value:Bool) { keyboardVisible=value;automaticKeyboard=false;autoFocusHandled=focusToken;keyGesture.reset();renderControls() }
+    func toggleKeyboard() { showKeyboard(!keyboardVisible) }
     private func activate(_ key:ProjectedKey) {
         switch key {
         case .toggle:toggleKeyboard()

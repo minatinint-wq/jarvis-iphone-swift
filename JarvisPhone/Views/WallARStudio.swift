@@ -484,6 +484,10 @@ enum WallMeasureMode { case none, outline, opening }
         switch command {
         case .open: break
         case .headset(let enabled): setHeadset(enabled)
+        case .recover: retryLocalization();feedback(status)
+        case .keyboard(let show):
+            if show && !desktop.visible { desktop.open(tracking:tracking) }
+            desktop.showKeyboard(show);feedback(show ? "Teclado projetado na janela do computador." : "Teclado recolhido.")
         case .select:
             if select() { feedback("Marque os cantos da parede e as áreas que devem ficar livres.") }
             else { feedback(status) }
