@@ -36,7 +36,7 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertTrue(gate.update(position:SIMD3(1,0,0),forward:SIMD3(0,0,1),time:110.0/60))
         XCTAssertFalse(gate.update(position:SIMD3(1,0,0),forward:SIMD3(0,0,1),time:5))
     }
-    @MainActor func testHeadsetSharesOneCameraSessionAndRestoresFullViewport() throws {
+    @MainActor func testHeadsetSharesOneCameraSessionAndRestoresFullViewport() async throws {
         let controller=WallARController()
         // Keep the actual owner alive and inspect the exact shared session.
         let host=SpatialHeadsetSurface(controller:controller)
@@ -52,17 +52,25 @@ final class PhoneCommandTests: XCTestCase {
         controller.view.isPlaying=false;controller.view.rendersContinuously=false;host.configure(headset:true)
         XCTAssertFalse(right.isPlaying);XCTAssertFalse(right.rendersContinuously)
         XCTAssertTrue(right.session === session);XCTAssertTrue(right.scene === controller.view.scene)
-        XCTAssertTrue(session.delegate === controller)
+        // ARKit may expose an SDK forwarding delegate. Verify actual callbacks,
+        // rather than identity of that implementation detail.
+        let anchor=ARAnchor(name:"headset-event-probe",transform:simd_float4x4(SIMD4(1,0,0,0),SIMD4(0,1,0,0),SIMD4(0,0,1,0),SIMD4(0.3,0,0,1)))
+        let marker=SCNNode();controller.worldAnchor=anchor;controller.painted=marker
+        marker.position=SCNVector3(-9,0,0)
+        session.delegate?.session?(session,didUpdate:[anchor])
+        try await Task.sleep(for:.milliseconds(50))
+        XCTAssertEqual(marker.position.x,0.3,accuracy:0.001,"Session anchor events must reach the world owner")
         XCTAssertEqual(controller.view.frame.width,450);XCTAssertEqual(right.frame.width,450)
         XCTAssertEqual(right.frame.minX,450)
         if let device=MTLCreateSystemDefaultDevice() {
             let view=controller.view
             view.scene.background.contents=UIColor(white:0.06,alpha:1)
-            let camera=SCNNode();camera.camera=SCNCamera();camera.position=SCNVector3(0,0,1)
+            let camera=SCNNode();camera.camera=SCNCamera()
             // An independent synthetic camera is required: an ARSCNView owns
             // and overwrites its camera pose even without a real AR frame.
-            view.scene.rootNode.addChildNode(camera)
             let panel=SpatialPanel(view:view);panel.preview(.dashboard);panel.setTracking(true)
+            let panelRoot=try XCTUnwrap(view.scene.rootNode.childNodes.first { $0.childNodes.contains { $0.geometry is SCNPlane } })
+            panelRoot.simdTransform=try XCTUnwrap(SpatialPanelGeometry.upright(camera:matrix_identity_float4x4,distance:0.9))
             let renderer=SCNRenderer(device:device,options:nil);renderer.scene=view.scene;renderer.pointOfView=camera
             let left=renderer.snapshot(atTime:0,with:CGSize(width:450,height:400),antialiasingMode:.multisampling2X)
             let other=SCNRenderer(device:device,options:nil);other.scene=right.scene;other.pointOfView=camera
@@ -80,7 +88,11 @@ final class PhoneCommandTests: XCTestCase {
         }
         host.configure(headset:false);host.layoutIfNeeded()
         XCTAssertNil(host.secondary);XCTAssertTrue(controller.view.session === session)
-        XCTAssertEqual(controller.view.frame.width,900);XCTAssertTrue(session.delegate === controller)
+        XCTAssertEqual(controller.view.frame.width,900)
+        marker.position=SCNVector3(-9,0,0)
+        session.delegate?.session?(session,didUpdate:[anchor])
+        try await Task.sleep(for:.milliseconds(50))
+        XCTAssertEqual(marker.position.x,0.3,accuracy:0.001,"Exiting the visor must preserve event delivery")
         controller.stop()
     }
     func testHeadsetVoiceCommandsAndNegation() {
