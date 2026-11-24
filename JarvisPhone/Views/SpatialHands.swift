@@ -96,8 +96,10 @@ enum SpatialHandMath {
 /// its WebXR 25-joint runtime is not shipped as an iPhone hand tracker.
 @MainActor final class SpatialHands {
     private let queue=DispatchQueue(label:"jarvis.spatial.hands",qos:.userInitiated)
-    private let handRequest=VNDetectHumanHandPoseRequest()
+    private var handRequest=VNDetectHumanHandPoseRequest()
     private var busy=false
+    private var busySince=0.0
+    private var cancellationRequested=false
     private var lastFrame:Double = -.infinity
     private var generation=0
     private var wasEnabled=false
@@ -139,16 +141,24 @@ enum SpatialHandMath {
         dwellRing.strokeEnd = CGFloat(value)
         CATransaction.commit()
     }
-    func reset() { showProgress(0);generation+=1;cursor.isHidden=true;bones.path=nil;smoothed=nil;smoothedWorld=nil;smoothedPalm=nil;lastRawTip=nil;onSample?(nil) }
+    func reset() { showProgress(0);generation+=1;lastFrame = -.infinity;cursor.isHidden=true;bones.path=nil;smoothed=nil;smoothedWorld=nil;smoothedPalm=nil;lastRawTip=nil;onSample?(nil) }
     private func report(_ text:String) { let now=ProcessInfo.processInfo.systemUptime;if text != quality,now-lastReport>0.3 { lastReport=now;quality=text;onQuality?(text) } }
     func update(_ frame:ARFrame,view:ARSCNView,enabled:Bool) {
         overlay.isHidden = !enabled
         guard enabled else { if wasEnabled { reset() };wasEnabled=false;return };wasEnabled=true
         if view.subviews.last !== overlay { view.bringSubviewToFront(overlay) }
         bones.frame=overlay.bounds
-        let interval=ProcessInfo.processInfo.thermalState == .serious ? 0.125 : 1.0/15
-        guard !busy,frame.timestamp-lastFrame>=interval else { return }
-        busy=true;lastFrame=frame.timestamp
+        let now=ProcessInfo.processInfo.systemUptime
+        if busy {
+            if now-busySince>3 && !cancellationRequested {
+                cancellationRequested=true;handRequest.cancel();report("Retomando o detector da mão…")
+            }
+            return
+        }
+        let interval=ProcessInfo.processInfo.thermalState == .serious ? 0.16 : 0.10
+        guard now-lastFrame>=interval else { return }
+        busy=true;busySince=now;cancellationRequested=false;lastFrame=now
+        handRequest=VNDetectHumanHandPoseRequest();handRequest.maximumHandCount=2
         let ticket=generation,stamp=ProcessInfo.processInfo.systemUptime,size=view.bounds.size
         let request=handRequest,previousTip=lastRawTip
         let orientation=view.window?.windowScene?.interfaceOrientation ?? .portrait
@@ -156,37 +166,37 @@ enum SpatialHandMath {
         let imageOrientation:CGImagePropertyOrientation=orientation == .landscapeLeft ? .down : orientation == .landscapeRight ? .up : orientation == .portraitUpsideDown ? .left : .right
         let pixels=frame.capturedImage,resolution=frame.camera.imageResolution
         queue.async {
+            autoreleasepool {
             let luminance=Self.luminance(pixels)
             var positions:[CGPoint?]=[];var ratio:Double?;var rawTip:CGPoint?;var rawPalm:CGPoint?;var detectorError=false
             do {
-                if luminance<0.10 {
-                    let image=CIImage(cvPixelBuffer:pixels).applyingFilter("CIExposureAdjust",parameters:[kCIInputEVKey:0.7])
-                    try VNImageRequestHandler(ciImage:image,orientation:imageOrientation).perform([request])
-                } else {
-                    try VNImageRequestHandler(cvPixelBuffer:pixels,orientation:imageOrientation).perform([request])
-                }
+                let image=HandPoseInput.prepare(CIImage(cvPixelBuffer:pixels),luminance:luminance)
+                try VNImageRequestHandler(ciImage:image,orientation:imageOrientation).perform([request])
                 let keys:[VNHumanHandPoseObservation.JointName]=[.wrist,.thumbCMC,.thumbMP,.thumbIP,.thumbTip,.indexMCP,.indexPIP,.indexDIP,.indexTip,.middleMCP,.middlePIP,.middleDIP,.middleTip,.ringMCP,.ringPIP,.ringDIP,.ringTip,.littleMCP,.littlePIP,.littleDIP,.littleTip]
                 let candidates=(request.results ?? []).compactMap { hand -> [VNHumanHandPoseObservation.JointName:VNRecognizedPoint]? in
-                    guard let joints=try? hand.recognizedPoints(.all),let tip=joints[.indexTip],tip.confidence>=0.35 else { return nil };return joints
+                    guard let joints=try? hand.recognizedPoints(.all),HandPoseInput.recognizable(joints.values.map(\.confidence)) else { return nil };return joints
                 }
                 let joints=candidates.min { a,b in
                     func score(_ j:[VNHumanHandPoseObservation.JointName:VNRecognizedPoint])->CGFloat {
-                        let tip=SpatialHandMath.rawPoint(j[.indexTip]!.location,orientation:imageOrientation)
-                        return previousTip.map { hypot(tip.x-$0.x,tip.y-$0.y) } ?? CGFloat(1-j[.indexTip]!.confidence)
+                        let visible=j.values.filter { $0.confidence>=HandPoseInput.jointConfidence }
+                        let average=CGPoint(x:visible.map { $0.location.x }.reduce(0,+)/CGFloat(visible.count),y:visible.map { $0.location.y }.reduce(0,+)/CGFloat(visible.count))
+                        let location=j[.indexTip].flatMap { $0.confidence>=HandPoseInput.pointerConfidence ? $0.location : nil } ?? average
+                        let tip=SpatialHandMath.rawPoint(location,orientation:imageOrientation)
+                        return previousTip.map { hypot(tip.x-$0.x,tip.y-$0.y) } ?? CGFloat(1-(j[.indexTip]?.confidence ?? 0))
                     }
                     return score(a)<score(b)
                 }
                 if let joints {
                     let raw=keys.map { key -> CGPoint? in
-                        guard let p=joints[key],p.confidence>=0.30 else { return nil }
+                        guard let p=joints[key],p.confidence>=HandPoseInput.jointConfidence else { return nil }
                         return SpatialHandMath.rawPoint(p.location,orientation:imageOrientation)
                     }
                     positions=raw.map { $0.map { p in let q=p.applying(transform);return CGPoint(x:q.x*size.width,y:q.y*size.height) } }
                     let palm=[0,5,9,13,17].compactMap { raw[$0] }
                     if palm.count>=4 { rawPalm=CGPoint(x:palm.map(\.x).reduce(0,+)/CGFloat(palm.count),y:palm.map(\.y).reduce(0,+)/CGFloat(palm.count)) }
-                    if let tip=raw[8] {
+                    if let tip=raw[8],(joints[.indexTip]?.confidence ?? 0)>=HandPoseInput.pointerConfidence {
                         rawTip=tip
-                        if (joints[.indexTip]?.confidence ?? 0)>=0.50,(joints[.thumbTip]?.confidence ?? 0)>=0.50 {
+                        if (joints[.indexTip]?.confidence ?? 0)>=HandPoseInput.pinchConfidence,(joints[.thumbTip]?.confidence ?? 0)>=HandPoseInput.pinchConfidence {
                             ratio=SpatialHandMath.pinchRatio(raw,size:resolution)
                         }
                     }
@@ -198,22 +208,29 @@ enum SpatialHandMath {
                 guard self.generation==ticket else { return }
                 let now=ProcessInfo.processInfo.systemUptime
                 self.latencyMS=(now-stamp)*1000;self.hasHand=false;self.hasDepth=false
-                guard now-stamp<0.45 else { self.cursor.isHidden=true;self.bones.path=nil;self.onSample?(nil);self.report("Detector atrasado. Gestos pausados até atualizar a mão.");return }
-                guard result.count==21,let point=result[8],CGRect(origin:.zero,size:size).contains(point) else {
-                    if now-self.lastSeen>0.18 { self.cursor.isHidden=true;self.bones.path=nil;self.smoothed=nil }
+                guard now-stamp<0.9 else { self.cursor.isHidden=true;if now-self.lastSeen>0.45 { self.bones.path=nil };self.onSample?(nil);self.report("Detector atrasado. Retomando a mão…");return }
+                guard result.count==21,result.compactMap({$0}).count>=5 else {
+                    if now-self.lastSeen>0.45 { self.cursor.isHidden=true;self.bones.path=nil;self.smoothed=nil }
                     self.report(failed ? "O detector não processou a imagem. Toque nos cartões enquanto ele retoma." : luminance<0.10 ? "Pouca luz na imagem. Mostre indicador e polegar à câmera." : "Indicador ainda não localizado. Afaste um pouco a mão da lente.")
                     self.onSample?(nil);return
+                }
+                let path=UIBezierPath()
+                for chain in [[0,1,2,3,4],[0,5,6,7,8],[0,9,10,11,12],[0,13,14,15,16],[0,17,18,19,20],[5,9,13,17]] {
+                    for pair in zip(chain,chain.dropFirst()) { if let a=result[pair.0],let b=result[pair.1] { path.move(to:a);path.addLine(to:b) } }
+                }
+                CATransaction.begin();CATransaction.setDisableActions(true)
+                self.bones.path=path.cgPath;self.bones.opacity=now-stamp<0.45 ? 1 : 0.45
+                CATransaction.commit()
+                self.hasHand=true
+                guard let point=result[8],tip != nil,CGRect(origin:.zero,size:size).contains(point),now-stamp<0.45 else {
+                    self.lastSeen=now;self.cursor.isHidden=true;self.onSample?(nil)
+                    self.report(now-stamp>=0.45 ? "Mão encontrada · aguarde o detector atualizar." : "Mão encontrada · mostre a ponta do indicador.");return
                 }
                 let dt=max(0.001,min(0.15,now-self.lastSeen)),alpha=1-exp(-dt/0.035)
                 let p=self.smoothed.map { CGPoint(x:$0.x+(point.x-$0.x)*alpha,y:$0.y+(point.y-$0.y)*alpha) } ?? point
                 self.smoothed=p;self.lastSeen=now;self.lastRawTip=tip;self.cursor.center=p;self.cursor.isHidden=false
                 self.hasHand=true
                 self.cursor.layer.borderColor=(amount == nil ? UIColor.yellow : amount!<0.28 ? UIColor.orange : .cyan).cgColor
-                let path=UIBezierPath()
-                for chain in [[0,1,2,3,4],[0,5,6,7,8],[0,9,10,11,12],[0,13,14,15,16],[0,17,18,19,20],[5,9,13,17]] {
-                    for pair in zip(chain,chain.dropFirst()) { if let a=result[pair.0],let b=result[pair.1] { path.move(to:a);path.addLine(to:b) } }
-                }
-                self.bones.path=path.cgPath
                 let pointing = SpatialHandMath.pointing(result)
                 self.report(pointing ? "Indicador · mantenha sobre o alvo por 2 segundos" : amount == nil ? "Mostre indicador e polegar para usar pinça." : amount! < 0.28 ? "Pinça · arrastar" : "Mão livre")
                 let world=tip.flatMap { SpatialHandMath.worldPoint($0,frame:frame) },palmWorld=palm.flatMap { SpatialHandMath.worldPoint($0,frame:frame) }
@@ -224,6 +241,7 @@ enum SpatialHandMath {
                 let span:Double?
                 if let a=result[5],let b=result[17] { span=Double(hypot(a.x-b.x,a.y-b.y)/sqrt(max(1,size.width*size.height))) } else { span=nil }
                 self.onSample?(SpatialHandSample(point:p,ratio:amount ?? .nan,menuPose:SpatialHandMath.pointing(result,twoFingers:true),pointing:pointing,time:stamp,worldPoint:self.smoothedWorld,palmWorld:self.smoothedPalm,openPalm:SpatialHandMath.openPalm(result),palmPoint:palmPoint,palmSpan:span))
+            }
             }
         }
     }

@@ -166,6 +166,12 @@ enum SpatialTheme: String, CaseIterable {
     private var handOffset=SIMD3<Float>.zero
     private var handDepth:Float=0
     private var palmScale=SpatialPalmScale()
+    private var pinchZoom=SpatialPinchZoom()
+    private func pinchDistance(_ sample:SpatialHandSample) -> Double? {
+        guard let frame=view.session.currentFrame,let palm=sample.palmWorld else { return nil }
+        let p=frame.camera.transform.columns.3
+        return Double(simd_distance(SIMD3(p.x,p.y,p.z),palm))
+    }
     private struct CharacterMotion { var destination: SIMD3<Float>;var impact: SIMD3<Float>?;var speed: Float }
     private var motions: [UUID:CharacterMotion] = [:]
     private var simulationTime: TimeInterval?
@@ -261,6 +267,7 @@ enum SpatialTheme: String, CaseIterable {
 
     func validateSupports(_ frame: ARFrame) {
         guard visibility,!recovering,frame.timestamp-lastSupportCheck>=0.25,
+              objects.keys.contains(where:{ supportProofs[$0]?.confirmed != true }),
               let data=frame.smoothedSceneDepth,let confidence=data.confidenceMap else { return }
         lastSupportCheck=frame.timestamp
         let depth=data.depthMap
@@ -270,6 +277,7 @@ enum SpatialTheme: String, CaseIterable {
         let width=CVPixelBufferGetWidth(depth),height=CVPixelBufferGetHeight(depth),ds=CVPixelBufferGetBytesPerRow(depth),cs=CVPixelBufferGetBytesPerRow(confidence)
         let camera=simd_inverse(frame.camera.transform),k=frame.camera.intrinsics,image=frame.camera.imageResolution
         for (id,node) in objects {
+            if supportProofs[id]?.confirmed == true { continue }
             guard let record=records[id],let room=rooms.first(where:{$0.id==record.room}),let origin=SpatialArchive.matrix(room.origin),
                   let local=SpatialArchive.matrix(record.localTransform) else { continue }
             let original=origin*local,support=origin*(record.supportTransform.flatMap(SpatialArchive.matrix) ?? local)
@@ -589,14 +597,17 @@ enum SpatialTheme: String, CaseIterable {
                     handDepth=view.projectPoint(node.worldPosition).z
                     let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),handDepth))
                     handOffset=node.simdWorldPosition-SIMD3(p.x,p.y,p.z)
+                    pinchZoom.begin(span:sample.palmSpan,depth:pinchDistance(sample),time:sample.time)
                 }
             case .drag(let key):
                 guard let id=UUID(uuidString:key),let node=objects[id],let sample else { continue }
                 let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),handDepth))
                 handDragging=id;node.simdPosition=SIMD3(p.x,p.y,p.z)+handOffset
+                if let factor=pinchZoom.update(span:sample.palmSpan,depth:pinchDistance(sample),time:sample.time) { resizeSelected(factor) }
             case .release:
+                pinchZoom=SpatialPinchZoom()
                 if let id=handDragging { reanchor(id);handDragging=nil }
-            case .cancel:if let id=handDragging { reanchor(id);handDragging=nil }
+            case .cancel:pinchZoom=SpatialPinchZoom();if let id=handDragging { reanchor(id);handDragging=nil }
             case .click(let key):selected=UUID(uuidString:key);hasSelection=selected != nil;markSelection();interact()
             }
         }

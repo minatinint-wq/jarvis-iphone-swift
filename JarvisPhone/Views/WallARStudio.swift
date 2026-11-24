@@ -151,7 +151,7 @@ enum WallMeasureMode { case none, outline, opening }
         spatial.onImpact = { [weak self] point in self?.showWallImpact(point) }
         view.session.delegate = self
         view.session.delegateQueue = .main
-        coaching.session=view.session;coaching.goal = .tracking;coaching.activatesAutomatically=true;coaching.delegate=self
+        coaching.session=view.session;coaching.goal = .tracking;coaching.activatesAutomatically=false;coaching.delegate=self
         coaching.autoresizingMask=[.flexibleWidth,.flexibleHeight];coaching.frame=view.bounds;view.insertSubview(coaching,at:0)
         view.delegate = performance
         view.preferredFramesPerSecond = 60
@@ -459,18 +459,23 @@ enum WallMeasureMode { case none, outline, opening }
         painted?.isHidden = !visible
         spatial.setVisible(visible)
         panel.setTracking(visible)
-        if !visible { hands.reset() }
+        if !visible { hands.showProgress(0) }
     }
 
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
         guard foreground, !stopped,!recoveryBusy else { return }
-        let normal: Bool
-        switch frame.camera.trackingState { case .normal: normal = true; default: normal = false }
-        let good = gate.update(normal:normal, at:frame.timestamp)
+        let normal: Bool,transient: Bool
+        switch frame.camera.trackingState {
+        case .normal: normal=true;transient=false
+        case .limited(.insufficientFeatures),.limited(.excessiveMotion): normal=false;transient=true
+        default: normal=false;transient=false
+        }
+        let good = gate.update(normal:normal,at:frame.timestamp,transient:transient)
+        if coaching.isActive == good { coaching.setActive(!good,animated:true) }
         if good && !spatial.recovering { recoveryTimer?.cancel();recoveryTimer=nil;localizationTimedOut=false }
         spatial.persistenceTick(frame)
         spatial.setVisible(good && !comparing)
-        if good && !comparing { spatial.validateSupports(frame) }
+        if good && normal && !comparing { spatial.validateSupports(frame) }
         if good && !comparing { spatial.stepSimulation(frame.timestamp) }
         panel.setTracking(good)
         desktop.setTracking(good && !spatial.recovering)
@@ -478,7 +483,9 @@ enum WallMeasureMode { case none, outline, opening }
         // Spatial actions remain gated in onSample above, separately from drawing.
         hands.update(frame,view:view,enabled:!webWindowVisible && !fatal)
         if tracking != good {
+            if !good { spatial.requireSurfaceConfirmation() }
             tracking = good; setVisible(good && !comparing)
+            if !good { armRecoveryTimer() }
             status = good ? (selected ? "Parede fixada. Pode mudar o material por voz." : "Toque na parede ou diga “essa parede”.") : "Recuperando posição. Mova devagar e mostre detalhes do ambiente."
         }
         if good,spatial.objectCount>0,!spatial.supportsConfirmed { status=spatial.persistenceStatus }
@@ -543,8 +550,10 @@ enum WallMeasureMode { case none, outline, opening }
     func sessionShouldAttemptRelocalization(_ session: ARSession) -> Bool { true }
     func session(_ session: ARSession,cameraDidChangeTrackingState camera: ARCamera) {
         switch camera.trackingState {
-        case .normal:
-            if !spatial.recovering { recoveryTimer?.cancel();recoveryTimer=nil;localizationTimedOut=false }
+        case .normal: break // Only the stable frame gate ends recovery.
+        case .limited(.insufficientFeatures),.limited(.excessiveMotion):
+            // The frame gate tolerates a short hand occlusion, without resetting Vision.
+            if !tracking { armRecoveryTimer() }
         default:
             spatial.requireSurfaceConfirmation()
             tracking=false;_ = gate.update(normal:false,at:0);setVisible(false)
@@ -558,7 +567,8 @@ enum WallMeasureMode { case none, outline, opening }
 
     private func updateOccluder(_ anchor: ARMeshAnchor) {
         let now = ProcessInfo.processInfo.systemUptime
-        guard now-(meshUpdated[anchor.identifier] ?? 0) > 0.5 else { return }
+        let interval=hands.hasHand && tracking ? 1.5 : 0.5
+        guard now-(meshUpdated[anchor.identifier] ?? 0) > interval else { return }
         guard occluders[anchor.identifier] != nil || occluders.count < 48 else { return }
         guard pendingMeshes.count < 4, !pendingMeshes.contains(anchor.identifier) else { return }
         meshUpdated[anchor.identifier] = now
@@ -701,6 +711,7 @@ private struct WallCameraView: UIViewRepresentable {
                     Button { controller.localizationTimedOut.toggle();controller.savedMaps=SpatialArchive.savedMaps() } label: { Image(systemName:"map") }.accessibilityLabel("Recuperar mapa")
                 }.font(.caption.monospaced()).padding(12).background(.black.opacity(0.72),in:RoundedRectangle(cornerRadius:14))
                 Text(controller.metrics).font(.caption2.monospaced()).foregroundStyle(.secondary)
+                Text(controller.handStatus).font(.caption2).foregroundStyle(.cyan).lineLimit(1)
                 if controller.localizationTimedOut || controller.recoveryBusy {
                     SpatialRecoveryControls(controller:controller)
                 }
@@ -710,7 +721,7 @@ private struct WallCameraView: UIViewRepresentable {
                     VStack(alignment:.leading,spacing:6) {
                         Text(panelStatus).font(.caption).lineLimit(3)
                         Text(controller.handStatus).font(.caption2).foregroundStyle(.cyan)
-                        Text("Indicador por 2 s clica. Pinça move. Palma sobre a janela: aproxime para aumentar, afaste para diminuir. Palma fora por 1 s traz a janela desenquadrada. Dois dedos em V viram a página.").font(.caption2).foregroundStyle(.secondary)
+                        Text("Indicador por 2 s clica. Pinça segura: mova para arrastar, aproxime da câmera para ampliar e afaste para reduzir. Palma fora por 1 s traz a janela desenquadrada.").font(.caption2).foregroundStyle(.secondary)
                         HStack {
                             Button("Todos os módulos",systemImage:"list.bullet") { search="";menuSheet = .directory }
                             Button("Menor",systemImage:"minus.magnifyingglass") { controller.panel.resize(0.82) }

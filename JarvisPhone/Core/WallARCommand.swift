@@ -92,14 +92,3 @@ enum WallARCommand: Equatable {
         return .finish(finish)
     }
 }
-
-/// Tracking must be continuously good before showing content again. Never draw a
-/// screen-fixed replacement while ARKit is relocalizing.
-struct WallTrackingGate {
-    private var normalSince: TimeInterval?
-    mutating func update(normal: Bool, at time: TimeInterval) -> Bool {
-        guard normal, time.isFinite else { normalSince = nil; return false }
-        if normalSince == nil { normalSince = time }
-        return time - (normalSince ?? time) >= 0.6
-    }
-}

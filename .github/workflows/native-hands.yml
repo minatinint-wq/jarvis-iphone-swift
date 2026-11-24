@@ -1,0 +1,23 @@
+name: Native hand pipeline probe
+on:
+  workflow_dispatch:
+  push:
+    branches: ['probe/native-hands-*']
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: macos-26
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Public hand and negative fixtures
+        run: |
+          mkdir -p /tmp/hand-fixtures
+          for image in pointing_up thumb_up cats_and_dogs; do
+            curl -fLsS --retry 2 "https://storage.googleapis.com/mediapipe-assets/$image.jpg" -o "/tmp/hand-fixtures/$image.jpg"
+          done
+      - name: Real Apple Vision input and gesture policy
+        run: |
+          swiftc JarvisPhone/Core/SpatialGesture.swift JarvisPhone/Core/HandPoseInput.swift scripts/probe-hand-control.swift -o /tmp/hand-probe
+          /tmp/hand-probe /tmp/hand-fixtures

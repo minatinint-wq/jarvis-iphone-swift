@@ -93,6 +93,12 @@ enum SpatialPanelGeometry {
     var isDragging: Bool { dragging }
     private var palmScale=SpatialPalmScale()
     private var palmCalibration=SpatialPalmCalibration()
+    private var pinchZoom=SpatialPinchZoom()
+    private func handDepth(_ sample:SpatialHandSample) -> Double? {
+        guard let frame=view.session.currentFrame,let palm=sample.palmWorld else { return nil }
+        let p=frame.camera.transform.columns.3
+        return Double(simd_distance(SIMD3(p.x,p.y,p.z),palm))
+    }
     private var swipe = SpatialPageSwipe()
     private var pcOutput = (UserDefaults.standard.string(forKey:"spatialSpotifyOutput") ?? "pc") == "pc"
     var onWeb: ((SpatialModule)->Void)?
@@ -250,9 +256,11 @@ enum SpatialPanelGeometry {
                 dragDepth=view.projectPoint(root.worldPosition).z
                 let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),dragDepth))
                 dragOffset=root.simdWorldPosition-SIMD3(p.x,p.y,p.z);dragging=false
+                pinchZoom.begin(span:sample.palmSpan,depth:handDepth(sample),time:sample.time)
             case .drag:
                 guard let root,let sample else { continue }
                 if !dragging { if let anchor { view.session.remove(anchor:anchor) };anchor=nil;dragging=true }
+                if let factor=pinchZoom.update(span:sample.palmSpan,depth:handDepth(sample),time:sample.time) { resize(factor) }
                 let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),dragDepth))
                 let destination=SIMD3(p.x,p.y,p.z)+dragOffset
                 if let frame=view.session.currentFrame,let query=view.raycastQuery(from:sample.point,allowing:.existingPlaneGeometry,alignment:.any),let hit=view.session.raycast(query).first {
@@ -265,10 +273,11 @@ enum SpatialPanelGeometry {
                 proposed.columns.3=SIMD4(destination.x,destination.y,destination.z,1)
                 if clearSpace(transform:proposed,scale:root.simdScale.x) { root.simdWorldPosition=destination }
             case .release:
+                pinchZoom=SpatialPinchZoom()
                 if dragging { finishDrag() }
             case .click(let id):
                 if let action=actions[id] { UIImpactFeedbackGenerator(style:.light).impactOccurred();activate(action) }
-            case .cancel: if dragging { finishDrag() }
+            case .cancel: pinchZoom=SpatialPinchZoom();if dragging { finishDrag() }
             }
         }
     }

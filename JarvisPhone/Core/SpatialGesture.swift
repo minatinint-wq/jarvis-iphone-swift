@@ -134,3 +134,50 @@ struct SpatialPalmRecall {
         fired=true;return target
     }
 }
+
+/// Depth motion during an owned pinch changes size; screen motion still drags.
+struct SpatialPinchZoom {
+    private var span: Double?
+    private var initialDepth=0.5
+    private var metric=false
+    private var filtered=0.5
+    private var applied=0.5
+    private var lastTime: Double?
+    mutating func begin(span: Double?,depth: Double?,time: Double) {
+        self=Self();self.span=span.flatMap { $0.isFinite && $0>0.015 ? $0 : nil }
+        if let depth,depth.isFinite,(0.15...2).contains(depth) { initialDepth=depth;metric=true }
+        filtered=initialDepth;applied=initialDepth;lastTime=time
+    }
+    mutating func update(span: Double?,depth: Double?,time: Double) -> Float? {
+        guard let lastTime,time.isFinite,time>=lastTime,time-lastTime<0.45 else { self=Self();return nil }
+        self.lastTime=time
+        let value:Double
+        if metric,let depth,depth.isFinite,(0.15...2).contains(depth) { value=depth }
+        else if let original=self.span,let span,span.isFinite,span>0.015 { value=min(2,max(0.15,initialDepth*original/span)) }
+        else { return nil }
+        filtered=filtered*0.65+value*0.35
+        guard abs(applied-filtered)>0.025 else { return nil }
+        let factor=Float(exp((applied-filtered)*2.5));applied=filtered
+        return min(1.25,max(0.8,factor))
+    }
+}
+
+/// Brief camera occlusion does not throw away an already stable room. Actual
+/// relocalization, interruptions and longer losses must still hide old anchors.
+struct WallTrackingGate {
+    private var normalSince: TimeInterval?
+    private var lastNormal: TimeInterval?
+    private var ready=false
+    mutating func update(normal: Bool,at time: TimeInterval,transient: Bool = false) -> Bool {
+        guard time.isFinite else { self=Self();return false }
+        if normal {
+            if let lastNormal,time<lastNormal { self=Self() }
+            lastNormal=time
+            if ready { return true }
+            if normalSince == nil { normalSince=time }
+            ready=time-(normalSince ?? time)>=0.6;return ready
+        }
+        if transient,ready,let lastNormal,time>=lastNormal,time-lastNormal<=1.2 { return true }
+        self=Self();return false
+    }
+}

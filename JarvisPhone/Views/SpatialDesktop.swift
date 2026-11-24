@@ -27,6 +27,12 @@ struct SpatialDesktopRecord: Codable {
     private var gesture=SpatialGesture()
     private var palmScale=SpatialPalmScale()
     private var palmCalibration=SpatialPalmCalibration()
+    private var pinchZoom=SpatialPinchZoom()
+    private func handDepth(_ sample:SpatialHandSample) -> Double? {
+        guard let frame=view.session.currentFrame,let palm=sample.palmWorld else { return nil }
+        let p=frame.camera.transform.columns.3
+        return Double(simd_distance(SIMD3(p.x,p.y,p.z),palm))
+    }
     private var dragging=false
     var isDragging: Bool { dragging }
     private var offset=SIMD3<Float>.zero
@@ -180,13 +186,17 @@ struct SpatialDesktopRecord: Codable {
                     dragDepth=view.projectPoint(root.worldPosition).z
                     let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),dragDepth))
                     offset=root.simdWorldPosition-SIMD3(p.x,p.y,p.z);dragging=true
+                    pinchZoom.begin(span:sample.palmSpan,depth:handDepth(sample),time:sample.time)
                 }
             case .drag:
                 if let sample {
+                    if let factor=pinchZoom.update(span:sample.palmSpan,depth:handDepth(sample),time:sample.time) {
+                        root.simdScale=SIMD3(repeating:min(2,max(0.25,root.simdScale.x*factor)));onChange?()
+                    }
                     let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),dragDepth))
                     root.simdWorldPosition=SIMD3(p.x,p.y,p.z)+offset
                 }
-            case .release,.cancel: if dragging { finishDrag() }
+            case .release,.cancel: pinchZoom=SpatialPinchZoom();if dragging { finishDrag() }
             case .click:
                 if let point=target { input(["action":"click","x":point.x,"y":point.y]) }
             }
@@ -222,7 +232,7 @@ struct SpatialDesktopControls: View {
                     Spacer()
                     Button("Fechar PC") { desktop.close() }.font(.caption)
                 }
-                Text("Indicador por 2 s: clicar. Pinça: mover. Palma sobre a tela: aproxime para ampliar, afaste para reduzir. Palma fora por 1 s: reenquadrar se estiver fora da visão.").font(.caption2).foregroundStyle(.cyan)
+                Text("Indicador por 2 s: clicar. Pinça segura: mova para arrastar, puxe para a câmera para ampliar, afaste para reduzir. Palma fora por 1 s: reenquadrar.").font(.caption2).foregroundStyle(.cyan)
                 HStack {
                     TextField("Texto para o PC",text:$text).textFieldStyle(.roundedBorder).focused($typing)
                     Button("Digitar") {
