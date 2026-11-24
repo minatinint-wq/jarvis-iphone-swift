@@ -7,6 +7,55 @@ import ARKit
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    @MainActor func testCleanProjectionLeavesOneIconAndDwellOpensRadialOnce() throws {
+        let view=ARSCNView(frame:CGRect(x:0,y:0,width:600,height:900));view.scene=SCNScene()
+        let camera=SCNNode();camera.camera=SCNCamera();camera.position=SCNVector3(0,0,1)
+        camera.camera?.zNear=0.01;camera.camera?.zFar=10;camera.camera?.fieldOfView=60
+        view.scene.rootNode.addChildNode(camera);view.pointOfView=camera
+        let panel=SpatialPanel(view:view);panel.preview(.dashboard);panel.setTracking(true)
+        let root=try XCTUnwrap(view.scene.rootNode.childNodes.first { $0.childNodes.contains { $0.geometry is SCNPlane } })
+        let clean=try XCTUnwrap(root.childNodes.first { $0.name?.contains("hideInterface") == true })
+        let screen=view.projectPoint(clean.worldPosition)
+        XCTAssertTrue(panel.hit(CGPoint(x:CGFloat(screen.x),y:CGFloat(screen.y))))
+        XCTAssertTrue(panel.immersive);XCTAssertEqual(root.childNodes.count,1)
+        XCTAssertEqual(root.childNodes.first?.name,"immersive-orb")
+        XCTAssertFalse(panel.contains(CGPoint(x:10,y:10)))
+        var images:[UIImage]=[]
+        func capture() {
+            guard let device=MTLCreateSystemDefaultDevice() else { return }
+            let renderer=SCNRenderer(device:device,options:nil);renderer.scene=view.scene;renderer.pointOfView=camera
+            images.append(renderer.snapshot(atTime:0,with:CGSize(width:600,height:900),antialiasingMode:.multisampling2X))
+        }
+        capture()
+        func dwell(_ tick:Int,pointing:Bool=true) {
+            panel.hand(SpatialHandSample(point:CGPoint(x:300,y:450),ratio:1,menuPose:false,pointing:pointing,time:Double(tick)*0.1))
+        }
+        for tick in 0...20 { dwell(tick) }
+        XCTAssertEqual(root.childNodes.count,1,"The menu must wait the full two seconds")
+        for tick in 21...55 { dwell(tick) }
+        XCTAssertGreaterThan(root.childNodes.count,6,"Holding the same icon must open once without collapsing again")
+        XCTAssertTrue(panel.immersive);capture()
+        dwell(56,pointing:false)
+        for tick in 57...80 { dwell(tick) }
+        XCTAssertEqual(root.childNodes.count,1)
+        for tick in 81...110 { dwell(tick,pointing:false) }
+        XCTAssertEqual(root.childNodes.count,1,"A free open hand does not click")
+        if images.count==2 {
+            let format=UIGraphicsImageRendererFormat();format.scale=1
+            let atlas=UIGraphicsImageRenderer(size:CGSize(width:1200,height:900),format:format).image { _ in
+                images[0].draw(at:.zero);images[1].draw(at:CGPoint(x:600,y:0))
+            }
+            let attachment=XCTAttachment(image:atlas);attachment.name="Spatial-clean-icon-and-radial-menu";attachment.lifetime = .keepAlways;add(attachment)
+        }
+        panel.close();XCTAssertFalse(panel.immersive)
+    }
+    func testPointingCanDwellOnAnotherButtonWithoutReleasingTheHand() {
+        var gesture=SpatialGesture(),clicks:[SpatialGesture.Event]=[]
+        for tick in 0...55 {
+            clicks += gesture.update(ratio:1,pointing:true,target:tick<28 ? "first" : "second",time:Double(tick)*0.1)
+        }
+        XCTAssertEqual(clicks,[.click("first"),.click("second")])
+    }
     func testFrameCallbackAndDisplayPollDoNotDuplicateOrReplayFrames() {
         var gate=SpatialFrameGate()
         XCTAssertTrue(gate.accept(10));XCTAssertFalse(gate.accept(10))

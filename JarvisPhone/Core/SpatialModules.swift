@@ -85,5 +85,6 @@ enum SpatialSheet: String, Identifiable {
 
 enum SpatialPanelAction {
     case systemAction(PhoneAction), editor(SpatialSheet), instrument(StudioInstrument), wall(WallARCommand)
+    case hideInterface, radialToggle, radialPage(Int), showInterface
     case switchOutput, activateSpotify, model(String), module(SpatialModule), command(String), studio(String), scene(SpatialTheme), spotify(String,String?), playlist(String,String), track(String,String), library, playSelection, page(Int), cardsPage(Int), dragHandle, refresh, reposition, close
 }

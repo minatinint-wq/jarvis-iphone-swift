@@ -1,0 +1,25 @@
+JARVIS — revisão 31 — estabilidade e visor VR Box experimental
+
+1. Abra Espaço AR normalmente. Deixe o iPhone parado por dois minutos, sem mostrar a mão. Observe se o painel mantém tamanho e posição. Depois caminhe devagar em volta dele. A posição da câmera continua sendo a posição real do ARKit, sem suavização artificial da cabeça.
+2. Palma aberta sobre o painel é modo livre: não muda o tamanho. Palma aberta fora de uma janela desenquadrada por um segundo continua sendo o gesto de trazê-la de volta.
+3. Indicador sobre um botão por mais de dois segundos clica. Pinça segura arrasta; aproximar da câmera amplia e afastar reduz. O zoom tem tolerância a pequenas oscilações e velocidade limitada. A estimativa por largura da palma ainda é afetada pelo giro da mão; mantenha a palma com orientação parecida.
+4. Se a referência se perder, mostre detalhes do mesmo ambiente e use Recuperar sem apagar. Isso reaproveita a sessão e as âncoras: não cria um mapa novo. Novo mapa continua existindo para uma mudança real de ambiente ou quando você decidir abandonar a recuperação.
+5. Ao detectar um salto grande da pose da câmera, o app suspende a apresentação/interação espacial até estabilizar. Isso não corrige uma referência física errada nem garante ausência de deriva lenta.
+
+VR BOX — TESTE SEPARADO
+
+6. Toque no ícone de óculos no topo do Espaço AR ou diga “Jarvis, ativar VR Box”. O app solicita a posição horizontal. Se o iOS não girar, desative o bloqueio de rotação e gire o iPhone. “Sair do VR Box” ou Sair VR volta ao modo normal.
+7. O visor apresenta duas vistas iguais da mesma câmera e da mesma cena AR, sem abrir uma segunda captura. É passagem de vídeo monocular, sem profundidade binocular real e sem calibração óptica automática das lentes do seu VR Box. Não é equivalente a um Meta Quest. Ajuste as lentes do suporte e confira a fusão da imagem antes de usar. Primeiro teste sentado e retire o visor se houver desconforto.
+8. A câmera traseira deve ficar desobstruída pelo suporte. Não use a imagem atrasada do telefone como garantia de segurança para andar pela casa. A distorção, o campo visual e o conforto ainda dependem de validação nesse encaixe real.
+9. A mão é processada uma única vez; ossos e cursor são desenhados nas duas vistas. Comandos por voz continuam usando o mesmo Jarvis. O navegador/YouTube atual é uma janela de tela e ainda não foi adaptado para duas lentes.
+
+O modo Ambiente fixo e a leitura manual Escanear 8 s da revisão 30 continuam ativos. A nova versão não religa malha, segmentação ou profundidade contínua.
+
+Compilação e testes não substituem o teste sustentado no iPhone. Instalação e aceitação física devem ser confirmadas separadamente.
+
+MODO LIMPO — BOTÃO NA PROJEÇÃO
+
+10. No painel projetado, aponte para o olho riscado no cabeçalho e mantenha o indicador por mais de 2 segundos (ou toque no botão). Isso esconde as barras, os menus de cenários/medir/pintar e o desenho dos ossos; fica somente um pequeno ícone projetado. A detecção da mão continua ativa, com cursor e progresso do clique.
+11. Aponte o indicador para esse ícone durante 2 segundos: os módulos aparecem em um menu radial ao redor dele. Manter o dedo parado depois de abrir não fecha o menu automaticamente. Relaxe a mão e faça outro clique de 2 segundos no centro para recolher.
+12. As setas ao lado do centro percorrem os módulos. Escolha um módulo com o mesmo indicador de 2 segundos. Para voltar às barras normais, escolha Mostrar interface no radial. Palma aberta continua livre e a pinça continua arrastando.
+13. Para trocar entre quadros enviados pelo ARKit e a leitura de segurança da mesma sessão, o app descarta timestamps repetidos. Isso mantém um único processamento por quadro, sem reativar reconstrução contínua do ambiente.

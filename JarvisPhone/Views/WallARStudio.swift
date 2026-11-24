@@ -149,9 +149,13 @@ enum WallMeasureMode { case none, outline, opening }
             if self.palmRecall.progress>0 || self.palmRecall.hasFired {
                 self.hands.showProgress(self.palmRecall.progress);return
             }
+            if self.panel.visible,self.panel.immersive,
+               self.panel.isDragging || sample.map({self.panel.contains($0.point)}) == true {
+                self.panel.hand(sample);self.hands.showProgress(self.panel.dwellProgress);return
+            }
             if self.desktop.hand(sample) { self.hands.showProgress(self.desktop.progress);return }
-            if self.panel.visible { self.panel.hand(sample) } else { self.spatial.hand(sample) }
-            self.hands.showProgress(self.panel.visible ? self.panel.dwellProgress : self.spatial.dwellProgress)
+            if self.panel.visible && !self.panel.immersive { self.panel.hand(sample);self.hands.showProgress(self.panel.dwellProgress) }
+            else { self.panel.hand(nil);self.spatial.hand(sample);self.hands.showProgress(self.spatial.dwellProgress) }
         }
         hands.onQuality = { [weak self] in self?.handStatus=$0 }
         spatial.attach()
@@ -359,8 +363,9 @@ enum WallMeasureMode { case none, outline, opening }
     }
     func tap(at point:CGPoint) {
         guard interactionReady else { return }
+        if panel.visible,panel.immersive,panel.contains(point) { _=panel.hit(point);return }
         if desktop.tap(point) { return }
-        if panel.visible { _=panel.hit(point);return }
+        if panel.visible && !panel.immersive { _=panel.hit(point);return }
         if measureMode != .none { addPoint(at:point) }
         else if spatial.active { spatial.tap(point,tracking:tracking) }
         else { select(at:point) }
@@ -761,7 +766,8 @@ private struct WallCameraView: UIViewRepresentable {
     @Environment(\.scenePhase) private var scenePhase
     @State private var help = false
     @State private var objectsTab = false
-    @AppStorage("jarvis.ar.toolsExpanded") private var toolsExpanded = true
+    @AppStorage("jarvis.ar.toolsExpanded.v31") private var toolsExpanded = false
+    @State private var immersive=false
     @State private var panelVisible = false
     @State private var webModule: SpatialModule?
     @State private var panelStatus = ""
@@ -770,14 +776,14 @@ private struct WallCameraView: UIViewRepresentable {
     @State private var confirmAction: PhoneAction?
     var body: some View {
         ZStack {
-            WallCameraView(controller:controller).ignoresSafeArea(edges:controller.headset ? .all : .bottom).allowsHitTesting(webModule == nil && !controller.recoveryBusy)
-            if !panelVisible && (!controller.selected || controller.measureMode != .none) {
+            WallCameraView(controller:controller).ignoresSafeArea(edges:controller.headset || immersive ? .all : .bottom).allowsHitTesting(webModule == nil && !controller.recoveryBusy)
+            if !immersive && !panelVisible && (!controller.selected || controller.measureMode != .none) {
                 Image(systemName:"plus").font(.title.weight(.ultraLight)).foregroundStyle(.white)
                     .shadow(color:.black,radius:2).allowsHitTesting(false)
             }
             if let webModule {
                 SpatialWebWindow(module:webModule) { self.webModule=nil;controller.panel.open(.dashboard,tracking:controller.tracking) }.id(webModule.rawValue)
-            } else if !controller.headset {
+            } else if !controller.headset && !immersive {
             VStack(spacing:10) {
                 HStack {
                     Label(controller.tracking ? "POSIÇÃO ESTÁVEL" : "MAPEANDO",systemImage:controller.tracking ? "viewfinder" : "viewfinder.circle")
@@ -791,6 +797,7 @@ private struct WallCameraView: UIViewRepresentable {
                     }
                     Button { controller.localizationTimedOut.toggle();controller.savedMaps=SpatialArchive.savedMaps() } label: { Image(systemName:"map") }.accessibilityLabel("Recuperar mapa")
                     Button { controller.setHeadset(true) } label: { Image(systemName:"visionpro") }.accessibilityLabel("Ativar VR Box horizontal")
+                    Button { controller.panel.open(.dashboard,tracking:controller.tracking);controller.panel.cleanInterface() } label: { Image(systemName:"eye.slash") }.accessibilityLabel("Modo limpo com menu projetado").disabled(!controller.tracking)
                 }.font(.caption.monospaced()).padding(12).background(.black.opacity(0.72),in:RoundedRectangle(cornerRadius:14))
                 HStack {
                     Text(controller.metrics).font(.caption2.monospaced()).foregroundStyle(.secondary)
@@ -878,7 +885,7 @@ private struct WallCameraView: UIViewRepresentable {
                 }
             }.padding(12)
             }
-            if controller.headset {
+            if controller.headset && !immersive {
                 VStack {
                     HStack(spacing:0) {
                         ForEach(0..<2,id:\.self) { _ in
@@ -893,8 +900,8 @@ private struct WallCameraView: UIViewRepresentable {
                 }
             }
         }.background(.black).foregroundStyle(.white)
-            .toolbar(controller.headset ? .hidden : .visible,for:.navigationBar)
-            .statusBarHidden(controller.headset)
+            .toolbar(controller.headset || immersive ? .hidden : .visible,for:.navigationBar)
+            .statusBarHidden(controller.headset || immersive)
             .task {
                 controller.onFeedback = { text in model.wallARFeedback(text) }
                 controller.panel.onWeb = { target in
@@ -912,13 +919,13 @@ private struct WallCameraView: UIViewRepresentable {
                         if model.openStudio("music",instrument:instrument) { controller.panel.close() }
                     case .wall(let command):
                         if command == .saveMap { controller.apply(command);return }
-                        objectsTab=false;controller.panel.close();controller.apply(command)
+                        objectsTab=false;if controller.panel.immersive { controller.panel.cleanInterface() } else { controller.panel.close() };controller.apply(command)
                     case .systemAction(let action):
                         if [.wifiOff,.bluetoothOff,.cellularOff,.lock].contains(action) { confirmAction=action }
                         else { runPhoneAction(action) }
                     case .activateSpotify: model.showSpotify()
-                    case .model(let id): objectsTab=true;controller.spatial.setModel(id);controller.panel.close()
-                    case .scene(let theme): objectsTab=true;controller.spatial.setTheme(theme);controller.panel.close()
+                    case .model(let id): objectsTab=true;controller.spatial.setModel(id);if controller.panel.immersive { controller.panel.cleanInterface() } else { controller.panel.close() }
+                    case .scene(let theme): objectsTab=true;controller.spatial.setTheme(theme);if controller.panel.immersive { controller.panel.cleanInterface() } else { controller.panel.close() }
                     case .studio(let mode): controller.panel.close();model.openStudio(mode)
                     case .command(let text): Task { await model.runSpatialCommand(text) }
                     default: break
@@ -968,7 +975,11 @@ private struct WallCameraView: UIViewRepresentable {
             .onChange(of:webModule) { _,target in
                 syncOverlay()
             }
-            .onReceive(controller.panel.$visible) { panelVisible=$0;controller.spatial.panelBlocking=$0 || overlayVisible }
+            .onReceive(controller.panel.$visible) { panelVisible=$0;controller.spatial.panelBlocking=($0 && !immersive) || overlayVisible }
+            .onReceive(controller.panel.$immersive) {
+                immersive=$0;controller.hands.setSkeletonVisible(!$0)
+                controller.spatial.panelBlocking=(panelVisible && !$0) || overlayVisible
+            }
             .onReceive(controller.panel.$status) { panelStatus=$0 }
             .onChange(of:model.spatialPanelResponse) { _,data in if let data { controller.panel.receive(data) } }
             .onChange(of:model.desktopResponse) { _,data in if let data { controller.desktop.receive(data) } }
@@ -979,7 +990,7 @@ private struct WallCameraView: UIViewRepresentable {
     private var overlayVisible: Bool { webModule != nil || menuSheet != nil || confirmAction != nil }
     private func syncOverlay() {
         controller.webWindowVisible=overlayVisible
-        controller.spatial.panelBlocking=overlayVisible || panelVisible
+        controller.spatial.panelBlocking=overlayVisible || (panelVisible && !immersive)
         if overlayVisible { controller.hands.reset() }
     }
     private func runPhoneAction(_ action:PhoneAction) {

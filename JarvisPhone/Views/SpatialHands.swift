@@ -115,6 +115,8 @@ enum SpatialHandMath {
     private let cursor=UIView(frame:CGRect(x:0,y:0,width:24,height:24))
     private let overlay=UIView()
     private let bones=CAShapeLayer()
+    private var skeletonVisible=true
+    func setSkeletonVisible(_ visible:Bool) { skeletonVisible=visible;bones.isHidden = !visible;mirrorBones?.isHidden = !visible }
     private var mirror:UIView?
     private var mirrorBones:CAShapeLayer?
     private var mirrorCursor:UIView?
@@ -138,6 +140,7 @@ enum SpatialHandMath {
         CATransaction.begin();CATransaction.setDisableActions(true)
         mirror.isHidden=overlay.isHidden
         mirrorBones?.frame=mirror.bounds;mirrorBones?.path=bones.path;mirrorBones?.opacity=bones.opacity
+        mirrorBones?.isHidden = !skeletonVisible
         mirrorCursor?.center=cursor.center;mirrorCursor?.isHidden=cursor.isHidden
         mirrorCursor?.layer.borderColor=cursor.layer.borderColor;mirrorRing?.strokeEnd=dwellRing.strokeEnd
         CATransaction.commit()

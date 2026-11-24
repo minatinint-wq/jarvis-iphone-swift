@@ -93,7 +93,7 @@ struct SpatialGesture {
             progress = 0
             return []
         }
-        if target != hover { hover = target; began = time; progress = 0 }
+        if target != hover { hover = target; began = time; progress = 0; fired=false }
         guard !fired else { return [] }
         progress = min(1, (time - began) / 2)
         if time - began > 2 { fired = true; return [.click(target)] }

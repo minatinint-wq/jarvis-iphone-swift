@@ -65,6 +65,15 @@ enum SpatialPanelGeometry {
 /// the content is drawn crisply into textures, not a screenshot floating in UI.
 @MainActor final class SpatialPanel: ObservableObject {
     @Published var visible=false
+    @Published private(set) var immersive=false
+    private var compact=false
+    private var radialExpanded=false
+    private var radialIndex=0
+    func cleanInterface() {
+        guard visible,root != nil else { return }
+        immersive=true;compact=true;radialExpanded=false;radialIndex=0
+        render()
+    }
     @Published var module=SpatialModule.dashboard
     @Published var status="Escolha um módulo."
     private let view: ARSCNView
@@ -113,7 +122,7 @@ enum SpatialPanelGeometry {
         contextRevision += 1
         trackingGood=tracking
         guard tracking else { status="Aguarde o mapeamento estabilizar e abra o painel novamente.";return }
-        module=destination
+        module=destination;compact=false;radialExpanded=false
         cardPage=max(0,page)
         if root == nil { reposition() }
         guard root != nil else { return }
@@ -193,7 +202,7 @@ enum SpatialPanelGeometry {
         if recordChange,root != nil { onChange?() }
         contextRevision += 1;navigationContext=nil
         handGesture.reset();swipe=SpatialPageSwipe();dragging=false;hovered=nil
-        timeout?.cancel();pending=nil;visible=false
+        timeout?.cancel();pending=nil;visible=false;immersive=false;compact=false;radialExpanded=false
         if let anchor { view.session.remove(anchor:anchor) };anchor=nil
         root?.removeFromParentNode();root=nil;actions.removeAll()
     }
@@ -202,9 +211,9 @@ enum SpatialPanelGeometry {
         let a=view.unprojectPoint(SCNVector3(Float(point.x),Float(point.y),0)),b=view.unprojectPoint(SCNVector3(Float(point.x),Float(point.y),1))
         return SpatialPanelGeometry.localHit(origin:SIMD3(a.x,a.y,a.z),direction:SIMD3(b.x-a.x,b.y-a.y,b.z-a.z),transform:root.simdWorldTransform)
     }
-    func contains(_ point: CGPoint) -> Bool { visible && root?.isHidden == false && localHit(point) != nil }
+    func contains(_ point: CGPoint) -> Bool { visible && root?.isHidden == false && (compact ? selectionNode(point) != nil : localHit(point) != nil) }
     var isFramed: Bool {
-        guard visible,let root else { return false };return SpatialPanelGeometry.framed(root,in:view,size:CGSize(width:0.64,height:0.58))
+        guard visible,let root else { return false };return SpatialPanelGeometry.framed(root,in:view,size:compact && !radialExpanded ? CGSize(width:0.10,height:0.10) : CGSize(width:0.64,height:0.58))
     }
     private func selectionNode(_ point:CGPoint)->SCNNode? {
         guard let p=localHit(point),let root else { return nil }
@@ -239,7 +248,7 @@ enum SpatialPanelGeometry {
         if hovered !== node {
             hovered?.scale=SCNVector3(1,1,1);hovered=target == nil ? nil : node;hovered?.scale=SCNVector3(1.025,1.025,1)
         }
-        let overPanel = sample.flatMap { localHit($0.point) } != nil
+        let overPanel = compact ? node != nil : sample.flatMap { localHit($0.point) } != nil
         let hit = target ?? (overPanel ? "panel-surface" : nil)
         let canClick = target.flatMap { actions[$0] }.map { action -> Bool in
             if case .dragHandle = action { return false }
@@ -287,6 +296,11 @@ enum SpatialPanelGeometry {
     private func activate(_ action: SpatialPanelAction) {
         contextRevision += 1
         switch action {
+        case .hideInterface: cleanInterface()
+        case .radialToggle: radialExpanded.toggle();render()
+        case .radialPage(let direction):
+            radialIndex=(radialIndex+direction+radialPageCount)%radialPageCount;render()
+        case .showInterface: immersive=false;compact=false;radialExpanded=false;render()
         case .switchOutput:
             guard pending == nil else { return }
             pcOutput.toggle()
@@ -310,7 +324,9 @@ enum SpatialPanelGeometry {
         case .page(let delta): guard pending==nil else { return };cardPage=0;offset=max(0,offset+delta);refreshPage()
         case .refresh: refreshPage()
         case .spotify(let action,let playlist): request(action,playlist:playlist)
-        default: onAction?(action)
+        default:
+            if compact { radialExpanded=false;render() }
+            onAction?(action)
         }
     }
     private func refreshPage() { request(selectedPlaylist == nil ? "library" : "tracks",playlist:selectedPlaylist?.id) }
@@ -463,6 +479,10 @@ enum SpatialPanelGeometry {
         return [("Anterior","backward.end.fill",.spotify("previous",nil)),(selectedTrack == nil ? (selectedPlaylist == nil ? "Retomar" : "Tocar playlist") : "Play: "+selectedTrack!.name,"play.fill",.playSelection),("Pausar","pause.fill",.spotify("pause",nil)),("Próxima","forward.end.fill",.spotify("next",nil))]
     }
     private func visibleItems()->[(String,String,SpatialPanelAction)] {
+        if compact {
+            guard radialExpanded else { return [("Abrir menu radial","circle.grid.2x2.fill",.radialToggle)] }
+            return Array(radialItems.dropFirst(radialIndex*6).prefix(6))+[("Recolher menu","sparkles",.radialToggle),("Próxima página","chevron.right",.radialPage(1)),("Mostrar interface","eye",.showInterface)]
+        }
         var rows=Array(items().dropFirst(cardPage*4).prefix(4))+transportItems()
         if cardPage>0 { rows.append(("Página anterior de cartões","chevron.left",.cardsPage(-1))) }
         if (cardPage+1)*4<items().count { rows.append(("Mais cartões","chevron.right",.cardsPage(1))) }
@@ -470,6 +490,11 @@ enum SpatialPanelGeometry {
         rows.append(("Central JARVIS","square.grid.2x2",.module(.dashboard)))
         return rows
     }
+    private var radialItems:[(String,String,SpatialPanelAction)] {
+        SpatialModule.allCases.filter { $0 != .dashboard }.map { ($0.title,$0.symbol,.module($0)) }
+            + [("Tela do PC","desktopcomputer",.wall(.desktop)),("Mostrar interface","eye",.showInterface)]
+    }
+    private var radialPageCount:Int { max(1,(radialItems.count+5)/6) }
     private func render() {
         hovered=nil
         guard let root else { return };root.childNodes.forEach { $0.removeFromParentNode() };actions.removeAll()
@@ -485,7 +510,7 @@ enum SpatialPanelGeometry {
                 if let symbol=UIImage(systemName:icon,withConfiguration:UIImage.SymbolConfiguration(pointSize:symbolWidth,weight:.medium))?.withTintColor(.cyan,renderingMode:.alwaysOriginal) {
                     symbol.draw(in:CGRect(x:title.isEmpty ? (size.width-symbolWidth)/2 : 18,y:(size.height-symbolWidth)/2,width:symbolWidth,height:symbolWidth))
                 }
-                let font=UIFont.systemFont(ofSize:icon.isEmpty ? 30 : 48,weight:.semibold)
+                let font=UIFont.systemFont(ofSize:width<0.20 ? 26 : icon.isEmpty ? 30 : 48,weight:.semibold)
                 let paragraph=NSMutableParagraphStyle();paragraph.lineBreakMode = .byTruncatingTail
                 let left:CGFloat=icon.isEmpty ? 18 : 66,textWidth=max(0,size.width-left-18),textHeight=size.height-24
                 let attributes:[NSAttributedString.Key:Any]=[.font:font,.foregroundColor:UIColor.white,.paragraphStyle:paragraph]
@@ -500,15 +525,35 @@ enum SpatialPanelGeometry {
             geometry.materials=[material]
             let node=SCNNode(geometry:geometry);node.categoryBitMask=4;node.position=SCNVector3(x,y,0.008)
             node.renderingOrder=101
-            if let action { let id=UUID().uuidString;node.name=id;actions[id]=action }
+            if let action {
+                let id:String
+                if case .radialToggle=action { id="immersive-orb" }
+                else { id="action:\(title)|\(icon)|\(String(describing:action))" }
+                node.name=id;actions[id]=action
+            }
             root.addChildNode(node)
+        }
+        if compact {
+            let color=UIColor(red:0.015,green:0.09,blue:0.12,alpha:0.94)
+            plate("",radialExpanded ? "sparkles" : "circle.grid.2x2.fill",width:0.09,height:0.09,x:0,y:0,color:color,action:.radialToggle)
+            (root.childNodes.last?.geometry as? SCNPlane)?.cornerRadius=0.045
+            if radialExpanded {
+                for (i,row) in radialItems.dropFirst(radialIndex*6).prefix(6).enumerated() {
+                    let angle=Float.pi/2-Float(i)*Float.pi/3
+                    plate(row.0,row.1,width:0.15,height:0.085,x:cos(angle)*0.22,y:sin(angle)*0.22,color:color,action:row.2)
+                }
+                plate("","chevron.left",width:0.05,height:0.055,x:-0.095,y:0,color:color,action:.radialPage(-1))
+                plate("","chevron.right",width:0.05,height:0.055,x:0.095,y:0,color:color,action:.radialPage(1))
+            }
+            return
         }
         let back=SCNNode(geometry:SCNBox(width:width+0.015,height:height+0.015,length:0.012,chamferRadius:0.012));back.categoryBitMask=4
         back.geometry?.firstMaterial?.diffuse.contents=UIColor(red:0.018,green:0.04,blue:0.06,alpha:1);back.geometry?.firstMaterial?.lightingModel = .constant
         back.geometry?.firstMaterial?.readsFromDepthBuffer=false;back.geometry?.firstMaterial?.writesToDepthBuffer=false;back.renderingOrder=100
         root.addChildNode(back)
         let color=UIColor(red:0.045,green:0.12,blue:0.16,alpha:1)
-        plate(module.title,"hand.draw",width:0.53,height:0.075,x:-0.045,y:0.24,color:.clear,action:.dragHandle)
+        plate(module.title,"hand.draw",width:0.43,height:0.075,x:-0.095,y:0.24,color:.clear,action:.dragHandle)
+        plate("","eye.slash",width:0.07,height:0.075,x:0.175,y:0.24,color:.clear,action:.hideInterface)
         plate("","xmark",width:0.07,height:0.075,x:0.275,y:0.24,color:.clear,action:.close)
         for (i,row) in rows.enumerated() {
             plate(row.0,row.1,width:0.30,height:0.115,x:i%2==0 ? -0.16 : 0.16,y:0.135-Float(i/2)*0.13,color:color,action:row.2)
