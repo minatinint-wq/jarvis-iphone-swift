@@ -1,5 +1,8 @@
 name: Native skeletal format probe
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+  push:
+    branches: ['probe/native-skinner-*']
 permissions:
   contents: read
 jobs:
