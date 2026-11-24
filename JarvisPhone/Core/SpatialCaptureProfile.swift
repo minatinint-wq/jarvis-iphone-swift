@@ -7,7 +7,7 @@ enum SpatialCaptureProfile {
     static func configuration(scanning: Bool) -> ARWorldTrackingConfiguration {
         let configuration=ARWorldTrackingConfiguration()
         configuration.planeDetection=scanning ? [.horizontal,.vertical] : []
-        configuration.sceneReconstruction = .none
+        configuration.sceneReconstruction = []
         configuration.environmentTexturing = .none
         configuration.isLightEstimationEnabled=false
         configuration.frameSemantics=[]
