@@ -151,7 +151,27 @@ def export(name, height, clips, title, author, license_name):
                     evaluated.to_mesh_clear()
         animations.append({"name": clip, "duration": duration, "frames": animation})
     assert worst_error < 0.005, (name, worst_error,worst_detail)
-    rig = {"heightMeters": height, "bones": skeleton, "animations": animations}
+    ground_offset = 0.0
+    if name == "robot":
+        # Its imported actions include an object-origin translation absent from
+        # the bind pose. Remove that constant offset without flattening the gait.
+        idle = bpy.data.actions["Idle"]
+        arm.animation_data.action = idle
+        arm.animation_data.action_slot = next(slot for slot in idle.slots if slot.target_id_type == "OBJECT")
+        bpy.context.scene.frame_set(int(idle.frame_range[0]))
+        bpy.context.view_layer.update()
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        heights=[]
+        for obj in meshes:
+            evaluated=obj.evaluated_get(depsgraph);mesh=evaluated.to_mesh()
+            heights.extend((normalize @ obj.matrix_world @ vertex.co).y for vertex in mesh.vertices)
+            evaluated.to_mesh_clear()
+        ground_offset=min(heights)
+        for animation in animations:
+            for frame in animation["frames"]:
+                for index,bone in enumerate(skeleton):
+                    if bone["parent"]<0:frame[index][13]=round(frame[index][13]-ground_offset,6)
+    rig = {"heightMeters": height, "bones": skeleton, "animations": animations,"animationGroundOffsetMeters":ground_offset}
     path = OUT / f"Spatial_animated_{name}_rig.json"
     path.write_bytes(json.dumps(rig, separators=(",", ":")).encode());files.append(digest(path))
     print("ANIMATED_ASSET_OK", name, "bones", len(bones), "triangles", total_triangles, "maxSkinErrorMeters", round(worst_error, 7), flush=True)

@@ -11,4 +11,8 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
-      - run: swift scripts/probe-native-skinner.swift JarvisPhone/Resources
+      - run: swift scripts/probe-native-skinner.swift JarvisPhone/Resources /tmp/rig-previews
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-rig-previews
+          path: /tmp/rig-previews

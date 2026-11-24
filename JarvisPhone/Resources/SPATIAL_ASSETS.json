@@ -4074,8 +4074,8 @@
       },
       {
         "file": "Spatial_animated_robot_rig.json",
-        "bytes": 1392454,
-        "sha256": "bbbb1a8287680f21c0efc5d11d7e02b41554d11f23ed98dff3f9f0aa6793d94c"
+        "bytes": 1392503,
+        "sha256": "49333a15ba36dad8e925bff87d207cf3b5057409864da84e8d6f53cdcde7f9d5"
       }
     ],
     "animationSkinErrorMeters": 7.251217997429632e-07
@@ -4123,8 +4123,8 @@
       },
       {
         "file": "Spatial_animated_fox_rig.json",
-        "bytes": 358839,
-        "sha256": "f7d7a372d13d42cf5df51d5eac27644c2a4f8268581a55ab3f363d451f18aca3"
+        "bytes": 358873,
+        "sha256": "6afc1e4ddd02c0eeba210d4e12965ef5cc52b5b75af0a9f6dbed764c894a4104"
       }
     ],
     "animationSkinErrorMeters": 7.450580596923828e-08
