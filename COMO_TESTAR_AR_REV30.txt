@@ -1,0 +1,14 @@
+JARVIS — revisão 30 — AMBIENTE FIXO
+
+A leitura contínua do ambiente inicia desligada. A câmera e a mão continuam funcionando.
+
+1. Abra o modo AR e deixe o estado Ambiente fixo para testar a mão e os painéis.
+2. Para uma nova superfície, use Escanear 8 s, aponte para o piso ou parede e aguarde terminar. A leitura para sozinha; Parar leitura permite encerrar antes.
+3. Depois use os planos já lidos para colocar objetos ou marcar a parede. Se a pintura precisar de uma nova leitura ao aplicar o recorte, use Escanear 8 s por decisão sua.
+4. Segure a pinça sobre a janela ou objeto. Puxe a mão para a câmera para ampliar e afaste para reduzir. Mover para os lados continua arrastando; soltar fixa. Sem profundidade contínua, a variação do tamanho aparente da mão estima o zoom.
+5. O X recolhe Medir e pintar / Cenários 3D. Ferramentas reabre.
+6. Salvar mapa permanece disponível manualmente. A sessão em uso não fica fazendo gravações periódicas do mapa.
+
+No modo fixo ficam desligadas a reconstrução de malha, a profundidade contínua, a segmentação de pessoas, a iluminação/reflexos automáticos e a detecção contínua de novos planos. A oclusão dinâmica de objetos e pessoas também fica desligada. O rastreamento mínimo da câmera continua necessário para manter os painéis no espaço.
+
+Teste físico: acompanhe a mão por pelo menos dois minutos em Ambiente fixo e confirme se a fluidez se mantém. A compilação não comprova desempenho sustentado do iPhone.

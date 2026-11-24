@@ -1,5 +1,7 @@
 # JARVIS AR — revisão 29
 
+Retorno posterior do usuário: a mão começou funcionando e voltou a ficar lenta. A revisão 29 não foi aprovada no teste físico sustentado; a revisão 30 desliga a coleta contínua do ambiente para investigar essa concorrência. Não foi obtida medição de FPS do aparelho.
+
 Instalação 1.2.0 (29) confirmada pelo serviço da Apple. Código 38350312154a758453dc813aa0e998500d33a085, workflow 45300746833 aprovado. A revisão 28 teve falha física relatada pelo usuário: a mão começou a ser detectada e depois deixou de aparecer. Não foi considerada aprovada.
 
 ## Mão e ambiente mais estáveis

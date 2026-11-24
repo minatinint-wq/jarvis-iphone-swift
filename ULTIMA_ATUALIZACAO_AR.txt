@@ -1,8 +1,9 @@
-JARVIS AR — última entrega: 1.2.0 (29)
-Instalação confirmada: VERIFIED_JARVIS_BUILD=29
-Código: 38350312154a758453dc813aa0e998500d33a085
-Workflow: 45300746833 aprovado.
-Compilação arm64, extensão, recursos e testes direcionados de mãos/gestos aprovados.
-Teste físico da revisão 29 pendente do usuário.
-Guia: COMO_TESTAR_AR_REV29.txt
-Relatório: RELATORIO_AR_REV29.md
+JARVIS AR — última entrega: 1.2.0 (30)
+Instalação confirmada: VERIFIED_JARVIS_BUILD=30
+Código: 4894508a9d840f5732ea7167379a41d8789d7ef0
+Workflow de compilação: 45304006676 aprovado.
+Teste nativo do perfil ARKit: 45304014210 aprovado.
+Ambiente fixo por padrão; leitura de superfícies somente por ação manual Escanear 8 s.
+Teste físico sustentado da mão pendente. Revisão 29 apresentou lentidão relatada pelo usuário.
+Guia: COMO_TESTAR_AR_REV30.txt
+Relatório: RELATORIO_AR_REV30.md
