@@ -155,17 +155,23 @@ def export(name, height, clips, title, author, license_name):
     if name == "robot":
         # Its imported actions include an object-origin translation absent from
         # the bind pose. Remove that constant offset without flattening the gait.
-        idle = bpy.data.actions["Idle"]
-        arm.animation_data.action = idle
-        arm.animation_data.action_slot = next(slot for slot in idle.slots if slot.target_id_type == "OBJECT")
-        bpy.context.scene.frame_set(int(idle.frame_range[0]))
-        bpy.context.view_layer.update()
-        depsgraph = bpy.context.evaluated_depsgraph_get()
+        frame=next(clip for clip in animations if clip["name"]=="Idle")["frames"][0]
+        posed=[]
+        for index,bone in enumerate(skeleton):
+            values=frame[index]
+            local=Matrix([[values[column*4+row] for column in range(4)] for row in range(4)])
+            posed.append(local if bone["parent"]<0 else posed[bone["parent"]] @ local)
         heights=[]
-        for obj in meshes:
-            evaluated=obj.evaluated_get(depsgraph);mesh=evaluated.to_mesh()
-            heights.extend((normalize @ obj.matrix_world @ vertex.co).y for vertex in mesh.vertices)
-            evaluated.to_mesh_clear()
+        for part in parts:
+            mesh=(OUT/part["mesh"]).read_bytes();skin=(OUT/part["skin"]).read_bytes()
+            count=struct.unpack_from("<I",mesh,4)[0]
+            for vertex in range(count):
+                point=Vector((*struct.unpack_from("<3f",mesh,12+vertex*32),1))
+                indices=struct.unpack_from("<4B",skin,vertex*20)
+                weights=struct.unpack_from("<4f",skin,vertex*20+4)
+                value=Vector((0,0,0,0))
+                for index,weight in zip(indices,weights):value+=(posed[index] @ rest[index].inverted() @ point)*weight
+                heights.append(value.y)
         ground_offset=min(heights)
         for animation in animations:
             for frame in animation["frames"]:
