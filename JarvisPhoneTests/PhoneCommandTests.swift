@@ -8,6 +8,56 @@ import ARKit
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    func testProjectedTypingKeepsItsShortDwellAfterResetAndScrollingHasNoClickEvent() {
+        var key=SpatialGesture(dwellDuration:0.55)
+        _=key.update(ratio:1,pointing:true,target:"q",time:0)
+        XCTAssertEqual(key.update(ratio:1,pointing:true,target:"q",time:0.6),[.click("q")])
+        key.reset();_=key.update(ratio:1,pointing:true,target:"q",time:1)
+        XCTAssertEqual(key.update(ratio:1,pointing:true,target:"q",time:1.6),[.click("q")])
+        var scroll=SpatialDesktopScroll()
+        XCTAssertNil(scroll.update(point:CGPoint(x:0.5,y:0.5),time:0))
+        XCTAssertLessThan(scroll.update(point:CGPoint(x:0.5,y:0.4),time:0.1) ?? 0,0)
+        XCTAssertNil(scroll.update(point:nil,time:0.2))
+        XCTAssertNil(scroll.update(point:CGPoint(x:0.5,y:0.2),time:1))
+    }
+    @MainActor func testProjectedDesktopKeyboardAndInputQueueKeepLettersInOrder() throws {
+        let view=ARSCNView(frame:CGRect(x:0,y:0,width:600,height:900));view.scene=SCNScene()
+        let camera=SCNNode();camera.camera=SCNCamera();camera.position=SCNVector3(0,0,1)
+        camera.camera?.zNear=0.01;camera.camera?.zFar=10;camera.camera?.fieldOfView=60
+        view.scene.rootNode.addChildNode(camera);view.pointOfView=camera
+        let desktop=SpatialDesktop(view:view);desktop.preview()
+        var jobs:[[String:Any]]=[];desktop.send={jobs.append($0)}
+        desktop.toggleKeyboard();XCTAssertTrue(desktop.keyboardVisible)
+        func type(_ letter:String,from start:Double) throws {
+            let node=try XCTUnwrap(view.scene.rootNode.childNodes.flatMap(\.childNodes).first { $0.name=="desktop-ui:text-"+letter })
+            let projected=view.projectPoint(node.worldPosition)
+            for tick in 0...8 {
+                _=desktop.hand(SpatialHandSample(point:CGPoint(x:CGFloat(projected.x),y:CGFloat(projected.y)),ratio:1,menuPose:false,pointing:true,time:start+Double(tick)*0.1))
+            }
+        }
+        try type("q",from:0);try type("w",from:1)
+        XCTAssertEqual(jobs.count,1);XCTAssertEqual(jobs[0]["text"] as? String,"q")
+        desktop.receive(try JSONSerialization.data(withJSONObject:["requestId":jobs[0]["requestId"]!,"ok":true,"sequence":1]))
+        XCTAssertEqual(jobs.count,2);XCTAssertEqual(jobs[1]["text"] as? String,"w")
+        if let device=MTLCreateSystemDefaultDevice() {
+            let renderer=SCNRenderer(device:device,options:nil);renderer.scene=view.scene;renderer.pointOfView=camera
+            let image=renderer.snapshot(atTime:0,with:CGSize(width:600,height:900),antialiasingMode:.multisampling2X)
+            let attachment=XCTAttachment(image:image);attachment.name="Desktop-projected-keyboard";attachment.lifetime = .keepAlways;add(attachment)
+        }
+        desktop.close(recordChange:false)
+    }
+    @MainActor func testTwoFingerDesktopScrollNeverClicksOrMovesTheWindow() throws {
+        let view=ARSCNView(frame:CGRect(x:0,y:0,width:600,height:900));view.scene=SCNScene()
+        let camera=SCNNode();camera.camera=SCNCamera();camera.position=SCNVector3(0,0,1)
+        camera.camera?.zNear=0.01;camera.camera?.zFar=10;camera.camera?.fieldOfView=60;view.scene.rootNode.addChildNode(camera);view.pointOfView=camera
+        let desktop=SpatialDesktop(view:view);desktop.preview()
+        var jobs:[[String:Any]]=[];desktop.send={jobs.append($0)}
+        let original=desktop.previewPosition
+        for tick in 0...3 { _=desktop.hand(SpatialHandSample(point:CGPoint(x:300,y:450-tick*10),ratio:1,menuPose:true,pointing:false,time:Double(tick)*0.1)) }
+        XCTAssertFalse(jobs.isEmpty);XCTAssertTrue(jobs.allSatisfy { $0["action"] as? String == "scroll" })
+        XCTAssertEqual(desktop.previewPosition,original);XCTAssertFalse(desktop.isDragging)
+        desktop.close(recordChange:false)
+    }
     func testNormalTrackingDoesNotRecoverForeverBecauseRenderFramesAreSlow() {
         var pose=SpatialPoseStability(),gate=WallTrackingGate()
         for tick in 0...20 {

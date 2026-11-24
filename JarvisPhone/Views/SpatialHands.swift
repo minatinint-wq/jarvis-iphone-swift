@@ -15,6 +15,7 @@ struct SpatialHandSample {
     var palmPoint: CGPoint? = nil
     var palmSpan: Double? = nil
     var dualPinch:[CGPoint]? = nil
+    var keyboardPose=false
 }
 
 enum SpatialHandMath {
@@ -54,6 +55,17 @@ enum SpatialHandMath {
             let length=hypot(ux,uy)*hypot(vx,vy)
             return length>1 && (ux*vx+uy*vy)/length>0.75
         }
+    }
+    static func keyboardPose(_ joints:[CGPoint?])->Bool {
+        guard joints.count==21 else { return false }
+        func score(_ base:Int)->CGFloat? {
+            guard let a=joints[base],let b=joints[base+1],let c=joints[base+3] else { return nil }
+            let u=CGPoint(x:b.x-a.x,y:b.y-a.y),v=CGPoint(x:c.x-b.x,y:c.y-b.y)
+            let length=hypot(u.x,u.y)*hypot(v.x,v.y)
+            return length>1 ? (u.x*v.x+u.y*v.y)/length : nil
+        }
+        guard let little=score(17),little<0.5 else { return false }
+        return [5,9,13].allSatisfy { (score($0) ?? -1)>0.60 }
     }
     /// Scene depth is in captured-image coordinates. Require a coherent patch
     /// with high confidence, rather than reading a single mixed edge pixel.
@@ -292,7 +304,7 @@ enum SpatialHandMath {
                 let palmPoint=palm.map { raw -> CGPoint in let q=raw.applying(transform);return CGPoint(x:q.x*size.width,y:q.y*size.height) }
                 let span:Double?
                 if let a=result[5],let b=result[17] { span=Double(hypot(a.x-b.x,a.y-b.y)/sqrt(max(1,size.width*size.height))) } else { span=nil }
-                self.onSample?(SpatialHandSample(point:p,ratio:amount ?? .nan,menuPose:SpatialHandMath.pointing(result,twoFingers:true),pointing:pointing,time:stamp,worldPoint:self.smoothedWorld,palmWorld:self.smoothedPalm,openPalm:SpatialHandMath.openPalm(result),palmPoint:palmPoint,palmSpan:span,dualPinch:both))
+                self.onSample?(SpatialHandSample(point:p,ratio:amount ?? .nan,menuPose:SpatialHandMath.pointing(result,twoFingers:true),pointing:pointing,time:stamp,worldPoint:self.smoothedWorld,palmWorld:self.smoothedPalm,openPalm:SpatialHandMath.openPalm(result),palmPoint:palmPoint,palmSpan:span,dualPinch:both,keyboardPose:SpatialHandMath.keyboardPose(result)))
             }
             }
         }

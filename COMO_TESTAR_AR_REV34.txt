@@ -1,0 +1,16 @@
+JARVIS — revisão 34 — controle do computador dentro do espaço AR/VR
+
+O teclado nativo e a barra grande de digitação foram removidos da janela do PC. O teclado é formado por teclas projetadas abaixo da tela remota e acompanha a janela no ambiente.
+
+INDICADOR: parado por 2 segundos sobre um ponto da tela do PC, clica. Mover o indicador reinicia o tempo: passear pela tela não clica no lugar errado.
+DOIS DEDOS ESTENDIDOS: indicador e médio arrastam o conteúdo para rolar. Isso envia somente a roda do mouse, sem clique. Relaxe a mão para parar.
+TRÊS DEDOS ESTENDIDOS: indicador, médio e anelar por cerca de 0,65 s sobre a janela abrem ou recolhem o teclado. Também há um botão de teclado projetado no cabeçalho.
+PINÇA DE UMA MÃO: move a janela. O tamanho não muda pela distância até a câmera.
+PINÇA EM CADA MÃO: afaste as mãos para aumentar; aproxime para diminuir. Solte para encerrar.
+SEM VISOR: dois dedos na tela também fazem zoom nas janelas e objetos.
+
+TECLADO PROJETADO: aponte o indicador para uma tecla por cerca de 0,55 s. Cada permanência digita uma única vez; mude para outra tecla ou relaxe antes de repetir a mesma. O cabeçalho mantém o clique de 2 s. Há Shift, números/símbolos, Tab, espaço, apagar e Enter. O × recolhe o teclado.
+
+Ao clicar num campo reconhecido como editável pelo Windows, o teclado aparece automaticamente. Se o aplicativo não expuser esse campo à acessibilidade, use três dedos ou o botão do cabeçalho. A detecção lê apenas tipo, foco, habilitação e leitura/edição; não lê nome, valor ou senha do campo.
+
+As teclas são enviadas em fila. Não existe envio automático de Enter; Enter só é executado quando você escolher a tecla. Se a conexão falhar, comandos pendentes são descartados para evitar repetição incerta.

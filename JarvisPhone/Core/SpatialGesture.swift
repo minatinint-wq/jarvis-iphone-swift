@@ -78,8 +78,10 @@ struct SpatialGesture {
     private var pinchTarget: String?
     private var pinchLostSince: Double?
     private(set) var progress = 0.0
+    private let dwellDuration:Double
+    init(dwellDuration:Double=2) { self.dwellDuration=max(0.2,dwellDuration) }
 
-    mutating func reset() { self = Self() }
+    mutating func reset() { self = Self(dwellDuration:dwellDuration) }
 
     mutating func update(ratio: Double, pointing: Bool, target: String?, time: Double) -> [Event] {
         let interrupted = lastTime.map { time < $0 || time - $0 > 0.35 } ?? false
@@ -124,9 +126,27 @@ struct SpatialGesture {
         }
         if target != hover { hover = target; began = time; progress = 0; fired=false }
         guard !fired else { return [] }
-        progress = min(1, (time - began) / 2)
-        if time - began > 2 { fired = true; return [.click(target)] }
+        progress = min(1, (time - began) / dwellDuration)
+        if time - began > dwellDuration { fired = true; return [.click(target)] }
         return []
+    }
+}
+
+/// Two extended fingers scroll continuously; they never generate mouse clicks.
+struct SpatialDesktopScroll {
+    private var previous:CGPoint?
+    private var lastTime=0.0
+    private var residual:CGFloat=0
+    mutating func update(point:CGPoint?,time:Double)->Int? {
+        guard let point,time.isFinite,point.x.isFinite,point.y.isFinite else { self=Self();return nil }
+        defer { previous=point;lastTime=time }
+        guard let previous,time>=lastTime,time-lastTime<0.4 else { residual=0;return nil }
+        let dy=point.y-previous.y
+        guard abs(dy)<0.18 else { residual=0;return nil }
+        residual += dy*18
+        let steps=max(-3,min(3,Int(residual)))
+        guard steps != 0 else { return nil };residual-=CGFloat(steps)
+        return steps
     }
 }
 
