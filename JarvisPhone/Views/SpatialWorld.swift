@@ -265,6 +265,14 @@ enum SpatialTheme: String, CaseIterable {
         persistenceStatus="Recuperando referência. Mostre novamente o piso e a base dos objetos."
     }
 
+    /// A normal, relocalized ARKit world provides the saved anchor references.
+    /// The lightweight mode does not ask LiDAR to recheck them continuously.
+    func reuseLocalizedSupports() {
+        guard visibility,!recovering,!supportsConfirmed else { return }
+        for (id,node) in objects { supportProofs[id]=SpatialSupportProof(confirmed:true);node.isHidden=false }
+        persistenceStatus="Ambiente fixado. Leitura de superfícies desligada."
+    }
+
     func validateSupports(_ frame: ARFrame) {
         guard visibility,!recovering,frame.timestamp-lastSupportCheck>=0.25,
               objects.keys.contains(where:{ supportProofs[$0]?.confirmed != true }),

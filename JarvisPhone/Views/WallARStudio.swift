@@ -43,6 +43,8 @@ enum WallMeasureMode { case none, outline, opening }
     @Published var recoveryBusy=false
     @Published var savedMaps:[URL]=[]
     @Published var lensLabel="1×"
+    @Published var scanning=false
+    private var scanTask:Task<Void,Never>?
     private var prefersUltraWide=true
     private var recoveryTimer:Task<Void,Never>?
     private var recoveryDelay:Duration = .seconds(20)
@@ -66,7 +68,7 @@ enum WallMeasureMode { case none, outline, opening }
     var spatial: SpatialWorld!
     var panel: SpatialPanel!
     var desktop: SpatialDesktop!
-    @Published var status = "Mostre a parede, o encontro com o teto e os cantos."
+    @Published var status = "Ambiente fixo. Escaneie somente para ler uma nova superfície."
     @Published var selected = false
     @Published var finish = WallFinish.white
     @Published var tracking = false
@@ -156,7 +158,7 @@ enum WallMeasureMode { case none, outline, opening }
         view.delegate = performance
         view.preferredFramesPerSecond = 60
         view.antialiasingMode = .multisampling4X
-        view.automaticallyUpdatesLighting = true
+        view.automaticallyUpdatesLighting = false
         view.autoenablesDefaultLighting = false
         view.rendersContinuously = true
         light.type = .ambient; light.intensity = stableLight
@@ -169,9 +171,8 @@ enum WallMeasureMode { case none, outline, opening }
 
     func start() async {
         guard !started, !stopped else { return }
-        guard ARWorldTrackingConfiguration.isSupported,
-              ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification) else {
-            status = "Este modo precisa de um iPhone com LiDAR. O simulador não reproduz o rastreamento."; fatal = true; return
+        guard ARWorldTrackingConfiguration.isSupported else {
+            status = "Este modo precisa de ARKit no aparelho. O simulador não reproduz o rastreamento."; fatal = true; return
         }
         let permission = await AVCaptureDevice.requestAccess(for:.video)
         guard !stopped else { return }
@@ -202,17 +203,8 @@ enum WallMeasureMode { case none, outline, opening }
     private func run(reset: Bool = false) {
         guard foreground, !stopped, !fatal else { return }
         let shouldReset=reset || pendingMapReset
-        let config = ARWorldTrackingConfiguration()
-        config.planeDetection = [.horizontal,.vertical]
-        config.sceneReconstruction = .meshWithClassification
-        config.environmentTexturing = .automatic
+        let config = SpatialCaptureProfile.configuration(scanning:scanning)
         if !mapStarted || shouldReset { config.initialWorldMap=initialMap;mapStarted=true }
-        if ARWorldTrackingConfiguration.supportsFrameSemantics(.smoothedSceneDepth) {
-            config.frameSemantics.insert(.smoothedSceneDepth)
-        }
-        if ARWorldTrackingConfiguration.supportsFrameSemantics(.personSegmentationWithDepth) {
-            config.frameSemantics.insert(.personSegmentationWithDepth)
-        }
         // Prefer moderate camera resolution at 60 Hz rather than 4K capture + AI.
         let available=ARWorldTrackingConfiguration.supportedVideoFormats
         let ultra=available.filter { $0.captureDevicePosition == .back && $0.captureDeviceType == .builtInUltraWideCamera }
@@ -231,9 +223,22 @@ enum WallMeasureMode { case none, outline, opening }
     func selectLens(ultra: Bool) {
         guard !recoveryBusy else { return }
         if ultra && !ARWorldTrackingConfiguration.supportedVideoFormats.contains(where:{$0.captureDeviceType == .builtInUltraWideCamera && $0.captureDevicePosition == .back}) {
-            notice="O iOS não disponibilizou 0,5× para esta sessão AR com LiDAR.";return
+            notice="O iOS não disponibilizou 0,5× para esta sessão AR.";return
         }
         prefersUltraWide=ultra;spatial.stopMoving();hands.reset();spatial.requireSurfaceConfirmation();run()
+    }
+
+    func toggleScan() {
+        guard started,foreground,!stopped,!recoveryBusy,!fatal else { return }
+        scanTask?.cancel();scanTask=nil
+        if scanning { scanning=false;run();status="Leitura desligada. Ambiente fixo.";return }
+        scanning=true;run();status="Lendo superfícies por 8 segundos. Depois a leitura será desligada."
+        scanTask=Task { [weak self] in
+            try? await Task.sleep(for:.seconds(SpatialCaptureProfile.scanSeconds))
+            guard !Task.isCancelled,let self,!self.stopped else { return }
+            self.scanning=false;self.scanTask=nil;self.run()
+            self.status="Leitura desligada. Use as superfícies já lidas ou escaneie novamente quando quiser."
+        }
     }
 
     private func armRecoveryTimer() {
@@ -249,6 +254,7 @@ enum WallMeasureMode { case none, outline, opening }
 
     func changeMap(restore source: URL?) {
         guard started,!recoveryBusy else { return };recoveryBusy=true;localizationTimedOut=false
+        scanTask?.cancel();scanTask=nil;scanning=false
         recoveryTimer?.cancel();recoveryTimer=nil
         spatial.stopMoving();view.session.pause();tracking=false;_ = gate.update(normal:false,at:0);setVisible(false);desktop.setTracking(false)
         Task { [weak self] in
@@ -287,6 +293,7 @@ enum WallMeasureMode { case none, outline, opening }
         foreground = active
         if active && started && !recoveryBusy && !localizationTimedOut { run() }
         else if !active {
+            scanTask?.cancel();scanTask=nil;scanning=false
             recoveryTimer?.cancel();recoveryTimer=nil
             spatial.stopMoving()
             spatial.saveMap(force:false)
@@ -298,6 +305,7 @@ enum WallMeasureMode { case none, outline, opening }
     }
 
     func stop() {
+        scanTask?.cancel();scanTask=nil;scanning=false
         recoveryTimer?.cancel();recoveryTimer=nil
         spatial.saveMap(force:false)
         stopped = true
@@ -473,9 +481,13 @@ enum WallMeasureMode { case none, outline, opening }
         let good = gate.update(normal:normal,at:frame.timestamp,transient:transient)
         if coaching.isActive == good { coaching.setActive(!good,animated:true) }
         if good && !spatial.recovering { recoveryTimer?.cancel();recoveryTimer=nil;localizationTimedOut=false }
-        spatial.persistenceTick(frame)
+        // No periodic world-map snapshots or surface updates in the hand mode.
+        if scanning { spatial.persistenceTick(frame) }
         spatial.setVisible(good && !comparing)
-        if good && normal && !comparing { spatial.validateSupports(frame) }
+        if good && normal && !comparing {
+            if scanning { spatial.validateSupports(frame) }
+            else { spatial.reuseLocalizedSupports() }
+        }
         if good && !comparing { spatial.stepSimulation(frame.timestamp) }
         panel.setTracking(good)
         desktop.setTracking(good && !spatial.recovering)
@@ -486,15 +498,16 @@ enum WallMeasureMode { case none, outline, opening }
             if !good { spatial.requireSurfaceConfirmation() }
             tracking = good; setVisible(good && !comparing)
             if !good { armRecoveryTimer() }
-            status = good ? (selected ? "Parede fixada. Pode mudar o material por voz." : "Toque na parede ou diga “essa parede”.") : "Recuperando posição. Mova devagar e mostre detalhes do ambiente."
+            status = good ? (selected ? "Parede fixada. Pode mudar o material por voz." : scanning ? "Lendo novas superfícies." : "Ambiente fixo. Escanear 8 s permite ler uma nova superfície.") : "Recuperando posição. Mova devagar e mostre detalhes do ambiente."
         }
         if good,spatial.objectCount>0,!spatial.supportsConfirmed { status=spatial.persistenceStatus }
-        if approved && good && frame.timestamp-lastDepthUpdate>0.5 { updateDepth(frame) }
+        if scanning && approved && good && frame.timestamp-lastDepthUpdate>0.5 { updateDepth(frame) }
         cameraFrames += 1
         if frame.timestamp-lastMetric >= 1 {
             let fps = performance.sample()
-            spatial.recordPerformance(fps:fps,frame:frame,handLatencyMS:hands.latencyMS,handFound:hands.hasHand,handDepth:hands.hasDepth)
-            metrics = fps > 0 ? "\(fps) FPS · LiDAR · local" : "LiDAR · renderização local"
+            if scanning { spatial.recordPerformance(fps:fps,frame:frame,handLatencyMS:hands.latencyMS,handFound:hands.hasHand,handDepth:hands.hasDepth) }
+            let mode=scanning ? "leitura temporária" : "ambiente fixo"
+            metrics = fps > 0 ? "\(fps) FPS · \(mode)" : mode
             lastMetric = frame.timestamp; cameraFrames = 0
             let thermal = ProcessInfo.processInfo.thermalState
             if thermal == .critical {
@@ -518,9 +531,13 @@ enum WallMeasureMode { case none, outline, opening }
         for anchor in anchors {
             if anchor.identifier == worldAnchor?.identifier { worldAnchor=anchor; painted?.simdTransform = anchor.transform }
             if let plane = anchor as? ARPlaneAnchor {
-                planes[plane.identifier]=plane
-                if approved && (plane.classification == .door || plane.classification == .window) { refreshAutomaticOpenings() }
+                if scanning || planes[plane.identifier] == nil {
+                    planes[plane.identifier]=plane;spatial.update(plane)
+                    if scanning && approved && (plane.classification == .door || plane.classification == .window) { refreshAutomaticOpenings() }
+                }
+                continue
             }
+            if anchor is ARMeshAnchor { continue }
             panel.update(anchor)
             desktop.update(anchor)
             if let saved=spatial.restoredDesktop,saved.anchor==anchor.identifier {
@@ -530,11 +547,11 @@ enum WallMeasureMode { case none, outline, opening }
                 panel.restore(saved,anchor:anchor);spatial.restoredPanel=nil
             }
             spatial.update(anchor)
-            if let mesh = anchor as? ARMeshAnchor { updateOccluder(mesh) }
         }
     }
     func session(_ session: ARSession, didRemove anchors: [ARAnchor]) {
         for anchor in anchors {
+            if !scanning && anchor is ARPlaneAnchor { continue }
             spatial.remove(anchor)
             planes.removeValue(forKey:anchor.identifier)
             occluders.removeValue(forKey:anchor.identifier)?.removeFromParentNode()
@@ -710,7 +727,12 @@ private struct WallCameraView: UIViewRepresentable {
                     }
                     Button { controller.localizationTimedOut.toggle();controller.savedMaps=SpatialArchive.savedMaps() } label: { Image(systemName:"map") }.accessibilityLabel("Recuperar mapa")
                 }.font(.caption.monospaced()).padding(12).background(.black.opacity(0.72),in:RoundedRectangle(cornerRadius:14))
-                Text(controller.metrics).font(.caption2.monospaced()).foregroundStyle(.secondary)
+                HStack {
+                    Text(controller.metrics).font(.caption2.monospaced()).foregroundStyle(.secondary)
+                    Spacer()
+                    Button(controller.scanning ? "Parar leitura" : "Escanear 8 s") { controller.toggleScan() }
+                        .font(.caption).buttonStyle(.bordered).controlSize(.small)
+                }
                 Text(controller.handStatus).font(.caption2).foregroundStyle(.cyan).lineLimit(1)
                 if controller.localizationTimedOut || controller.recoveryBusy {
                     SpatialRecoveryControls(controller:controller)

@@ -1,0 +1,25 @@
+name: iOS lightweight AR configuration
+on:
+  workflow_dispatch:
+  push:
+    branches: ['probe/native-ar-capture-*']
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: macos-26
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and execute actual ARKit capture configuration
+        run: |
+          set -euo pipefail
+          arch=$(uname -m)
+          sdk=$(xcrun --sdk iphonesimulator --show-sdk-path)
+          swiftc -sdk "$sdk" -target "$arch-apple-ios17.0-simulator" JarvisPhone/Core/SpatialCaptureProfile.swift scripts/probe-ar-capture.swift -o /tmp/ar-capture-probe
+          runtime=$(xcrun simctl list runtimes -j | python3 -c 'import sys,json;print(next(x["identifier"] for x in json.load(sys.stdin)["runtimes"] if x["isAvailable"] and "SimRuntime.iOS-" in x["identifier"]))')
+          id=$(xcrun simctl create 'Jarvis capture contract' com.apple.CoreSimulator.SimDeviceType.iPhone-13-Pro-Max "$runtime")
+          trap 'xcrun simctl shutdown "$id" >/dev/null 2>&1 || true; xcrun simctl delete "$id" >/dev/null 2>&1 || true' EXIT
+          xcrun simctl boot "$id"
+          xcrun simctl bootstatus "$id" -b
+          xcrun simctl spawn "$id" /tmp/ar-capture-probe
