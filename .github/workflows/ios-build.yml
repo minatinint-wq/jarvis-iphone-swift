@@ -2,6 +2,16 @@ name: iPhone build and tests
 
 on:
   workflow_dispatch:
+    inputs:
+      runner:
+        description: 'macOS runner for native verification'
+        type: choice
+        options: [macos-15, macos-26]
+        default: macos-15
+      verification_only:
+        description: 'Run complete XCTest and export evidence; device package is validated by xtool workflow'
+        type: boolean
+        default: false
   push:
     branches: [main]
 
@@ -14,7 +24,7 @@ concurrency:
 
 jobs:
   simulator:
-    runs-on: macos-15
+    runs-on: ${{ inputs.runner || 'macos-15' }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -57,6 +67,7 @@ jobs:
         if: always()
         run: xcrun xcresulttool export attachments --path TestResults.xcresult --output-path TestAttachments
       - name: Launch app and capture screenshot
+        if: ${{ !inputs.verification_only }}
         shell: bash
         run: |
           xcrun simctl bootstatus '${{ steps.simulator.outputs.udid }}' -b
@@ -68,6 +79,7 @@ jobs:
           xcrun simctl io '${{ steps.simulator.outputs.udid }}' screenshot JARVIS-IPHONE-SIMULADOR.png
           ditto -c -k --sequesterRsrc --keepParent .build/Build/Products/Debug-iphonesimulator/JarvisPhone.app JarvisPhone-Simulator.zip
       - name: Compile for physical iPhone without signing
+        if: ${{ !inputs.verification_only }}
         shell: bash
         run: |
           set -o pipefail
