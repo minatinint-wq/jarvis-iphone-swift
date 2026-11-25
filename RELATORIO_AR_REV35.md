@@ -8,6 +8,6 @@ O adaptador WallCameraView recebia apenas uma referência constante a WallARCont
 
 O teste testHeadsetTogglePropagatesThroughSwiftUIWithoutDirectConfigureCalls monta a interface em UIHostingController, altera o estado observado e verifica o número de olhos na vista real: zero, dois e zero. Ele não chama configure diretamente. Execução 45524298573 aprovada.
 
-O IPA original foi validado. O pacote pessoal preserva os 21 recursos visuais anteriores, nove mapas e 362 arquivos espaciais, conferidos por hash. Instalação concluída e consultada no serviço do iOS: JARVIS 1.2.0 build 35 / VERIFIED_JARVIS_BUILD=35. Teste físico pelo usuário pendente.
+O IPA original foi validado. O pacote pessoal preserva os 21 recursos visuais anteriores, nove mapas e 362 arquivos espaciais, conferidos por hash. Instalação concluída e consultada no serviço do iOS: JARVIS 1.2.0 build 35 / VERIFIED_JARVIS_BUILD=35. Teste físico confirmado pelo usuário após tocar no ícone dos óculos: “Sim, agora dividiu”. A divisão da câmera em duas vistas foi aceita. O retorno à vista única foi validado pelo teste automático; não houve nova confirmação física dos demais gestos nesta etapa.
 
 Referência: https://developer.apple.com/documentation/swiftui/uiviewrepresentable/updateuiview(_:context:).

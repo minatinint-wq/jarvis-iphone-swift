@@ -8,4 +8,4 @@ A revisão 35 passa headset explicitamente para o adaptador da câmera.
 Pacote: RELEASES/REV35/Jarvis-Arc-iPhone.ipa
 Guia: COMO_TESTAR_AR_REV35.txt
 Relatório: RELATORIO_AR_REV35.md
-Teste físico do botão no aparelho: pendente do usuário.
+Teste físico confirmado pelo usuário: o botão dos óculos agora divide a câmera em duas imagens.
