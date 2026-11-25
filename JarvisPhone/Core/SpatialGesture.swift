@@ -267,6 +267,30 @@ struct SpatialPinchZoom {
 
 /// Brief camera occlusion does not throw away an already stable room. Actual
 /// relocalization, interruptions and longer losses must still hide old anchors.
+/// A deliberate full fist opens the catalog once, then requires a release.
+struct SpatialFistMenuGesture {
+    private var began:Double?
+    private var released:Double?
+    private var previous:Double?
+    private var latched=false
+    mutating func update(closed:Bool,time:Double)->Bool {
+        guard time.isFinite else { self=Self();return false }
+        if let previous,time<previous || time-previous>0.4 { began=nil;released=nil }
+        previous=time
+        if !closed {
+            began=nil
+            if released == nil { released=time }
+            if time-(released ?? time)>=0.2 { latched=false }
+            return false
+        }
+        released=nil
+        guard !latched else { return false }
+        if began == nil { began=time }
+        guard time-(began ?? time)>=0.6 else { return false }
+        latched=true;began=nil;return true
+    }
+}
+
 struct WallTrackingGate {
     private var normalSince: TimeInterval?
     private var lastNormal: TimeInterval?

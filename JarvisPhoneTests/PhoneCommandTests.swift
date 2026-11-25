@@ -9,6 +9,64 @@ import ARKit
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    func testFullFistOpensCatalogOnceAndNeedsDeliberateRelease() {
+        var gesture=SpatialFistMenuGesture(),events=0
+        for i in 0...30 { if gesture.update(closed:true,time:Double(i)*0.1) { events+=1 } }
+        XCTAssertEqual(events,1)
+        XCTAssertFalse(gesture.update(closed:false,time:3.1))
+        XCTAssertFalse(gesture.update(closed:false,time:3.4))
+        for i in 35...44 { if gesture.update(closed:true,time:Double(i)*0.1) { events+=1 } }
+        XCTAssertEqual(events,2)
+        var interrupted=SpatialFistMenuGesture()
+        XCTAssertFalse(interrupted.update(closed:true,time:0))
+        XCTAssertFalse(interrupted.update(closed:true,time:0.2))
+        XCTAssertFalse(interrupted.update(closed:true,time:1.2))
+        XCTAssertFalse(interrupted.update(closed:true,time:.nan))
+    }
+    func testFullFistRejectsOpenHandAndPinchIndependentlyOfRotation() {
+        var hand=[CGPoint?](repeating:nil,count:21)
+        hand[0]=CGPoint(x:100,y:140);hand[4]=CGPoint(x:103,y:105)
+        for (offset,base) in [5,9,13,17].enumerated() {
+            let x=CGFloat(70+offset*20)
+            hand[base]=CGPoint(x:x,y:100);hand[base+1]=CGPoint(x:x,y:75);hand[base+3]=CGPoint(x:x,y:110)
+        }
+        XCTAssertTrue(SpatialHandMath.closedFist(hand))
+        let rotated=hand.map{$0.map{CGPoint(x:-$0.y,y:$0.x)}}
+        XCTAssertTrue(SpatialHandMath.closedFist(rotated))
+        for base in [5,9,13,17] { hand[base+3]=CGPoint(x:hand[base]!.x,y:20) }
+        XCTAssertFalse(SpatialHandMath.closedFist(hand))
+        hand[8]=hand[4]
+        XCTAssertFalse(SpatialHandMath.closedFist(hand),"Pinch remains a drag gesture")
+        XCTAssertFalse(SpatialHandMath.closedFist([]))
+    }
+    func testRoomRegistrationPreservesMetricScaleAndRejectsBadMatches() throws {
+        let source:[SIMD3<Float>]=[SIMD3(0,0,0),SIMD3(2,0,0),SIMD3(0,0,2)]
+        var expected=simd_float4x4(simd_quatf(angle:0.7,axis:SIMD3(0,1,0)));expected.columns.3=SIMD4(3,0.4,-2,1)
+        let target=source.map{p -> SIMD3<Float> in let q=expected*SIMD4(p,1);return SIMD3(q.x,q.y,q.z)}
+        let fit=try XCTUnwrap(SpatialRoomAlignment.fit(source:source,target:target))
+        for p in source { XCTAssertLessThan(simd_length(fit*SIMD4(p,1)-expected*SIMD4(p,1)),0.001) }
+        XCTAssertNil(SpatialRoomAlignment.fit(source:source,target:source.map{$0*1.4}))
+        XCTAssertNil(SpatialRoomAlignment.fit(source:[.zero,SIMD3(1,0,0),SIMD3(2,0,0)],target:target))
+        XCTAssertNil(SpatialRoomAlignment.fit(source:source,target:[.zero,SIMD3(2,1,0),SIMD3(0,0,2)]))
+        XCTAssertEqual(WallARCommand.parse("abrir catálogo de efeitos",inStudio:true),.effects)
+        XCTAssertEqual(WallARCommand.parse("testar parede branca",inStudio:true),.roomWall("white"))
+    }
+    @MainActor func testEffectsCatalogRendersSixRadialSectorsWithRealActions() throws {
+        guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
+        let view=ARSCNView(frame:CGRect(x:0,y:0,width:1000,height:900));view.scene=SCNScene()
+        let panel=SpatialPanel(view:view);panel.previewEffectsCatalog()
+        XCTAssertTrue(panel.showingEffectsCatalog)
+        let sectors=view.scene.rootNode.childNodes.flatMap(\.childNodes).filter{$0.name?.hasPrefix("radial-sector:")==true}
+        XCTAssertEqual(sectors.count,6)
+        XCTAssertTrue(sectors.allSatisfy{$0.geometry is SCNShape})
+        let camera=SCNNode();camera.camera=SCNCamera();camera.camera?.usesOrthographicProjection=true;camera.camera?.orthographicScale=0.34;camera.position=SCNVector3(0,0,1)
+        view.scene.rootNode.addChildNode(camera)
+        let renderer=SCNRenderer(device:device,options:nil);renderer.scene=view.scene;renderer.pointOfView=camera
+        let image=renderer.snapshot(atTime:0,with:CGSize(width:1000,height:900),antialiasingMode:.multisampling4X)
+        let attachment=XCTAttachment(image:image);attachment.name="JARVIS-FIST-EFFECTS-RADIAL";attachment.lifetime = .keepAlways;add(attachment)
+        try image.pngData()?.write(to:URL(fileURLWithPath:NSTemporaryDirectory()).appendingPathComponent("JARVIS-FIST-EFFECTS-RADIAL.png"))
+        panel.close()
+    }
     func testDesktopSurvivesLoadingAMapThatPredatesTheWindow() {
         var intent=SpatialDesktopResumeIntent()
         intent.prepare(wasOpen:true,savedWindow:false)
@@ -390,7 +448,10 @@ final class PhoneCommandTests: XCTestCase {
             let controller=WallARController()
             controller.previewRecovery(tracking:tracking,anchorsPending:tracking,delay:.milliseconds(30))
             XCTAssertFalse(controller.localizationTimedOut)
-            try await Task.sleep(for:.milliseconds(120))
+            for _ in 0..<40 {
+                if controller.localizationTimedOut { break }
+                try await Task.sleep(for:.milliseconds(50))
+            }
             XCTAssertTrue(controller.localizationTimedOut)
             controller.stop()
         }

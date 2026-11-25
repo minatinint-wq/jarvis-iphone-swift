@@ -64,5 +64,32 @@
     "width": 2048,
     "height": 2048,
     "source": "Original procedural material; scripts/build-wall-materials.py"
+  },
+  {
+    "file": "RoomFX_brick_Color.jpg",
+    "sha256": "aefa7f3743282de2c7df4e4282c868de204239ac3c94e818b1ef74f2a2d74f1a",
+    "width": 2048,
+    "height": 2048,
+    "source": "https://polyhaven.com/a/brick_wall_001",
+    "license": "CC0",
+    "author": "Dimitrios Savva & Rob Tuytel"
+  },
+  {
+    "file": "RoomFX_brick_NormalGL.jpg",
+    "sha256": "62cc36d391b2f73c3855fd745a5815686db59d73bf3ef9db2ad96ca27eb97e32",
+    "width": 2048,
+    "height": 2048,
+    "source": "https://polyhaven.com/a/brick_wall_001",
+    "license": "CC0",
+    "author": "Dimitrios Savva & Rob Tuytel"
+  },
+  {
+    "file": "RoomFX_brick_Roughness.jpg",
+    "sha256": "96a124344ee8ace616cf4397324b7b2e47c4f07b6961d12bc19a7b90d2bf61a0",
+    "width": 2048,
+    "height": 2048,
+    "source": "https://polyhaven.com/a/brick_wall_001",
+    "license": "CC0",
+    "author": "Dimitrios Savva & Rob Tuytel"
   }
 ]

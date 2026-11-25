@@ -85,6 +85,9 @@ enum WallMeasureMode { case none, outline, opening }
     var spatial: SpatialWorld!
     var panel: SpatialPanel!
     var desktop: SpatialDesktop!
+    var roomWall:ScannedRoomWall!
+    @Published var roomSetupPresented=false
+    private var fistMenu=SpatialFistMenuGesture()
     @Published var status = "Ambiente fixo. Escaneie somente para ler uma nova superfície."
     @Published var selected = false
     @Published var finish = WallFinish.white
@@ -129,6 +132,14 @@ enum WallMeasureMode { case none, outline, opening }
         panel=SpatialPanel(view:view)
         spatial = SpatialWorld(view:view)
         desktop=SpatialDesktop(view:view)
+        roomWall=ScannedRoomWall(view:view)
+        spatial.scannedRoomSnapshot = { [weak self] in self?.roomWall.snapshot() }
+        roomWall.onChange = { [weak self] in self?.spatial.markDirty() }
+        roomWall.onRegistered = { [weak self] in
+            guard let self else { return }
+            self.scanTask?.cancel();self.scanTask=nil;self.scanning=false;self.run()
+            self.roomWall.arm("white");self.notice=self.roomWall.status
+        }
         spatial.panelSnapshot = { [weak self] in self?.panel.snapshot() }
         spatial.desktopSnapshot = { [weak self] in self?.desktop.snapshot() }
         spatial.canSaveWindows = { [weak self] in
@@ -142,9 +153,24 @@ enum WallMeasureMode { case none, outline, opening }
             guard let self else { return }
             if self.desktop.inputBlocked { return }
             guard self.interactionReady,!self.recoveryBusy else {
+                self.fistMenu=SpatialFistMenuGesture()
                 self.palmRecall=SpatialPalmRecall();self.dualScale=SpatialDualPinchScale();self.dualScaleTarget=nil
                 self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
                 self.hands.showProgress(0);return
+            }
+            let closed=sample?.closedFist == true
+            if self.fistMenu.update(closed:closed && !self.panel.isDragging && !self.desktop.isDragging,time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {
+                self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
+                self.dualScale=SpatialDualPinchScale();self.palmRecall=SpatialPalmRecall()
+                self.panel.openEffectsRadial(tracking:true);self.hands.showProgress(0);return
+            }
+            if closed {
+                self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
+                self.hands.showProgress(0);return
+            }
+            if self.roomWall.armed && !self.panel.contains(sample?.point ?? CGPoint(x:-1,y:-1)) {
+                self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
+                self.hands.showProgress(self.roomWall.hand(sample));return
             }
             if self.spatial.recovering {
                 self.spatial.hand(nil)
@@ -234,7 +260,8 @@ enum WallMeasureMode { case none, outline, opening }
         locationTask=Task { [weak self] in
             guard (try? await service.currentCoordinate()) != nil,let point=service.latestLocation,
                   let self,!self.stopped,!Task.isCancelled else { return }
-            self.spatial.locationHint=SpatialMapLocation(latitude:point.coordinate.latitude,longitude:point.coordinate.longitude,accuracy:point.horizontalAccuracy,timestamp:point.timestamp)
+            let hint=SpatialMapLocation(latitude:point.coordinate.latitude,longitude:point.coordinate.longitude,accuracy:point.horizontalAccuracy,timestamp:point.timestamp)
+            if hint.valid { self.spatial.locationHint=hint }
             self.refreshSavedMaps()
         }
         do { initialMap = try await spatial.loadMap() }
@@ -316,6 +343,18 @@ enum WallMeasureMode { case none, outline, opening }
         }
     }
 
+    func beginRoomMatching() {
+        roomSetupPresented=false;roomWall.beginMatching()
+        guard roomWall.matching else { return }
+        scanTask?.cancel();scanning=true;run()
+        scanTask=Task { [weak self] in
+            try? await Task.sleep(for:.seconds(90))
+            guard !Task.isCancelled,let self,!self.stopped else { return }
+            self.roomWall.cancelMatching();self.scanning=false;self.scanTask=nil;self.run()
+            self.notice="Alinhamento pausado. Abra Alinhar quarto para tentar novamente."
+        }
+    }
+
     private func armRecoveryTimer() {
         guard recoveryTimer == nil,(!tracking || spatial.recovering) else { return }
         recoveryTimer=Task { [weak self] in
@@ -363,7 +402,7 @@ enum WallMeasureMode { case none, outline, opening }
             do {
                 try await self.spatial.prepareMapChange(restore:source)
                 guard !self.stopped else { self.spatial.finishMapChange();return }
-                self.panel.close(recordChange:false);self.desktop.close(recordChange:false);self.clear(silent:true)
+                self.panel.close(recordChange:false);self.desktop.close(recordChange:false);self.roomWall.clear();self.clear(silent:true)
                 self.spatial.resetLiveScene(newWorld:source == nil)
                 self.occluders.values.forEach { $0.removeFromParentNode() };self.occluders.removeAll();self.planes.removeAll();self.meshUpdated.removeAll()
                 self.initialMap=source == nil ? nil : try await self.spatial.loadMap()
@@ -423,6 +462,7 @@ enum WallMeasureMode { case none, outline, opening }
         // The asynchronous world-map snapshot still needs these anchors.
         panel.close(recordChange:false,preserveAnchor:true)
         desktop.close(recordChange:false,preserveAnchor:true)
+        roomWall.clear(preserveAnchor:true)
         spatial.stop()
         materials.removeAll(); occluders.removeAll(); planes.removeAll()
     }
@@ -434,6 +474,7 @@ enum WallMeasureMode { case none, outline, opening }
     func tap(at point:CGPoint) {
         guard interactionReady else { return }
         if panel.visible,panel.immersive,panel.contains(point) { _=panel.hit(point);return }
+        if roomWall.tap(point) { return }
         if desktop.tap(point) { return }
         if panel.visible && !panel.immersive { _=panel.hit(point);return }
         if measureMode != .none { addPoint(at:point) }
@@ -513,6 +554,14 @@ enum WallMeasureMode { case none, outline, opening }
     func apply(_ command: WallARCommand) {
         guard !recoveryBusy else { return }
         switch command {
+        case .effects: panel.openEffectsRadial(tracking:interactionReady)
+        case .roomSetup:
+            if roomWall.prepare() { roomWall.resetSource();roomSetupPresented=true }
+            else { notice=roomWall.status;feedback(notice) }
+        case .roomWall(let style):
+            if !roomWall.aligned { apply(.roomSetup) }
+            else { roomWall.arm(style);notice=roomWall.status }
+        case .roomClear: roomWall.clearPaint();notice="Pintura da captura removida."
         case .open: break
         case .headset(let enabled): setHeadset(enabled)
         case .recover: retryLocalization();feedback(status)
@@ -523,6 +572,7 @@ enum WallMeasureMode { case none, outline, opening }
             if select() { feedback("Marque os cantos da parede e as áreas que devem ficar livres.") }
             else { feedback(status) }
         case .finish(let value):
+            if roomWall.aligned,value == .white,!selected { roomWall.arm("white");notice=roomWall.status;return }
             let old = finish
             finish = value
             if selected && approved {
@@ -585,6 +635,7 @@ enum WallMeasureMode { case none, outline, opening }
         painted?.isHidden = !visible
         spatial.setVisible(visible)
         panel.setTracking(visible)
+        roomWall.setTracking(visible)
         if !visible { hands.showProgress(0) }
     }
 
@@ -625,10 +676,11 @@ enum WallMeasureMode { case none, outline, opening }
         if good && !comparing { spatial.stepSimulation(frame.timestamp) }
         panel.setTracking(readiness.panelReady)
         desktop.setTracking(readiness.desktopReady)
+        roomWall.setTracking(good)
         // Vision's 2D skeleton does not need a mapped room or an active module.
         // Spatial actions remain gated in onSample above, separately from drawing.
         if headset { onHeadsetFrame?(frame) }
-        hands.update(frame,view:view,enabled:!webWindowVisible && !fatal)
+        hands.update(frame,view:view,enabled:!webWindowVisible && !fatal && !roomWall.matching && !roomSetupPresented)
         if tracking != worldReady {
             if !good { spatial.requireSurfaceConfirmation() }
             tracking = worldReady;painted?.isHidden = !worldReady || comparing
@@ -694,6 +746,11 @@ enum WallMeasureMode { case none, outline, opening }
             if anchor is ARMeshAnchor { continue }
             panel.update(anchor)
             desktop.update(anchor)
+            roomWall.update(anchor)
+            if let saved=spatial.restoredScannedRoom,saved.anchor==anchor.identifier {
+                if !roomWall.restore(saved,anchor:anchor) { notice=roomWall.status }
+                spatial.restoredScannedRoom=nil
+            }
             if let saved=spatial.restoredDesktop,saved.anchor==anchor.identifier {
                 desktop.restore(saved,anchor:anchor);spatial.restoredDesktop=nil
             }
@@ -943,6 +1000,11 @@ struct WallCameraView: UIViewRepresentable {
                         SpatialControls(world:controller.spatial)
                     } else {
                     Text(controller.status).font(.subheadline.weight(.medium)).fixedSize(horizontal:false,vertical:true)
+                    HStack {
+                        Button("Alinhar captura",systemImage:"scope") { controller.apply(.roomSetup) }
+                        Button("Parede branca") { controller.apply(.roomWall("white")) }
+                        Button("Tijolos") { controller.apply(.roomWall("brick")) }
+                    }.buttonStyle(.bordered).controlSize(.small)
                     ScrollView(.horizontal,showsIndicators:false) {
                         HStack(spacing:10) {
                             ForEach(WallFinish.allCases) { finish in
@@ -1039,6 +1101,12 @@ struct WallCameraView: UIViewRepresentable {
                 }
                 await controller.start()
                 consume()
+            }
+            .sheet(isPresented:$controller.roomSetupPresented) {
+                ScannedRoomSetup(room:controller.roomWall) { controller.beginRoomMatching() }
+            }
+            .overlay(alignment:.bottom) {
+                ScannedRoomPrompt(room:controller.roomWall).padding(.bottom,controller.headset ? 12 : 22)
             }
             .sheet(item:$menuSheet) { sheet in
                 switch sheet {

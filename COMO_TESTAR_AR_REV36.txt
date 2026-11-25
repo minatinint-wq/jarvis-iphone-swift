@@ -1,0 +1,29 @@
+JARVIS XLV — REVISÃO 36 — TESTE DO CATÁLOGO E DA PAREDE
+
+Catálogo projetado:
+1. Abra Espaço AR e aguarde a câmera estabilizar.
+2. Feche completamente a mão por 0,6 segundo, com os dedos visíveis.
+3. Solte a mão. O catálogo circular aparece à sua frente uma vez.
+4. Aponte o indicador para um setor por dois segundos para escolher.
+5. Pinça continua sendo arrastar; mão aberta continua livre.
+6. Setas no centro mudam a página; o ícone central recolhe o catálogo.
+Alternativa por voz: "Jarvis, abrir catálogo de efeitos".
+
+Primeiro teste de parede com sua captura privada:
+1. No catálogo, escolha Alinhar quarto (ou diga "alinhar captura").
+2. Gire a prévia da captura e toque em três detalhes reconhecíveis do PISO.
+   Separe os pontos por mais de 40 cm; forme um triângulo grande.
+3. Toque em Usar estes três pontos. No quarto real, marque os mesmos pontos
+   na MESMA ORDEM usando a câmera. Não marque móveis, reflexos ou a mão.
+4. O alinhamento só é aceito se as distâncias coincidirem: sem escala inventada.
+5. Escolha Parede branca ou Tijolos. Aponte por dois segundos para uma parede,
+   ou toque na parede na tela. São usados os triângulos capturados nessa região.
+6. Salve o mapa depois de alinhar. Ao voltar, mostre os mesmos detalhes reais.
+
+Limites do teste:
+- A captura pessoal fica somente no pacote local, fora do repositório público.
+- Vãos presentes na malha ficam abertos. A captura não reconhece automaticamente
+  toda porta/armário: confira a superfície antes de considerar o resultado final.
+- GPS ajuda a ordenar mapas próximos; não dá precisão de centímetros no quarto.
+- Uma câmera no VR Box gera duas cópias do mesmo vídeo, sem estéreo real.
+- Gestos e alinhamento ainda exigem validação no seu iPhone e na iluminação real.

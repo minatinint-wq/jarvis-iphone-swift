@@ -69,6 +69,17 @@ enum SpatialPanelGeometry {
     private var compact=false
     private var radialExpanded=false
     private var radialIndex=0
+    private var effectsCatalog=false
+    var showingEffectsCatalog:Bool { visible && effectsCatalog && radialExpanded }
+    func openEffectsRadial(tracking:Bool) {
+        open(.dashboard,tracking:tracking)
+        guard tracking,visible else { return }
+        // An explicit summoning gesture brings the catalog into view once.
+        reposition()
+        effectsCatalog=true;immersive=true;compact=true;radialExpanded=true;radialIndex=0
+        status="Catálogo de efeitos · solte a mão e aponte por dois segundos para escolher."
+        render();onChange?()
+    }
     func cleanInterface() {
         guard visible,root != nil else { return }
         immersive=true;compact=true;radialExpanded=false;radialIndex=0
@@ -122,7 +133,7 @@ enum SpatialPanelGeometry {
         contextRevision += 1
         trackingGood=tracking
         guard tracking else { status="Aguarde o mapeamento estabilizar e abra o painel novamente.";return }
-        module=destination;compact=false;radialExpanded=false
+        module=destination;compact=false;radialExpanded=false;effectsCatalog=false
         cardPage=max(0,page)
         if root == nil { reposition() }
         guard root != nil else { return }
@@ -218,8 +229,14 @@ enum SpatialPanelGeometry {
     private func selectionNode(_ point:CGPoint)->SCNNode? {
         guard let p=localHit(point),let root else { return nil }
         return root.childNodes.first { node in
-            guard let plane=node.geometry as? SCNPlane,let name=node.name,actions[name] != nil else { return false }
-            return abs(p.x-node.position.x)<=Float(plane.width)/2 && abs(p.y-node.position.y)<=Float(plane.height)/2
+            guard let name=node.name,actions[name] != nil else { return false }
+            if let plane=node.geometry as? SCNPlane {
+                return abs(p.x-node.position.x)<=Float(plane.width)/2 && abs(p.y-node.position.y)<=Float(plane.height)/2
+            }
+            if let sector=node.geometry as? SCNShape {
+                return sector.path?.contains(CGPoint(x:CGFloat(p.x-node.position.x),y:CGFloat(p.y-node.position.y))) == true
+            }
+            return false
         }
     }
     func hit(_ point: CGPoint) -> Bool {
@@ -408,6 +425,9 @@ enum SpatialPanelGeometry {
         close();cardPage=0;module=destination;visible=true
         let node=SCNNode();root=node;view.scene.rootNode.addChildNode(node);render()
     }
+    func previewEffectsCatalog() {
+        preview(.dashboard);effectsCatalog=true;compact=true;immersive=true;radialExpanded=true;radialIndex=0;render()
+    }
     #endif
 
     func directory(_ query:String) -> [SpatialDirectoryEntry] {
@@ -490,7 +510,19 @@ enum SpatialPanelGeometry {
         return rows
     }
     private var radialItems:[(String,String,SpatialPanelAction)] {
-        SpatialModule.allCases.filter { $0 != .dashboard }.map { ($0.title,$0.symbol,.module($0)) }
+        if effectsCatalog {
+            return [("Branco","paintbrush.fill",.wall(.roomWall("white"))),
+                    ("Tijolos","square.grid.3x3.fill",.wall(.roomWall("brick"))),
+                    ("Alinhar quarto","scope",.wall(.roomSetup)),
+                    ("Robô","figure.wave",.model("animated_robot")),
+                    ("Bosque","leaf.fill",.scene(.forest)),
+                    ("Medir","ruler",.wall(.measure)),
+                    ("Raposa","pawprint.fill",.model("animated_fox")),
+                    ("Aquário","water.waves",.scene(.aquarium)),
+                    ("Limpar parede","eraser.fill",.wall(.roomClear)),
+                    ("Módulos","square.grid.2x2",.showInterface)]
+        }
+        return SpatialModule.allCases.filter { $0 != .dashboard }.map { ($0.title,$0.symbol,.module($0)) }
             + [("Tela do PC","desktopcomputer",.wall(.desktop)),("Mostrar interface","eye",.showInterface)]
     }
     private var radialPageCount:Int { max(1,(radialItems.count+5)/6) }
@@ -539,7 +571,17 @@ enum SpatialPanelGeometry {
             if radialExpanded {
                 for (i,row) in radialItems.dropFirst(radialIndex*6).prefix(6).enumerated() {
                     let angle=Float.pi/2-Float(i)*Float.pi/3
-                    plate(row.0,row.1,width:0.15,height:0.085,x:cos(angle)*0.22,y:sin(angle)*0.22,color:color,action:row.2)
+                    let start=CGFloat(angle)-CGFloat.pi/6+0.025,end=CGFloat(angle)+CGFloat.pi/6-0.025
+                    let path=UIBezierPath();path.move(to:CGPoint(x:cos(start)*0.285,y:sin(start)*0.285))
+                    path.addArc(withCenter:.zero,radius:0.285,startAngle:start,endAngle:end,clockwise:true)
+                    path.addLine(to:CGPoint(x:cos(end)*0.115,y:sin(end)*0.115))
+                    path.addArc(withCenter:.zero,radius:0.115,startAngle:end,endAngle:start,clockwise:false);path.close()
+                    let sector=SCNNode(geometry:SCNShape(path:path,extrusionDepth:0.001))
+                    sector.name="radial-sector:\(i)";sector.categoryBitMask=4;sector.position.z=0.006;sector.renderingOrder=100
+                    let material=SCNMaterial();material.diffuse.contents=color;material.emission.contents=UIColor(red:0,green:0.03,blue:0.04,alpha:1)
+                    material.lightingModel = .constant;material.isDoubleSided=false;material.readsFromDepthBuffer=false;material.writesToDepthBuffer=false
+                    sector.geometry?.materials=[material];root.addChildNode(sector);actions[sector.name!]=row.2
+                    plate(row.0,row.1,width:0.145,height:0.078,x:cos(angle)*0.20,y:sin(angle)*0.20,color:.clear)
                 }
                 plate("","chevron.left",width:0.05,height:0.055,x:-0.095,y:0,color:color,action:.radialPage(-1))
                 plate("","chevron.right",width:0.05,height:0.055,x:0.095,y:0,color:color,action:.radialPage(1))

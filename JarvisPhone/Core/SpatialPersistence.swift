@@ -24,6 +24,36 @@ struct SpatialMapSummary:Codable {
     var location:SpatialMapLocation?
 }
 
+struct SpatialScannedRoomRecord:Codable {
+    var anchor:UUID
+    var transform:[Float]
+    var sourceSHA256:String
+    var plane:Int? = nil
+    var style:String = "white"
+}
+
+enum SpatialRoomAlignment {
+    /// Metric registration on the floor. Scale and gravity are never guessed.
+    static func fit(source:[SIMD3<Float>],target:[SIMD3<Float>])->simd_float4x4? {
+        guard source.count==3,target.count==3,(source+target).allSatisfy({$0.x.isFinite && $0.y.isFinite && $0.z.isFinite}) else { return nil }
+        for points in [source,target] {
+            let a=points[1]-points[0],b=points[2]-points[0]
+            guard abs(a.x*b.z-a.z*b.x)>0.12,(points.map(\.y).max()! - points.map(\.y).min()!)<0.16 else { return nil }
+        }
+        for a in 0..<3 { for b in (a+1)..<3 {
+            let s=simd_distance(source[a],source[b]),t=simd_distance(target[a],target[b])
+            guard s>0.4,abs(s-t)<max(0.08,s*0.06) else { return nil }
+        } }
+        let sc=source.reduce(.zero,+)/3,tc=target.reduce(.zero,+)/3
+        var dot:Float=0,cross:Float=0
+        for i in 0..<3 { let s=source[i]-sc,t=target[i]-tc;dot+=s.x*t.x+s.z*t.z;cross+=s.z*t.x-s.x*t.z }
+        var pose=simd_float4x4(simd_quatf(angle:atan2(cross,dot),axis:SIMD3(0,1,0)))
+        let rotated=pose*SIMD4(sc,1);pose.columns.3=SIMD4(tc.x-rotated.x,tc.y-rotated.y,tc.z-rotated.z,1)
+        for i in 0..<3 { let p=pose*SIMD4(source[i],1);guard simd_distance(SIMD3(p.x,p.y,p.z),target[i])<0.10 else { return nil } }
+        return pose
+    }
+}
+
 /// A connected desktop is an active tool, including when an older map predates it.
 struct SpatialDesktopResumeIntent {
     private(set) var pending=false
@@ -81,6 +111,7 @@ struct SpatialArchive: Codable {
     var map: Data
     var saved: Date
     var location:SpatialMapLocation? = nil
+    var scannedRoom:SpatialScannedRoomRecord? = nil
 
     func validate() throws {
         guard version == 1, !rooms.isEmpty, rooms.count <= 32, objects.count <= 6,
@@ -106,6 +137,11 @@ struct SpatialArchive: Codable {
             guard desktop.scale.isFinite,(0.25...2).contains(desktop.scale) else { throw CocoaError(.fileReadCorruptFile) }
         }
         if let location,!location.valid { throw CocoaError(.fileReadCorruptFile) }
+        if let scannedRoom {
+            guard Self.matrix(scannedRoom.transform) != nil,scannedRoom.sourceSHA256.count==64,
+                  scannedRoom.sourceSHA256.allSatisfy({$0.isHexDigit}),["white","brick"].contains(scannedRoom.style),
+                  scannedRoom.plane.map({$0>=0 && $0<64}) ?? true else { throw CocoaError(.fileReadCorruptFile) }
+        }
     }
 
     static func values(_ m: simd_float4x4) -> [Float] {

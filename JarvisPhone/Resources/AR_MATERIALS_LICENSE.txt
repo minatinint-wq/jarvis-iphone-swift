@@ -4,3 +4,5 @@ https://polyhaven.com/a/wood_table_001
 https://polyhaven.com/license
 2048 x 2048 base color, OpenGL normal and roughness.
 See AR_MATERIALS.json for provenance and SHA-256 hashes.
+
+RoomFX_brick_*: brick_wall_001, Poly Haven, CC0, Dimitrios Savva & Rob Tuytel. https://polyhaven.com/a/brick_wall_001

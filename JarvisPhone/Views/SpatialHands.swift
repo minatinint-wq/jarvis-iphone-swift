@@ -16,9 +16,26 @@ struct SpatialHandSample {
     var palmSpan: Double? = nil
     var dualPinch:[CGPoint]? = nil
     var keyboardPose=false
+    var closedFist=false
 }
 
 enum SpatialHandMath {
+    /// All four fingers folded toward the palm. A thumb/index pinch with the
+    /// other fingers extended is deliberately excluded, independent of rotation.
+    static func closedFist(_ joints:[CGPoint?])->Bool {
+        guard joints.count==21,let wrist=joints[0],let left=joints[5],let right=joints[17] else { return false }
+        let scale=hypot(left.x-right.x,left.y-right.y)
+        guard scale>18 else { return false }
+        for base in [5,9,13,17] {
+            guard let a=joints[base],let b=joints[base+1],let tip=joints[base+3] else { return false }
+            let u=CGPoint(x:b.x-a.x,y:b.y-a.y),v=CGPoint(x:tip.x-b.x,y:tip.y-b.y)
+            let length=hypot(u.x,u.y)*hypot(v.x,v.y)
+            guard length>1,(u.x*v.x+u.y*v.y)/length<0.15,
+                  hypot(tip.x-wrist.x,tip.y-wrist.y)<hypot(b.x-wrist.x,b.y-wrist.y)+scale*0.12 else { return false }
+        }
+        guard let thumb=joints[4],let middle=joints[9] else { return false }
+        return hypot(thumb.x-middle.x,thumb.y-middle.y)<scale*1.15
+    }
     static func rawPoint(_ location:CGPoint,orientation:CGImagePropertyOrientation)->CGPoint {
         let p=CGPoint(x:location.x,y:1-location.y)
         switch orientation {
@@ -286,17 +303,19 @@ enum SpatialHandMath {
                 self.bones.path=path.cgPath;self.bones.opacity=now-stamp<0.45 ? 1 : 0.45
                 CATransaction.commit()
                 self.hasHand=true
-                guard let point=result[8],tip != nil,CGRect(origin:.zero,size:size).contains(point),now-stamp<0.45 else {
+                let closed=SpatialHandMath.closedFist(result)
+                let palmScreen=palm.map { raw -> CGPoint in let q=raw.applying(transform);return CGPoint(x:q.x*size.width,y:q.y*size.height) }
+                guard let point=(closed ? palmScreen : result[8]),(closed || tip != nil),CGRect(origin:.zero,size:size).contains(point),now-stamp<0.45 else {
                     self.lastSeen=now;self.cursor.isHidden=true;self.onSample?(nil)
                     self.report(now-stamp>=0.45 ? "Mão encontrada · aguarde o detector atualizar." : "Mão encontrada · mostre a ponta do indicador.");return
                 }
                 let dt=max(0.001,min(0.15,now-self.lastSeen)),alpha=1-exp(-dt/0.035)
                 let p=self.smoothed.map { CGPoint(x:$0.x+(point.x-$0.x)*alpha,y:$0.y+(point.y-$0.y)*alpha) } ?? point
-                self.smoothed=p;self.lastSeen=now;self.lastRawTip=tip;self.cursor.center=p;self.cursor.isHidden=false
+                self.smoothed=p;self.lastSeen=now;self.lastRawTip=tip;self.cursor.center=p;self.cursor.isHidden=closed
                 self.hasHand=true
                 self.cursor.layer.borderColor=(amount == nil ? UIColor.yellow : amount!<0.28 ? UIColor.orange : .cyan).cgColor
                 let pointing = SpatialHandMath.pointing(result)
-                self.report(pointing ? "Indicador · mantenha sobre o alvo por 2 segundos" : amount == nil ? "Mostre indicador e polegar para usar pinça." : amount! < 0.28 ? "Pinça · arrastar" : "Mão livre")
+                self.report(closed ? "Mão fechada · abrir catálogo de efeitos" : pointing ? "Indicador · mantenha sobre o alvo por 2 segundos" : amount == nil ? "Mostre indicador e polegar para usar pinça." : amount! < 0.28 ? "Pinça · arrastar" : "Mão livre")
                 let world=tip.flatMap { SpatialHandMath.worldPoint($0,frame:frame) },palmWorld=palm.flatMap { SpatialHandMath.worldPoint($0,frame:frame) }
                 self.hasDepth=world != nil
                 self.smoothedWorld=world.map { value in self.smoothedWorld.map { $0+(value-$0)*Float(alpha) } ?? value }
@@ -304,7 +323,7 @@ enum SpatialHandMath {
                 let palmPoint=palm.map { raw -> CGPoint in let q=raw.applying(transform);return CGPoint(x:q.x*size.width,y:q.y*size.height) }
                 let span:Double?
                 if let a=result[5],let b=result[17] { span=Double(hypot(a.x-b.x,a.y-b.y)/sqrt(max(1,size.width*size.height))) } else { span=nil }
-                self.onSample?(SpatialHandSample(point:p,ratio:amount ?? .nan,menuPose:SpatialHandMath.pointing(result,twoFingers:true),pointing:pointing,time:stamp,worldPoint:self.smoothedWorld,palmWorld:self.smoothedPalm,openPalm:SpatialHandMath.openPalm(result),palmPoint:palmPoint,palmSpan:span,dualPinch:both,keyboardPose:SpatialHandMath.keyboardPose(result)))
+                self.onSample?(SpatialHandSample(point:p,ratio:amount ?? .nan,menuPose:SpatialHandMath.pointing(result,twoFingers:true),pointing:pointing,time:stamp,worldPoint:self.smoothedWorld,palmWorld:self.smoothedPalm,openPalm:SpatialHandMath.openPalm(result),palmPoint:palmPoint,palmSpan:span,dualPinch:both,keyboardPose:SpatialHandMath.keyboardPose(result),closedFist:closed))
             }
             }
         }

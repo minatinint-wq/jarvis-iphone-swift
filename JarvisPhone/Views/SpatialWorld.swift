@@ -330,10 +330,12 @@ enum SpatialTheme: String, CaseIterable {
     var canSaveWindows: (() -> Bool)?
     var restoredPanel: SpatialPanelRecord?
     var restoredDesktop: SpatialDesktopRecord?
+    var restoredScannedRoom:SpatialScannedRoomRecord?
+    var scannedRoomSnapshot:(()->SpatialScannedRoomRecord?)?
     private let storageQueue = DispatchQueue(label:"jarvis.spatial.persistence",qos:.utility)
-    var pendingReferenceCount:Int { restored.count + (restoredPanel == nil ? 0 : 1) + (restoredDesktop == nil ? 0 : 1) }
+    var pendingReferenceCount:Int { restored.count + (restoredPanel == nil ? 0 : 1) + (restoredDesktop == nil ? 0 : 1) + (restoredScannedRoom == nil ? 0 : 1) }
     func readiness(cameraStable:Bool)->SpatialLocalizationReadiness {
-        SpatialLocalizationReadiness(cameraStable:cameraStable,pendingObjects:restored.count,pendingPanel:restoredPanel != nil,pendingDesktop:restoredDesktop != nil)
+        SpatialLocalizationReadiness(cameraStable:cameraStable,pendingObjects:restored.count+(restoredScannedRoom == nil ? 0 : 1),pendingPanel:restoredPanel != nil,pendingDesktop:restoredDesktop != nil)
     }
     var recovering: Bool { pendingReferenceCount>0 }
     func queueRestoration(_ archivedObjects:[SpatialObjectRecord]) {
@@ -360,7 +362,8 @@ enum SpatialTheme: String, CaseIterable {
         let map = try NSKeyedUnarchiver.unarchivedObject(ofClass:ARWorldMap.self,from:archive.map)
         guard let map, archive.objects.allSatisfy({ record in map.anchors.contains { $0.identifier == record.anchor && $0.name == "JarvisObject:" + record.id.uuidString } }),
               archive.panel.map({ panel in map.anchors.contains { $0.identifier == panel.anchor && $0.name == "JarvisControlPanel" } }) ?? true,
-              archive.desktop.map({ desktop in map.anchors.contains { $0.identifier == desktop.anchor && $0.name == "JarvisDesktop" } }) ?? true else {
+              archive.desktop.map({ desktop in map.anchors.contains { $0.identifier == desktop.anchor && $0.name == "JarvisDesktop" } }) ?? true,
+              archive.scannedRoom.map({ room in map.anchors.contains { $0.identifier == room.anchor && $0.name == "JarvisScannedRoom" } }) ?? true else {
             throw CocoaError(.fileReadCorruptFile)
         }
         worldID=archive.world;rooms=archive.rooms;currentRoom=rooms.first?.id;roomName=rooms.first?.name ?? "Ambiente 1"
@@ -390,6 +393,7 @@ enum SpatialTheme: String, CaseIterable {
         queueRestoration(Array(records.values))
         restoredPanel=archive.panel
         restoredDesktop=archive.desktop
+        restoredScannedRoom=archive.scannedRoom
         relocalizationBegan=ProcessInfo.processInfo.systemUptime
         revision=0;lastSavedRevision=0
         active = !records.isEmpty
@@ -417,20 +421,21 @@ enum SpatialTheme: String, CaseIterable {
         }
         guard force || revision != lastSavedRevision else { return }
         lastSaveAttempt=frame.timestamp;saving=true
-        let epoch=persistenceEpoch,savedRevision=revision, snapshot=Array(records.values), roomSnapshot=rooms, world=worldID, panel=panelSnapshot?(),desktop=desktopSnapshot?(),location=locationHint ?? savedLocation
+        let epoch=persistenceEpoch,savedRevision=revision, snapshot=Array(records.values), roomSnapshot=rooms, world=worldID, panel=panelSnapshot?(),desktop=desktopSnapshot?(),location=locationHint ?? savedLocation,scannedRoom=scannedRoomSnapshot?()
         view.session.getCurrentWorldMap { [self] map,error in
             Task { @MainActor in
                 guard epoch == self.persistenceEpoch else { return }
                 guard let map,error == nil,self.revision == savedRevision,
                       snapshot.allSatisfy({ record in map.anchors.contains { $0.identifier == record.anchor } }),
                       panel.map({ p in map.anchors.contains { $0.identifier == p.anchor } }) ?? true,
-                      desktop.map({ p in map.anchors.contains { $0.identifier == p.anchor } }) ?? true else {
+                      desktop.map({ p in map.anchors.contains { $0.identifier == p.anchor } }) ?? true,
+                      scannedRoom.map({ p in map.anchors.contains { $0.identifier == p.anchor } }) ?? true else {
                     self.saving=false;self.persistenceStatus="Mapa não salvo. Aguarde estabilizar e tente novamente.";return
                 }
                 self.storageQueue.async {
                     do {
                         let bytes=try NSKeyedArchiver.archivedData(withRootObject:map,requiringSecureCoding:true)
-                        let archive=SpatialArchive(world:world,rooms:roomSnapshot,objects:snapshot,panel:panel,desktop:desktop,map:bytes,saved:Date(),location:location)
+                        let archive=SpatialArchive(world:world,rooms:roomSnapshot,objects:snapshot,panel:panel,desktop:desktop,map:bytes,saved:Date(),location:location,scannedRoom:scannedRoom)
                         try archive.write()
                         Task { @MainActor in guard epoch == self.persistenceEpoch else { return };self.saving=false;self.lastSavedRevision=savedRevision;self.persistenceStatus="Salvo no iPhone: \(snapshot.count) objetos e \(roomSnapshot.count) ambientes." }
                     } catch {
@@ -459,7 +464,7 @@ enum SpatialTheme: String, CaseIterable {
         stopMoving();player?.stop();playingID=nil
         objects.values.forEach { $0.removeFromParentNode() }
         objects.removeAll();anchors.removeAll();supports.removeAll();planes.removeAll();radii.removeAll();records.removeAll();restored.removeAll();supportProofs.removeAll()
-        restoredPanel=nil;restoredDesktop=nil;savedLocation=nil;unavailableModels.removeAll();selected=nil;hasSelection=false;objectCount=0;placing=false;visibility=false;active=false
+        restoredPanel=nil;restoredDesktop=nil;restoredScannedRoom=nil;savedLocation=nil;unavailableModels.removeAll();selected=nil;hasSelection=false;objectCount=0;placing=false;visibility=false;active=false
         handGesture.reset();handDragging=nil;motions.removeAll();simulationTime=nil
         if newWorld {
             worldID=UUID();rooms=[SpatialRoom(id:UUID(),name:"Ambiente 1",origin:SpatialArchive.values(matrix_identity_float4x4))]
