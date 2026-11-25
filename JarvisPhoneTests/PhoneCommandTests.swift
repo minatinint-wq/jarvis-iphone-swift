@@ -198,6 +198,33 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertEqual(marker.position.x,0.3,accuracy:0.001)
         controller.stop()
     }
+    @MainActor func testHeadsetTogglePropagatesThroughSwiftUIWithoutDirectConfigureCalls() async throws {
+        struct Harness:View {
+            @ObservedObject var controller:WallARController
+            var body:some View {
+                ZStack {
+                    WallCameraView(controller:controller,headset:controller.headset).frame(maxWidth:.infinity,maxHeight:.infinity)
+                    if controller.headset { Text("Sair VR").allowsHitTesting(false) }
+                }
+            }
+        }
+        let controller=WallARController(),window=UIWindow(frame:UIScreen.main.bounds)
+        let hosting=UIHostingController(rootView:Harness(controller:controller))
+        window.rootViewController=hosting;window.makeKeyAndVisible()
+        defer { controller.stop();window.isHidden=true }
+        func surface(_ view:UIView)->SpatialHeadsetSurface? {
+            if let host=view as? SpatialHeadsetSurface { return host }
+            return view.subviews.lazy.compactMap{surface($0)}.first
+        }
+        try await Task.sleep(for:.milliseconds(300));hosting.view.layoutIfNeeded()
+        XCTAssertEqual(try XCTUnwrap(surface(hosting.view)).eyes.count,0)
+        controller.headset=true
+        try await Task.sleep(for:.milliseconds(500));hosting.view.layoutIfNeeded()
+        XCTAssertEqual(try XCTUnwrap(surface(hosting.view)).eyes.count,2)
+        controller.headset=false
+        try await Task.sleep(for:.milliseconds(300));hosting.view.layoutIfNeeded()
+        XCTAssertEqual(try XCTUnwrap(surface(hosting.view)).eyes.count,0)
+    }
     @MainActor func testHoloVideoLayersDisplayBothEyesWithoutWaitingForWorldTracking() async throws {
         guard #available(iOS 17.4,*) else { throw XCTSkip("Video presentation readiness is exposed from iOS 17.4") }
         let controller=WallARController(),host=SpatialHeadsetSurface(controller:controller)

@@ -811,10 +811,15 @@ private final class WallRenderMeter: NSObject, ARSCNViewDelegate {
     }
 }
 
-private struct WallCameraView: UIViewRepresentable {
+struct WallCameraView: UIViewRepresentable {
     let controller: WallARController
-    func makeUIView(context: Context) -> SpatialHeadsetSurface { SpatialHeadsetSurface(controller:controller) }
-    func updateUIView(_ view: SpatialHeadsetSurface, context: Context) { view.configure(headset:controller.headset) }
+    let headset:Bool
+    func makeUIView(context: Context) -> SpatialHeadsetSurface {
+        let view=SpatialHeadsetSurface(controller:controller)
+        view.configure(headset:headset)
+        return view
+    }
+    func updateUIView(_ view: SpatialHeadsetSurface, context: Context) { view.configure(headset:headset) }
 }
 
 @MainActor struct WallARStudio: View {
@@ -833,7 +838,7 @@ private struct WallCameraView: UIViewRepresentable {
     @State private var confirmAction: PhoneAction?
     var body: some View {
         ZStack {
-            WallCameraView(controller:controller).frame(maxWidth:.infinity,maxHeight:.infinity).ignoresSafeArea(edges:controller.headset || immersive ? .all : .bottom).allowsHitTesting(webModule == nil && !controller.recoveryBusy)
+            WallCameraView(controller:controller,headset:controller.headset).frame(maxWidth:.infinity,maxHeight:.infinity).ignoresSafeArea(edges:controller.headset || immersive ? .all : .bottom).allowsHitTesting(webModule == nil && !controller.recoveryBusy)
             if !controller.headset && !immersive && !panelVisible && (!controller.selected || controller.measureMode != .none) {
                 Image(systemName:"plus").font(.title.weight(.ultraLight)).foregroundStyle(.white)
                     .shadow(color:.black,radius:2).allowsHitTesting(false)

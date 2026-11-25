@@ -1,0 +1,5 @@
+Revisão 35 — botão dos óculos
+
+Abra Espaço AR e toque no ícone dos óculos. A imagem precisa passar a ocupar duas áreas separadas. Sair VR precisa restaurar uma área única.
+
+A alteração passa o estado do visor explicitamente do SwiftUI para a câmera, tanto na criação quanto na atualização da vista. Os controles e os módulos da revisão 34 foram mantidos.
