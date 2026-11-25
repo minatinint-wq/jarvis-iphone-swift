@@ -193,13 +193,14 @@ struct SpatialArchive: Codable {
 
     /// Switch only after validating the chosen archive; serialize calls with saves.
     /// Keep the previous map as an individually restorable file.
-    static func activate(_ source: URL?,at file: URL = Self.file) throws {
+    static func activate(_ source: URL?,at file: URL = Self.file,keepPrevious:Bool=true) throws {
         let archive: SpatialArchive?
         if let source {
             guard let saved=try load(from:source) else { throw CocoaError(.fileNoSuchFile) }
             archive=saved
         } else { archive=nil }
-        if source != file,FileManager.default.fileExists(atPath:file.path) {
+        if !keepPrevious { try SpatialSingleMap.prune(at:file,preserveCurrent:source==file) }
+        if keepPrevious,source != file,FileManager.default.fileExists(atPath:file.path) {
             let backup=file.deletingLastPathComponent().appendingPathComponent("home-"+UUID().uuidString+".json")
             try FileManager.default.moveItem(at:file,to:backup)
             let info=file.appendingPathExtension("mapinfo")
@@ -208,12 +209,13 @@ struct SpatialArchive: Codable {
         if source != file,let archive { try archive.write(to:file) }
     }
 
-    func write(to file: URL = Self.file) throws {
+    func write(to file: URL = Self.file,singleMap:Bool=false) throws {
         try validate()
         try FileManager.default.createDirectory(at:file.deletingLastPathComponent(),withIntermediateDirectories:true)
         try JSONEncoder().encode(self).write(to:file,options:[.atomic,.completeFileProtectionUntilFirstUserAuthentication])
         let metadata=SpatialMapSummary(world:world,saved:saved,location:location)
         try? JSONEncoder().encode(metadata).write(to:file.appendingPathExtension("mapinfo"),options:[.atomic,.completeFileProtectionUntilFirstUserAuthentication])
+        if singleMap { try SpatialSingleMap.prune(at:file,preserveCurrent:true) }
         var directory = file.deletingLastPathComponent()
         var values = URLResourceValues(); values.isExcludedFromBackup = true
         try directory.setResourceValues(values)

@@ -300,7 +300,7 @@ enum WallMeasureMode { case none, outline, opening }
                 guard let self, !self.stopped else { return }
                 self.prepared = ready
                 self.started = true
-                if self.foreground && !self.localizationTimedOut { self.run() }
+                if self.foreground && !self.localizationTimedOut { self.calibrateCurrentRoom() }
             }
         }
     }
@@ -378,11 +378,23 @@ enum WallMeasureMode { case none, outline, opening }
             notice="Este teste automático precisa do LiDAR e de classificação da malha.";feedback(notice);return
         }
         roomWall.cancelMatching();roomWall.cancelPaint();liveWall.arm(style);measureMode = .none
+        if !liveWall.capturing { feedback(liveWall.status);return }
         scanTask?.cancel();scanning=true;run();feedback(liveWall.status)
         scanTask=Task { [weak self] in
             try? await Task.sleep(for:.seconds(8))
             guard !Task.isCancelled,let self,!self.stopped else { return }
             self.liveWall.finishCapture();self.scanning=false;self.scanTask=nil;self.run()
+        }
+    }
+    func calibrateCurrentRoom() {
+        guard started,foreground,!stopped,!recoveryBusy,!fatal else { return }
+        scanTask?.cancel();endManualWallInput();liveWall.beginCalibration();scanning=true
+        status=liveWall.status;run();feedback(status)
+        scanTask=Task { [weak self] in
+            try? await Task.sleep(for:.seconds(8))
+            guard !Task.isCancelled,let self,!self.stopped else { return }
+            self.liveWall.finishCapture();self.scanning=false;self.scanTask=nil;self.run()
+            self.spatial.markDirty();self.status="Leitura encerrada. O único mapa atual será salvo quando o rastreamento estiver estável."
         }
     }
     private func prepareObjectPlacement() {
@@ -608,6 +620,7 @@ enum WallMeasureMode { case none, outline, opening }
     func apply(_ command: WallARCommand) {
         guard !recoveryBusy else { return }
         switch command {
+        case .calibrate: calibrateCurrentRoom()
         case .effects: panel.openEffectsRadial(tracking:interactionReady)
         case .roomSetup:
             cancelLiveWallCapture();roomWall.cancelPaint()
@@ -930,40 +943,18 @@ private final class WallRenderMeter: NSObject, ARSCNViewDelegate {
     }
 }
 
-@MainActor private struct SpatialRecoveryControls: View {
-    @ObservedObject var controller: WallARController
-    @State private var confirmNew=false
-    var body: some View {
+@MainActor private struct SpatialRecoveryControls:View {
+    @ObservedObject var controller:WallARController
+    var body:some View {
         VStack(alignment:.leading,spacing:10) {
-            Label("Recuperar ambiente",systemImage:"map.fill").font(.headline)
+            Label("Ambiente atual · leitura de 8 segundos",systemImage:"viewfinder")
             Text(controller.status).font(.caption)
-            Text("Volte ao local original. Mostre piso, cantos e detalhes das paredes, movendo o celular devagar. Evite apontar só para uma parede lisa.").font(.caption)
-            if controller.recoveryBusy { ProgressView("Preparando mapa…") }
-            else {
-                HStack {
-                    Button("Recuperar sem apagar") { controller.retryLocalization() }
-                    Button("Tentar mapa salvo") { controller.changeMap(restore:SpatialArchive.file) }
-                        .disabled(!FileManager.default.fileExists(atPath:SpatialArchive.file.path))
-                    Button("Novo mapa") { confirmNew=true }
-                }.buttonStyle(.bordered).controlSize(.small)
-                Menu("Restaurar outro mapa (\(controller.savedMaps.count))") {
-                    ForEach(controller.savedMaps,id:\.self) { url in
-                        Button(mapTitle(url)) { controller.changeMap(restore:url) }
-                    }
-                }.disabled(controller.savedMaps.isEmpty)
-            }
-        }.padding(14).frame(maxWidth:.infinity,alignment:.leading)
-        .background(.regularMaterial,in:RoundedRectangle(cornerRadius:16))
-        .confirmationDialog("Iniciar outro ambiente?",isPresented:$confirmNew,titleVisibility:.visible) {
-            Button("Guardar mapa antigo e começar outro") { controller.changeMap(restore:nil) }
-            Button("Cancelar",role:.cancel) {}
-        } message: {
-            Text("O mapa anterior ficará em Restaurar outro mapa. Os objetos dele não serão colocados em coordenadas erradas no novo ambiente.")
-        }
-    }
-    private func mapTitle(_ url: URL) -> String {
-        let date=(try? url.resourceValues(forKeys:[.contentModificationDateKey]).contentModificationDate) ?? .distantPast
-        return (url == SpatialArchive.file ? "Atual · " : "Guardado · ")+date.formatted(date:.abbreviated,time:.shortened)
+            Text("Olhe devagar para piso e paredes. Também pode dizer calibrar ambiente, sem tocar no iPhone.").font(.caption)
+            HStack {
+                Button("Repetir leitura de 8 s") { controller.apply(.calibrate) }
+                Button("Recuperar posição atual") { controller.retryLocalization() }
+            }.buttonStyle(.bordered).controlSize(.small)
+        }.padding(14).background(.regularMaterial,in:RoundedRectangle(cornerRadius:16))
     }
 }
 

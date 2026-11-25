@@ -55,6 +55,10 @@ import SwiftUI
 }
 
 @main @MainActor struct JarvisPhoneApp: App {
+    init() {
+        do { let removed=try SpatialSingleMap.migrate(at:SpatialArchive.file);NSLog("[SpatialMap] single-map policy ready; removed=%d",removed) }
+        catch { NSLog("[SpatialMap] map cleanup postponed: %@",error.localizedDescription) }
+    }
     @StateObject private var controller=PhoneController.shared
     @StateObject private var remote=RemoteAssistant.shared
     @State private var tab=0

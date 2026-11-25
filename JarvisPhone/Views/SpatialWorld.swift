@@ -437,7 +437,7 @@ enum SpatialTheme: String, CaseIterable {
                     do {
                         let bytes=try NSKeyedArchiver.archivedData(withRootObject:map,requiringSecureCoding:true)
                         let archive=SpatialArchive(world:world,rooms:roomSnapshot,objects:snapshot,panel:panel,desktop:desktop,map:bytes,saved:Date(),location:location,scannedRoom:scannedRoom)
-                        try archive.write()
+                        try archive.write(singleMap:true)
                         Task { @MainActor in guard epoch == self.persistenceEpoch else { return };self.saving=false;self.lastSavedRevision=savedRevision;self.persistenceStatus="Salvo no iPhone: \(snapshot.count) objetos e \(roomSnapshot.count) ambientes." }
                     } catch {
                         Task { @MainActor in guard epoch == self.persistenceEpoch else { return };self.saving=false;self.persistenceStatus="Falha ao salvar: \(error.localizedDescription)" }
@@ -453,7 +453,7 @@ enum SpatialTheme: String, CaseIterable {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void,Error>) in
             storageQueue.async {
                 do {
-                    try SpatialArchive.activate(source)
+                    try SpatialArchive.activate(source,keepPrevious:false)
                     continuation.resume()
                 } catch { continuation.resume(throwing:error) }
             }
@@ -470,7 +470,7 @@ enum SpatialTheme: String, CaseIterable {
         if newWorld {
             worldID=UUID();rooms=[SpatialRoom(id:UUID(),name:"Ambiente 1",origin:SpatialArchive.values(matrix_identity_float4x4))]
             currentRoom=rooms[0].id;roomName=rooms[0].name;revision=0;lastSavedRevision = -1
-            persistenceStatus="Novo mapa iniciado. O mapa anterior foi preservado."
+            persistenceStatus="Mapa único iniciado. A leitura atual substitui a anterior."
         }
     }
 

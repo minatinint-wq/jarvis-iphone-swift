@@ -148,6 +148,11 @@ jobs:
           swiftc JarvisPhone/Core/SpatialGesture.swift JarvisPhone/Core/HandPoseInput.swift scripts/probe-hand-control.swift -o /tmp/hand-probe
           /tmp/hand-probe /tmp/hand-fixtures
 
+      - name: Validar limpeza e preservação do mapa único
+        run: |
+          swiftc JarvisPhone/Core/SpatialSingleMap.swift scripts/probe-single-map.swift -o /tmp/single-map-probe
+          /tmp/single-map-probe
+
       - name: Compilar IPA arm64 com xtool
 
         run: |

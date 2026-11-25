@@ -26,22 +26,31 @@ enum LiveWallRegion {
     private var depthNodes:[SCNNode]=[]
     private var style="white"
     private var trackingGood=false
+    private var completed=false
     private var gesture=SpatialAimSelection()
     private var ticket=UUID()
     var onFeedback:((String)->Void)?
     init(view:ARSCNView) { self.view=view }
+    func beginCalibration() {
+        ticket=UUID();meshes=[:];completed=false;capturing=true;armed=false;busy=false;gesture.reset()
+        status="Lendo o ambiente por oito segundos. Olhe devagar para o piso e as paredes."
+    }
     func arm(_ style:String) {
-        self.style=style=="brick" ? "brick" : "white";armed=true;capturing=true;busy=false
+        self.style=style=="brick" ? "brick" : "white";armed=true;busy=false
+        if completed,!meshes.isEmpty {
+            capturing=false;gesture.reset();status="Ambiente já lido. Aponte para a parede por dois segundos.";return
+        }
+        completed=false;capturing=true
         ticket=UUID();meshes=[:];gesture.reset()
         status="Olhe devagar para a parede. Leitura automática por oito segundos; depois aponte por dois segundos."
     }
     func remember(_ mesh:ARMeshAnchor) {
-        guard capturing,meshes[mesh.identifier] != nil || meshes.count<64 else { return }
+        guard capturing || meshes[mesh.identifier] != nil,meshes[mesh.identifier] != nil || meshes.count<64 else { return }
         meshes[mesh.identifier]=mesh
     }
     func finishCapture() {
-        capturing=false
-        status=meshes.isEmpty ? "Ainda não li a parede. Diga testar parede para repetir, com a câmera e o LiDAR livres." : "Aponte o indicador para a parede por dois segundos. Não precisa tocar no celular."
+        capturing=false;completed=true
+        status=meshes.isEmpty ? "Leitura encerrada sem parede confirmada. Diga calibrar ambiente para repetir, com câmera e LiDAR livres." : armed ? "Aponte o indicador para a parede por dois segundos. Não precisa tocar no celular." : "Leitura encerrada. O catálogo está pronto para gestos e efeitos."
         onFeedback?(status)
     }
     private func surface(_ point:CGPoint)->ARRaycastResult? {
@@ -125,12 +134,12 @@ enum LiveWallRegion {
     }
     func update(_ updated:ARAnchor) { if updated.identifier==anchor?.identifier { anchor=updated;root?.simdTransform=updated.transform } }
     func setTracking(_ good:Bool) { guard trackingGood != good else { return };trackingGood=good;root?.isHidden = !good }
-    func cancel() { ticket=UUID();armed=false;capturing=false;busy=false;gesture.reset() }
+    func cancel() { if capturing { completed=false };ticket=UUID();armed=false;capturing=false;busy=false;gesture.reset() }
     func removePaint() {
         if let anchor { view.session.remove(anchor:anchor) };anchor=nil
         root?.removeFromParentNode();root=nil;depthNodes.forEach{$0.removeFromParentNode()};depthNodes=[]
     }
-    func clear() { cancel();removePaint();meshes=[:] }
+    func clear() { cancel();removePaint();meshes=[:];completed=false }
 }
 
 struct LiveWallPrompt:View {

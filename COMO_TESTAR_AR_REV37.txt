@@ -26,3 +26,12 @@ O efeito de parede lido ao vivo é um teste da sessão atual: após fechar o AR,
 selecione-o de novo. Objetos e janelas continuam usando o mapa persistente.
 O alinhamento manual do GLB fica opcional nas ferramentas do modo sem óculos;
 ele não é mais requisito para escolher os efeitos do catálogo.
+
+POLÍTICA DE MAPA ÚNICO
+Os mapas antigos do app serão removidos por esta atualização. A captura GLB
+original permanece preservada. Ao abrir Espaço AR, a leitura automática dura
+oito segundos. O app salva/refina apenas home.json, sem criar versões antigas.
+Os efeitos usam essa leitura quando disponível; não repetem a captura a cada
+escolha. Se precisar de outra leitura, diga "Jarvis, calibrar ambiente".
+Oito segundos é a janela de coleta, não uma garantia de reconhecimento:
+superfícies sem dados suficientes continuam sem efeito até uma nova leitura.

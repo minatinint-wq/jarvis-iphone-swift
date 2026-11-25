@@ -39,7 +39,7 @@ enum WallARCommand: Equatable {
     case measure, point, opening, approve, theme(SpatialTheme), interact, removeObject, panel(SpatialModule), navigate(String)
     case model(String), resizeObject(Float), moveObject(Float,Float), saveMap, room(String), desktop
     case character(String), headset(Bool), recover, keyboard(Bool)
-    case roomSetup,roomWall(String),roomClear,effects
+    case roomSetup,roomWall(String),roomClear,effects,calibrate
 
     /// Only navigation-like speech enters the spatial interpreter; ordinary tools stay available.
     static func needsInterpretation(_ input: String) -> Bool {
@@ -62,6 +62,7 @@ enum WallARCommand: Equatable {
         if let scene=scenes[s] { return .theme(scene) }
         if ["abre o modo espacial","abre o modo cenarios","cenarios ar","modo espacial"].contains(s) { return .theme(.forest) }
         if inStudio {
+            if ["calibrar ambiente","calibrar ar","calibrar de novo","recalibrar","calibrar por oito segundos","refazer leitura","repetir leitura"].contains(s) { return .calibrate }
             if ["catalogo de efeitos","abrir efeitos","abre os efeitos","abrir catalogo de efeitos","menu de efeitos"].contains(s) { return .effects }
             if ["alinhar quarto","alinhar captura","alinhar scan","configurar captura do quarto"].contains(s) { return .roomSetup }
             if ["parede de tijolos","testar tijolos","coloca tijolos na parede"].contains(s) { return .roomWall("brick") }
