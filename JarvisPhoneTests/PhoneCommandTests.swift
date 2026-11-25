@@ -222,7 +222,12 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertFalse(controller.videoRunning,"No world session was started for this camera-only proof")
         XCTAssertTrue(host.eyes.allSatisfy{$0.cameraFrames>0})
         XCTAssertTrue(host.eyes.allSatisfy{$0.video.isReadyForDisplay},"Both physical video layers must present, not only the shader test")
-        let attachment=XCTAttachment(screenshot:XCUIScreen.main.screenshot());attachment.name="Holo-two-physical-video-eyes";attachment.lifetime = .keepAlways;add(attachment)
+        // Read the frame actually displayed by each renderer. XCUIScreen is a
+        // UI-test API and aborts an ordinary hosted XCTest process.
+        let displayed=try host.eyes.map { try XCTUnwrap($0.video.sampleBufferRenderer.displayedPixelBuffer()) }
+        let images=try displayed.map { try XCTUnwrap(CIContext().createCGImage(CIImage(cvPixelBuffer:$0),from:CGRect(x:0,y:0,width:240,height:320))) }
+        XCTAssertEqual(UIImage(cgImage:images[0]).pngData(),UIImage(cgImage:images[1]).pngData())
+        for (i,image) in images.enumerated() { let attachment=XCTAttachment(image:UIImage(cgImage:image));attachment.name="Holo-displayed-eye-\(i)";attachment.lifetime = .keepAlways;add(attachment) }
         host.frame.size=CGSize(width:400,height:250);host.setNeedsLayout();host.layoutIfNeeded()
         XCTAssertEqual(host.eyes[0].frame.width,188);XCTAssertEqual(host.eyes[1].frame.minX,212)
     }
