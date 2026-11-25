@@ -273,10 +273,12 @@ struct SpatialFistMenuGesture {
     private var released:Double?
     private var previous:Double?
     private var latched=false
-    mutating func update(closed:Bool,time:Double)->Bool {
+    mutating func update(closed:Bool?,time:Double)->Bool {
         guard time.isFinite else { self=Self();return false }
         if let previous,time<previous || time-previous>0.4 { began=nil;released=nil }
         previous=time
+        // Losing sight of a held fist is not a deliberate release.
+        guard let closed else { began=nil;released=nil;return false }
         if !closed {
             began=nil
             if released == nil { released=time }

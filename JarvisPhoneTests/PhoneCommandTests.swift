@@ -13,6 +13,8 @@ final class PhoneCommandTests: XCTestCase {
         var gesture=SpatialFistMenuGesture(),events=0
         for i in 0...30 { if gesture.update(closed:true,time:Double(i)*0.1) { events+=1 } }
         XCTAssertEqual(events,1)
+        XCTAssertFalse(gesture.update(closed:nil,time:3.01))
+        XCTAssertFalse(gesture.update(closed:true,time:3.02),"Occlusion cannot reopen a held fist")
         XCTAssertFalse(gesture.update(closed:false,time:3.1))
         XCTAssertFalse(gesture.update(closed:false,time:3.4))
         for i in 35...44 { if gesture.update(closed:true,time:Double(i)*0.1) { events+=1 } }

@@ -182,6 +182,7 @@ struct ScannedRoomManifest:Decodable {
         status="Parede \(id) aplicada aos triângulos capturados. Vãos da malha permanecem abertos."
     }
     func clearPaint() { patch?.removeFromParentNode();patch=nil;chosen=nil;armed=false;onChange?() }
+    func cancelPaint() { armed=false;dwell.reset() }
     func setTracking(_ value:Bool) { tracking=value;root?.isHidden = !value }
     func update(_ anchor:ARAnchor) { if anchor.identifier==self.anchor?.identifier { self.anchor=anchor;root?.simdTransform=anchor.transform } }
     func snapshot()->SpatialScannedRoomRecord? {
@@ -208,7 +209,7 @@ struct ScannedRoomManifest:Decodable {
         v.addGestureRecognizer(UITapGestureRecognizer(target:context.coordinator,action:#selector(Coordinator.tap(_:))));return v
     }
     func updateUIView(_ uiView:SCNView,context:Context) {}
-    final class Coordinator:NSObject {
+    @MainActor final class Coordinator:NSObject {
         let room:ScannedRoomWall;init(_ room:ScannedRoomWall){self.room=room}
         @objc func tap(_ gesture:UITapGestureRecognizer) {
             guard let view=gesture.view as? SCNView,let scene=view.scene,
@@ -234,11 +235,12 @@ struct ScannedRoomSetup:View {
 
 struct ScannedRoomPrompt:View {
     @ObservedObject var room:ScannedRoomWall
+    let cancel:()->Void
     var body:some View {
         if room.matching || room.armed {
             HStack {
                 Text(room.status).font(.caption).fixedSize(horizontal:false,vertical:true)
-                Button("Cancelar") { room.cancelMatching();room.clearPaint() }
+                Button("Cancelar",action:cancel)
             }.padding(12).background(.ultraThinMaterial,in:RoundedRectangle(cornerRadius:12)).padding(.horizontal)
         }
     }

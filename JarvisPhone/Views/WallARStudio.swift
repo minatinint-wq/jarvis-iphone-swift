@@ -153,13 +153,13 @@ enum WallMeasureMode { case none, outline, opening }
             guard let self else { return }
             if self.desktop.inputBlocked { return }
             guard self.interactionReady,!self.recoveryBusy else {
-                self.fistMenu=SpatialFistMenuGesture()
+                _=self.fistMenu.update(closed:nil,time:sample?.time ?? ProcessInfo.processInfo.systemUptime)
                 self.palmRecall=SpatialPalmRecall();self.dualScale=SpatialDualPinchScale();self.dualScaleTarget=nil
                 self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
                 self.hands.showProgress(0);return
             }
             let closed=sample?.closedFist == true
-            if self.fistMenu.update(closed:closed && !self.panel.isDragging && !self.desktop.isDragging,time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {
+            if self.fistMenu.update(closed:sample.map{$0.closedFist && !self.panel.isDragging && !self.desktop.isDragging},time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {
                 self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
                 self.dualScale=SpatialDualPinchScale();self.palmRecall=SpatialPalmRecall()
                 self.panel.openEffectsRadial(tracking:true);self.hands.showProgress(0);return
@@ -353,6 +353,11 @@ enum WallMeasureMode { case none, outline, opening }
             self.roomWall.cancelMatching();self.scanning=false;self.scanTask=nil;self.run()
             self.notice="Alinhamento pausado. Abra Alinhar quarto para tentar novamente."
         }
+    }
+    func cancelRoomMatching() {
+        roomWall.cancelMatching();roomWall.cancelPaint()
+        scanTask?.cancel();scanTask=nil
+        if scanning { scanning=false;run() }
     }
 
     private func armRecoveryTimer() {
@@ -1106,7 +1111,7 @@ struct WallCameraView: UIViewRepresentable {
                 ScannedRoomSetup(room:controller.roomWall) { controller.beginRoomMatching() }
             }
             .overlay(alignment:.bottom) {
-                ScannedRoomPrompt(room:controller.roomWall).padding(.bottom,controller.headset ? 12 : 22)
+                ScannedRoomPrompt(room:controller.roomWall) { controller.cancelRoomMatching() }.padding(.bottom,controller.headset ? 12 : 22)
             }
             .sheet(item:$menuSheet) { sheet in
                 switch sheet {
