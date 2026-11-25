@@ -1,12 +1,11 @@
-JARVIS AR — revisão 34 instalada e verificada no iPhone
-Versão consultada no iOS: 1.2.0 (34) / VERIFIED_JARVIS_BUILD=34
-Código do aplicativo: eb45b3eb7839e4e4001e4bd35da5f698fd3b81e4
-Compilação e pacote: 45514913511 aprovado.
-Apresentação nativa do vídeo: 45518048372 aprovado, 40 quadros por olho, buffers iguais e recorte ativo; captura inspecionada.
-XCTest 45516197127: sete casos funcionais passaram; um caso abortou ao solicitar captura restrita a UI testing. A captura foi validada separadamente pelo simctl.
-Referência reaproveitada: Holo Comandos, dois contêineres de vídeo recortados.
-Inclui teclado projetado, scroll sem clique, escala com duas pinças e zoom de toque.
-Pacote: RELEASES/REV34/Jarvis-Arc-iPhone.ipa
-Guia: COMO_TESTAR_AR_REV34.txt
-Relatório: RELATORIO_AR_REV34.md
-Teste físico do modo óculos e dos gestos: pendente do usuário.
+JARVIS AR — revisão 35 instalada e verificada no iPhone
+Versão consultada no iOS: 1.2.0 (35) / VERIFIED_JARVIS_BUILD=35
+Código do aplicativo: 15d4be5bd50b5cab60cad3a33fd12910db94b65b
+Compilação e pacote: 45523971709 aprovado.
+Teste da passagem de estado pelo SwiftUI: 45524298573 aprovado. Verifica uma vista, duas vistas e retorno à vista única, sem chamar configure diretamente.
+A revisão 34 foi rejeitada no teste físico por manter uma câmera contínua.
+A revisão 35 passa headset explicitamente para o adaptador da câmera.
+Pacote: RELEASES/REV35/Jarvis-Arc-iPhone.ipa
+Guia: COMO_TESTAR_AR_REV35.txt
+Relatório: RELATORIO_AR_REV35.md
+Teste físico do botão no aparelho: pendente do usuário.

@@ -37,3 +37,5 @@ Instalação concluída no iPhone 13 Pro Max e verificada pelo serviço do iOS: 
 Não foram implementados nesta entrega o escaneamento RoomPlan da casa nem geração de mundos com Google Genie. Não houve chamada paga ou envio de captura do ambiente ao Google. Não foi comprovada equivalência de rastreamento com Meta Quest ou Apple Vision.
 
 Referência de exibição: https://developer.apple.com/documentation/avfoundation/avsamplebufferdisplaylayer e https://developer.apple.com/documentation/coremedia/kcmsampleattachmentkey_displayimmediately.
+
+Resultado físico posterior: o usuário informou que a revisão 34 ainda mostrava uma câmera contínua. A divisão do modo óculos foi rejeitada. A revisão 35 passa a verificar a propagação do estado pela interface SwiftUI.
