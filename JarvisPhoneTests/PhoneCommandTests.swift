@@ -4,6 +4,7 @@ import AVFoundation
 import SceneKit
 import Metal
 import CoreVideo
+import CoreImage
 import ARKit
 @testable import JarvisPhone
 
