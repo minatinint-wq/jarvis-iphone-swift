@@ -61,10 +61,16 @@ final class PhoneCommandTests: XCTestCase {
         let sectors=view.scene.rootNode.childNodes.flatMap(\.childNodes).filter{$0.name?.hasPrefix("radial-sector:")==true}
         XCTAssertEqual(sectors.count,6)
         XCTAssertTrue(sectors.allSatisfy{$0.geometry is SCNShape})
-        let camera=SCNNode();camera.camera=SCNCamera();camera.camera?.usesOrthographicProjection=true;camera.camera?.orthographicScale=0.34;camera.position=SCNVector3(0,0,1)
+        let camera=SCNNode();camera.camera=SCNCamera();camera.camera?.usesOrthographicProjection=true;camera.camera?.orthographicScale=0.34
+        camera.camera?.zNear=0.01;camera.camera?.zFar=10;camera.position=SCNVector3(0,0,1)
         view.scene.rootNode.addChildNode(camera)
         let renderer=SCNRenderer(device:device,options:nil);renderer.scene=view.scene;renderer.pointOfView=camera
         let image=renderer.snapshot(atTime:0,with:CGSize(width:1000,height:900),antialiasingMode:.multisampling4X)
+        let cg=try XCTUnwrap(image.cgImage)
+        var pixels=[UInt8](repeating:0,count:256*256*4)
+        let context=try XCTUnwrap(CGContext(data:&pixels,width:256,height:256,bitsPerComponent:8,bytesPerRow:1024,space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.draw(cg,in:CGRect(x:0,y:0,width:256,height:256))
+        XCTAssertGreaterThan(stride(from:0,to:pixels.count,by:4).filter{max(pixels[$0],pixels[$0+1],pixels[$0+2])>100}.count,500,"The radial catalog must have visible glyphs, not just geometry nodes")
         let attachment=XCTAttachment(image:image);attachment.name="JARVIS-FIST-EFFECTS-RADIAL";attachment.lifetime = .keepAlways;add(attachment)
         try image.pngData()?.write(to:URL(fileURLWithPath:NSTemporaryDirectory()).appendingPathComponent("JARVIS-FIST-EFFECTS-RADIAL.png"))
         panel.close()
