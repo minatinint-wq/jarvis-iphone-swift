@@ -1,12 +1,12 @@
-JARVIS XLV — revisão 36 instalada e confirmada no iPhone.
+JARVIS XLV — revisão 37 instalada e confirmada no iPhone.
+VERIFIED_JARVIS_BUILD=37
 
-Novidades: catálogo projetado em setores por mão fechada, alinhamento da
-captura privada por três pontos do piso, parede branca/tijolos e recuperação
-separada da janela do PC. GPS opcional ordena mapas próximos.
+Mapas antigos apagados (8 artefatos removidos, 0 restantes); GLB preservado.
+Mapa único home.json, com leitura automática de oito segundos ao abrir AR.
+Catálogo por mão fechada; efeitos de parede e colocação de modelos por indicador.
+Sem calibração manual obrigatória no fluxo dos óculos.
 
-Testes: 14 nativos aprovados; compilação/empacotamento xtool aprovados.
-Teste visual adicional do menu em andamento; câmera do teste ajustada.
-Teste físico do gesto e da parede ainda depende da confirmação da usuária.
-
-Como testar: COMO_TESTAR_AR_REV36.txt
-Detalhes: RELATORIO_AR_REV36.txt
+16 testes do AR aprovados; limpeza/migração testadas no pacote final.
+Teste no cômodo real fica pendente para a próxima sessão da usuária.
+Guia: COMO_TESTAR_AR_REV37.txt
+Detalhes: RELATORIO_AR_REV37.txt

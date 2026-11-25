@@ -1,0 +1,52 @@
+JARVIS XLV — REVISÃO 37 — FLUXO DOS ÓCULOS
+Fonte do pacote: 393a044ea22864449e8e44ba1a5aa601325a822d
+Compilação xtool: 45539874066 — sucesso.
+Testes iOS: 45537845482 — 16 testes aprovados, 0 falhas.
+Os testes de AR usaram 62fa53a; a política de mapa único foi validada
+separadamente pelo probe Swift do pacote final 393a044 (45539874066).
+
+Problema confirmado na revisão 36:
+A usuária confirmou que a mão fechada abriu o catálogo, mas o catálogo conduziu
+para calibração com toque na tela e três pontos. Esse fluxo foi rejeitado para
+uso com VR Box. A revisão 36 permanece registrada como instalada anteriormente;
+isso não equivale à aceitação do fluxo de uso.
+
+Mudanças da revisão 37:
+- Branco/Tijolos podem usar leitura real do LiDAR por oito segundos. Não exigem
+  abrir mapa, calibrar GLB, marcar cantos ou tocar na tela para selecionar parede.
+- ARKit fornece a malha classificada. O filtro aceita só faces de parede,
+  coplanares e próximas do ponto escolhido; não inventa retângulos em vãos.
+- Extração dos triângulos ocorre fora da thread de renderização. A reconstrução
+  é desligada no final da leitura, evitando carga pesada contínua nas mãos.
+- Indicador estável por dois segundos escolhe a parede e coloca modelos/cenários
+  no piso ou mesa. O modo de colocar deixou de bloquear o detector de mão.
+- A mão fechada chama o catálogo; pinça continua sendo arrastar. Calibração e
+  medição saíram do catálogo de efeitos; ficam nas ferramentas opcionais.
+- Catálogo com contorno circular e setores clicáveis. As instruções de leitura
+  são faladas; o modo óculos não ganha a barra inferior de configuração.
+
+Limites desta entrega:
+- Classificação LiDAR pode falhar; vidro, espelhos, superfícies ausentes ou
+  incertas podem ficar sem efeito. Isso precisa de teste no cômodo real.
+- A pintura ao vivo vale para a sessão atual. Após encerrar o Espaço AR,
+  selecione-a de novo. Objetos e janelas mantêm o sistema de mapa persistente.
+- O GLB da casa permanece privado e disponível no IPA local, mas o novo teste
+  não faz registro automático desse GLB: usa a malha que o LiDAR lê ao vivo.
+- Instalação confirmada: 1.2.0 build 37, VERIFIED_JARVIS_BUILD=37.
+  Aceitação dos efeitos no cômodo real: pendente, sem pedir teste nesta noite.
+
+Fontes técnicas:
+https://developer.apple.com/documentation/arkit/visualizing-and-interacting-with-a-reconstructed-scene
+https://developer.apple.com/documentation/arkit/armeshclassification
+
+MAPA ÚNICO — pedido explícito da usuária
+Foram removidos 8 arquivos de mapas/metadados do contêiner do Jarvis no iPhone;
+a verificação por AFC confirmou 0 mapas antigos restantes. O GLB foi preservado.
+A limpeza foi limitada a arquivos regulares home*.json e seus metadados, sem
+recursão, sem tocar em outros dados do aplicativo.
+O app agora conserva só home.json, inicia uma coleta de oito segundos ao abrir
+Espaço AR e reaproveita a malha lida para os efeitos. Não cria histórico de mapas.
+O seletor de mapas antigos saiu da interface. Nova leitura por voz:
+"Jarvis, calibrar ambiente". Oito segundos é a janela de coleta, sem garantia
+de reconhecimento perfeito. O probe Swift confirmou preservação do mapa atual,
+dos scans, dos diretórios e dos links simbólicos, e migração executada só uma vez.
