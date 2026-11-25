@@ -1,11 +1,12 @@
-JARVIS AR — revisão 35 instalada e verificada no iPhone
-Versão consultada no iOS: 1.2.0 (35) / VERIFIED_JARVIS_BUILD=35
-Código do aplicativo: 15d4be5bd50b5cab60cad3a33fd12910db94b65b
-Compilação e pacote: 45523971709 aprovado.
-Teste da passagem de estado pelo SwiftUI: 45524298573 aprovado. Verifica uma vista, duas vistas e retorno à vista única, sem chamar configure diretamente.
-A revisão 34 foi rejeitada no teste físico por manter uma câmera contínua.
-A revisão 35 passa headset explicitamente para o adaptador da câmera.
-Pacote: RELEASES/REV35/Jarvis-Arc-iPhone.ipa
-Guia: COMO_TESTAR_AR_REV35.txt
-Relatório: RELATORIO_AR_REV35.md
-Teste físico confirmado pelo usuário: o botão dos óculos agora divide a câmera em duas imagens.
+JARVIS XLV — revisão 36 instalada e confirmada no iPhone.
+
+Novidades: catálogo projetado em setores por mão fechada, alinhamento da
+captura privada por três pontos do piso, parede branca/tijolos e recuperação
+separada da janela do PC. GPS opcional ordena mapas próximos.
+
+Testes: 14 nativos aprovados; compilação/empacotamento xtool aprovados.
+Teste visual adicional do menu em andamento; câmera do teste ajustada.
+Teste físico do gesto e da parede ainda depende da confirmação da usuária.
+
+Como testar: COMO_TESTAR_AR_REV36.txt
+Detalhes: RELATORIO_AR_REV36.txt

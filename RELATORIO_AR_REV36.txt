@@ -1,0 +1,35 @@
+JARVIS XLV — REVISÃO 36
+Fonte do pacote: 8d4f0a602ef50c861d371a0bc7a79e3734e0224c
+Código executável testado: 35af78eddd7f7738d10d6b13e58f811b2bf46f86
+Entre os dois commits só mudou a lista de recursos do xtool.
+Pacote xtool: workflow 45534724608 (sucesso)
+Testes nativos: workflow 45534264898 — 14 testes, 0 falhas
+Verificação visual adicional: workflow 45535776392 (em andamento;
+correção do plano de corte da câmera do teste, sem mudança no aplicativo).
+
+Entregas:
+- Catálogo circular em SceneKit, com setores reais clicáveis, invocado por mão
+  completamente fechada durante 0,6 segundo. Perda da mão não rearma o gesto.
+- Indicador por 2 segundos escolhe. Pinça continua arrastando; mão aberta é livre.
+- Parede branca/tijolos por triângulos da captura, após alinhamento métrico por
+  três pontos do piso. Verificação de SHA256 de todos os recursos privados.
+- Captura e alinhamento ficam acoplados ao mapa salvo, sem publicar a casa.
+- Recuperação do PC separada da recuperação de modelos indisponíveis; mapas
+  antigos sem janela podem reabri-la por intenção explícita.
+- GPS opcional ordena mapas próximos, sem deslocar âncoras dentro do cômodo.
+- Correção da divisão do VR da revisão 35 preservada, com teste de regressão.
+
+Evidência local da captura:
+134.392 vértices, 193.988 triângulos, 18 arquivos verificados, 14 subconjuntos
+planares conferidos. Não foram adicionados triângulos para fechar buracos.
+Pintura branca e tijolos renderizados no visualizador local.
+
+Limites:
+- Teste físico de gesto, alinhamento e retomada do quarto ainda pendente.
+- A captura tem lacunas; a malha não é classificação semântica de portas/móveis.
+- Não há promessa de localização interna centimétrica por GPS.
+- Novos modelos em lote, portais e colisões destrutivas ficam para a próxima etapa.
+
+Instalação: confirmada pelo iOS — 1.2.0 build 36.
+Evidência: VERIFIED_JARVIS_BUILD=36.
+Aceitação do gesto e alinhamento físico pela usuária: pendente.
