@@ -9,6 +9,30 @@ import ARKit
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    func testHandsFreePlacementNeedsStablePointAndNeverUsesPinch() {
+        var gesture=SpatialAimSelection(),clicks:[String]=[]
+        for i in 0...25 {
+            if let id=gesture.update(target:"floor",point:CGPoint(x:100,y:200),pointing:true,time:Double(i)/10) { clicks.append(id) }
+        }
+        XCTAssertEqual(clicks,["floor"])
+        XCTAssertNil(gesture.update(target:"floor",point:CGPoint(x:100,y:200),pointing:false,time:2.6))
+        for i in 27...42 { XCTAssertNil(gesture.update(target:"floor",point:CGPoint(x:100,y:200),pointing:true,time:Double(i)/10)) }
+        XCTAssertNil(gesture.update(target:"floor",point:CGPoint(x:140,y:200),pointing:true,time:4.3),"Moving the aiming point must restart placement dwell")
+        XCTAssertLessThan(gesture.progress,0.1)
+        gesture.reset()
+        for i in 0...30 { XCTAssertNil(gesture.update(target:"floor",point:CGPoint(x:100,y:200),pointing:false,time:Double(i)/10),"A free hand or pinch cannot place an object") }
+    }
+    func testLiveLiDARPaintExcludesDoorWindowFurnitureAndOffPlaneFaces() {
+        let triangle:[SIMD3<Float>]=[SIMD3(0,0,0),SIMD3(1,0,0),SIMD3(0,1,0)]
+        let normal=SIMD3<Float>(0,0,1)
+        XCTAssertTrue(LiveWallRegion.accepts(triangle,classification:ARMeshClassification.wall.rawValue,origin:.zero,normal:normal))
+        for kind in [ARMeshClassification.door,.window,.floor,.ceiling,.table,.seat,.none] {
+            XCTAssertFalse(LiveWallRegion.accepts(triangle,classification:kind.rawValue,origin:.zero,normal:normal),"Never paint \(kind)")
+        }
+        XCTAssertFalse(LiveWallRegion.accepts(triangle.map{$0+SIMD3(0,0,0.10)},classification:ARMeshClassification.wall.rawValue,origin:.zero,normal:normal))
+        XCTAssertFalse(LiveWallRegion.accepts(triangle,classification:ARMeshClassification.wall.rawValue,origin:.zero,normal:SIMD3(1,0,0)))
+        XCTAssertFalse(LiveWallRegion.accepts([.zero,.zero,.zero],classification:ARMeshClassification.wall.rawValue,origin:.zero,normal:normal))
+    }
     func testFullFistOpensCatalogOnceAndNeedsDeliberateRelease() {
         var gesture=SpatialFistMenuGesture(),events=0
         for i in 0...30 { if gesture.update(closed:true,time:Double(i)*0.1) { events+=1 } }

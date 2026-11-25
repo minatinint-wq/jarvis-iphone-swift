@@ -513,12 +513,14 @@ enum SpatialPanelGeometry {
         if effectsCatalog {
             return [("Branco","paintbrush.fill",.wall(.roomWall("white"))),
                     ("Tijolos","square.grid.3x3.fill",.wall(.roomWall("brick"))),
-                    ("Alinhar quarto","scope",.wall(.roomSetup)),
                     ("Robô","figure.wave",.model("animated_robot")),
-                    ("Bosque","leaf.fill",.scene(.forest)),
-                    ("Medir","ruler",.wall(.measure)),
                     ("Raposa","pawprint.fill",.model("animated_fox")),
+                    ("Bosque","leaf.fill",.scene(.forest)),
                     ("Aquário","water.waves",.scene(.aquarium)),
+                    ("Noturno","moon.stars.fill",.scene(.enchanted)),
+                    ("Estúdio","hifispeaker.fill",.scene(.studio)),
+                    ("Garagem","car.fill",.scene(.garage)),
+                    ("Sala","sofa.fill",.scene(.lounge)),
                     ("Limpar parede","eraser.fill",.wall(.roomClear)),
                     ("Módulos","square.grid.2x2",.showInterface)]
         }
@@ -572,7 +574,7 @@ enum SpatialPanelGeometry {
                 for (i,row) in radialItems.dropFirst(radialIndex*6).prefix(6).enumerated() {
                     let angle=Float.pi/2-Float(i)*Float.pi/3
                     let start=CGFloat(angle)-CGFloat.pi/6+0.025,end=CGFloat(angle)+CGFloat.pi/6-0.025
-                    let path=UIBezierPath();path.move(to:CGPoint(x:cos(start)*0.285,y:sin(start)*0.285))
+                    let path=UIBezierPath();path.flatness=0.001;path.move(to:CGPoint(x:cos(start)*0.285,y:sin(start)*0.285))
                     path.addArc(withCenter:.zero,radius:0.285,startAngle:start,endAngle:end,clockwise:true)
                     path.addLine(to:CGPoint(x:cos(end)*0.115,y:sin(end)*0.115))
                     path.addArc(withCenter:.zero,radius:0.115,startAngle:end,endAngle:start,clockwise:false);path.close()

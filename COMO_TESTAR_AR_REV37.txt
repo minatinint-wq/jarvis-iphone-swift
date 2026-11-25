@@ -1,0 +1,28 @@
+JARVIS XLV — REVISÃO 37 — ÓCULOS SEM TOCAR NA TELA
+
+1. No Espaço AR, feche a mão por 0,6 segundo para abrir o catálogo.
+2. Solte e aponte para um setor por dois segundos.
+3. Branco/Tijolos: olhe devagar para a parede durante a leitura automática de
+   oito segundos. Depois aponte o indicador por dois segundos para a parede.
+   Não é necessário escolher um mapa, abrir a captura ou marcar três pontos.
+4. Robô/Raposa/Bosque/Aquário: olhe para uma área livre do piso ou mesa.
+   Se faltarem superfícies, o app inicia uma leitura breve. Aponte por dois
+   segundos para colocar o modelo. Pinça depois arrasta, como antes.
+5. Feche a mão para voltar ao catálogo. Use as setas centrais para outras páginas.
+
+Voz dentro do AR: "testar parede branca", "parede de tijolos", "coloca robô",
+"coloca raposa", "cenário bosque", "cenário aquário", "abrir catálogo de efeitos".
+
+A leitura de superfícies para automaticamente após oito segundos. Não há
+reconstrução pesada contínua enquanto você usa a mão.
+
+Limites: só são pintados triângulos classificados pelo ARKit como parede e
+próximos do plano escolhido. Portas, janelas, móveis e regiões sem classificação
+são excluídos pelo filtro; a classificação do sensor pode falhar. Se faltar
+informação, diga "testar parede" para repetir a leitura. Libere câmera/LiDAR
+no suporte dos óculos. Vidro e espelhos podem não ser medidos corretamente.
+
+O efeito de parede lido ao vivo é um teste da sessão atual: após fechar o AR,
+selecione-o de novo. Objetos e janelas continuam usando o mapa persistente.
+O alinhamento manual do GLB fica opcional nas ferramentas do modo sem óculos;
+ele não é mais requisito para escolher os efeitos do catálogo.

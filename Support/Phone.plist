@@ -2,7 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>NSSupportsLiveActivities</key><true/>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>pt_BR</string>
 	<key>CFBundleDisplayName</key>
@@ -28,11 +29,14 @@
 			</array>
 		</dict>
 	</array>
-	<key>NSMotionUsageDescription</key><string>O Jarvis consulta os passos registrados hoje pelo iPhone.</string>
-    <key>NSCalendarsFullAccessUsageDescription</key><string>O Jarvis lê o próximo compromisso para avisar quando ele estiver perto.</string>
-    <key>NSContactsUsageDescription</key><string>O Jarvis encontra o telefone do contato que você pedir para ligar ou enviar SMS.</string>
-    <key>CFBundleVersion</key>
-	<string>36</string>
+	<key>NSMotionUsageDescription</key>
+	<string>O Jarvis consulta os passos registrados hoje pelo iPhone.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>O Jarvis lê o próximo compromisso para avisar quando ele estiver perto.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>O Jarvis encontra o telefone do contato que você pedir para ligar ou enviar SMS.</string>
+	<key>CFBundleVersion</key>
+	<string>37</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSApplicationQueriesSchemes</key>
@@ -45,9 +49,13 @@
 	<string>Tirar uma foto para análise pela NVIDIA no seu Jarvis, capturar uma foto ou usar a lanterna.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Usar sua localização para consultar o tempo, abrir o Mapas e ajudar a selecionar mapas de realidade aumentada próximos.</string>
-	<key>NSSpeechRecognitionUsageDescription</key><string>Reconhecer “Oi Jarvis” e o pedido seguinte no próprio iPhone quando você ativa a escuta.</string>
-    <key>UIBackgroundModes</key><array><string>audio</string></array>
-    <key>NSMicrophoneUsageDescription</key>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Reconhecer “Oi Jarvis” e o pedido seguinte no próprio iPhone quando você ativa a escuta.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
+	<key>NSMicrophoneUsageDescription</key>
 	<string>Reconhecer “Oi Jarvis” durante a escuta opcional e transmitir sua fala ao Jarvis no PC quando você usa o botão de conversa.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Salvar em Fotos as imagens que você capturar pelo JARVIS.</string>
@@ -66,7 +74,9 @@
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
-		<string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>CFBundleIcons</key>
 	<dict>

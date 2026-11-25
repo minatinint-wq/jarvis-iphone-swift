@@ -161,8 +161,9 @@ enum SpatialTheme: String, CaseIterable {
     private var initialScale: Float=1
     private var initialAngle: Float=0
     private var thermalPaused=false
-    var dwellProgress: Double { handGesture.progress }
+    var dwellProgress: Double { placing ? placementGesture.progress : handGesture.progress }
     private var handGesture=SpatialGesture()
+    private var placementGesture=SpatialAimSelection()
     private var handDragging:UUID?
     private var handOffset=SIMD3<Float>.zero
     private var handDepth:Float=0
@@ -557,7 +558,7 @@ enum SpatialTheme: String, CaseIterable {
                 remember(selected,model:"theme:"+value.rawValue)
                 status="\(value.title) no mesmo lugar. Toque para interagir; arraste para mover."
             } catch { status="Não consegui carregar o modelo incluído no app." }
-        } else { placing=true; status="\(value.title): toque numa área livre e mapeada do piso ou mesa." }
+        } else { placing=true; status="\(value.title): aponte o indicador por dois segundos para uma área livre do piso ou mesa." }
     }
     func setModel(_ id:String) {
         guard !recovering,SpatialAssets.catalog.contains(where:{$0.id==id}) || SpatialDemo.allCases.contains(where:{$0.rawValue==id}) else { return }
@@ -623,7 +624,14 @@ enum SpatialTheme: String, CaseIterable {
         return nil
     }
     func hand(_ sample:SpatialHandSample?) {
-        guard active,!panelBlocking,visibility,!placing,!recovering else { handGesture.reset();palmScale=SpatialPalmScale();return }
+        guard active,!panelBlocking,visibility,!recovering else { handGesture.reset();placementGesture.reset();palmScale=SpatialPalmScale();return }
+        if placing {
+            handGesture.reset()
+            guard let sample,sample.pointing,let support=placement(sample.point,radius:footprint(selectedModel),ignoring:nil) else { placementGesture.reset();return }
+            if placementGesture.update(target:"place:"+support.1.uuidString,point:sample.point,pointing:true,time:sample.time) != nil { tap(sample.point,tracking:true);placementGesture.reset() }
+            return
+        }
+        placementGesture.reset()
         let id=sample.flatMap { hit($0.point) }
         palmScale=SpatialPalmScale()
         for event in handGesture.update(ratio:sample?.ratio ?? .nan,pointing:sample?.pointing == true,target:id?.uuidString,time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {

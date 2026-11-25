@@ -268,6 +268,25 @@ struct SpatialPinchZoom {
 /// Brief camera occlusion does not throw away an already stable room. Actual
 /// relocalization, interruptions and longer losses must still hide old anchors.
 /// A deliberate full fist opens the catalog once, then requires a release.
+struct SpatialAimSelection {
+    private var gesture=SpatialGesture()
+    private var aim:CGPoint?
+    private var target:String?
+    var progress:Double { gesture.progress }
+    mutating func reset() { self=Self() }
+    mutating func update(target:String?,point:CGPoint?,pointing:Bool,time:Double)->String? {
+        guard let target,let point,pointing,point.x.isFinite,point.y.isFinite else { reset();return nil }
+        if self.target != target || aim.map({hypot(point.x-$0.x,point.y-$0.y)>24}) == true {
+            gesture.reset();aim=point;self.target=target
+        }
+        if aim == nil { aim=point }
+        for event in gesture.update(ratio:.nan,pointing:true,target:target,time:time) {
+            if case .click(let id)=event { return id }
+        }
+        return nil
+    }
+}
+
 struct SpatialFistMenuGesture {
     private var began:Double?
     private var released:Double?
