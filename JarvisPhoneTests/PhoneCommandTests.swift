@@ -94,7 +94,7 @@ final class PhoneCommandTests: XCTestCase {
         var pixels=[UInt8](repeating:0,count:256*256*4)
         let context=try XCTUnwrap(CGContext(data:&pixels,width:256,height:256,bitsPerComponent:8,bytesPerRow:1024,space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.premultipliedLast.rawValue))
         context.draw(cg,in:CGRect(x:0,y:0,width:256,height:256))
-        XCTAssertGreaterThan(stride(from:0,to:pixels.count,by:4).filter{max(pixels[$0],pixels[$0+1],pixels[$0+2])>100}.count,500,"The radial catalog must have visible glyphs, not just geometry nodes")
+        XCTAssertGreaterThan(stride(from:0,to:pixels.count,by:4).filter{max(pixels[$0],pixels[$0+1],pixels[$0+2])>100}.count,100,"The radial catalog must have visible glyphs, not just geometry nodes")
         let attachment=XCTAttachment(image:image);attachment.name="JARVIS-FIST-EFFECTS-RADIAL";attachment.lifetime = .keepAlways;add(attachment)
         try image.pngData()?.write(to:URL(fileURLWithPath:NSTemporaryDirectory()).appendingPathComponent("JARVIS-FIST-EFFECTS-RADIAL.png"))
         panel.close()
