@@ -258,6 +258,10 @@ enum SpatialTheme: String, CaseIterable {
     private var lastDiagnostic: TimeInterval = -.infinity
     private var supportProofs: [UUID:SpatialSupportProof] = [:]
     private var lastSupportCheck: TimeInterval = -.infinity
+    private var autosave:Task<Void,Never>?
+    var locationHint:SpatialMapLocation?
+    private(set) var savedLocation:SpatialMapLocation?
+    private(set) var unavailableModels:[UUID:String]=[:]
     var supportsConfirmed: Bool { objects.keys.allSatisfy { supportProofs[$0]?.confirmed == true } }
 
     func requireSurfaceConfirmation() {
@@ -327,8 +331,28 @@ enum SpatialTheme: String, CaseIterable {
     var restoredPanel: SpatialPanelRecord?
     var restoredDesktop: SpatialDesktopRecord?
     private let storageQueue = DispatchQueue(label:"jarvis.spatial.persistence",qos:.utility)
-    var recovering: Bool { !restored.isEmpty || restoredPanel != nil || restoredDesktop != nil }
-    func markDirty() { revision+=1 }
+    var pendingReferenceCount:Int { restored.count + (restoredPanel == nil ? 0 : 1) + (restoredDesktop == nil ? 0 : 1) }
+    func readiness(cameraStable:Bool)->SpatialLocalizationReadiness {
+        SpatialLocalizationReadiness(cameraStable:cameraStable,pendingObjects:restored.count,pendingPanel:restoredPanel != nil,pendingDesktop:restoredDesktop != nil)
+    }
+    var recovering: Bool { pendingReferenceCount>0 }
+    func queueRestoration(_ archivedObjects:[SpatialObjectRecord]) {
+        records=Dictionary(uniqueKeysWithValues:archivedObjects.map{($0.id,$0)})
+        restored=records;unavailableModels.removeAll()
+    }
+    func markDirty() {
+        revision+=1;autosave?.cancel()
+        autosave=Task { [weak self] in
+            for _ in 0..<3 {
+                do { try await Task.sleep(for:.milliseconds(1500)) } catch { return }
+                guard let self,!Task.isCancelled,!self.changingMap else { return }
+                guard !self.saving,self.handDragging == nil,(self.canSaveWindows?() ?? true),!self.recovering,
+                      let frame=self.view.session.currentFrame,case .normal=frame.camera.trackingState,
+                      frame.worldMappingStatus == .mapped || frame.worldMappingStatus == .extending else { continue }
+                self.saveMap(force:false);return
+            }
+        }
+    }
 
     func loadMap() async throws -> ARWorldMap? {
         let archive = try await Task.detached(priority:.utility) { try SpatialArchive.load() }.value
@@ -340,6 +364,7 @@ enum SpatialTheme: String, CaseIterable {
             throw CocoaError(.fileReadCorruptFile)
         }
         worldID=archive.world;rooms=archive.rooms;currentRoom=rooms.first?.id;roomName=rooms.first?.name ?? "Ambiente 1"
+        savedLocation=archive.location
         records=Dictionary(uniqueKeysWithValues:archive.objects.map { ($0.id,$0) });restored=records
         // Revision 24 did not store support poses. Recover them from its saved
         // measured planes, in the original map coordinates, never from the camera.
@@ -362,7 +387,7 @@ enum SpatialTheme: String, CaseIterable {
             pose.columns.3=pose*SIMD4(p.x,0,p.z,1)
             records[id]?.supportTransform=SpatialArchive.values(simd_inverse(origin)*pose)
         }
-        restored=records
+        queueRestoration(Array(records.values))
         restoredPanel=archive.panel
         restoredDesktop=archive.desktop
         relocalizationBegan=ProcessInfo.processInfo.systemUptime
@@ -392,7 +417,7 @@ enum SpatialTheme: String, CaseIterable {
         }
         guard force || revision != lastSavedRevision else { return }
         lastSaveAttempt=frame.timestamp;saving=true
-        let epoch=persistenceEpoch,savedRevision=revision, snapshot=Array(records.values), roomSnapshot=rooms, world=worldID, panel=panelSnapshot?(),desktop=desktopSnapshot?()
+        let epoch=persistenceEpoch,savedRevision=revision, snapshot=Array(records.values), roomSnapshot=rooms, world=worldID, panel=panelSnapshot?(),desktop=desktopSnapshot?(),location=locationHint ?? savedLocation
         view.session.getCurrentWorldMap { [self] map,error in
             Task { @MainActor in
                 guard epoch == self.persistenceEpoch else { return }
@@ -405,7 +430,7 @@ enum SpatialTheme: String, CaseIterable {
                 self.storageQueue.async {
                     do {
                         let bytes=try NSKeyedArchiver.archivedData(withRootObject:map,requiringSecureCoding:true)
-                        let archive=SpatialArchive(world:world,rooms:roomSnapshot,objects:snapshot,panel:panel,desktop:desktop,map:bytes,saved:Date())
+                        let archive=SpatialArchive(world:world,rooms:roomSnapshot,objects:snapshot,panel:panel,desktop:desktop,map:bytes,saved:Date(),location:location)
                         try archive.write()
                         Task { @MainActor in guard epoch == self.persistenceEpoch else { return };self.saving=false;self.lastSavedRevision=savedRevision;self.persistenceStatus="Salvo no iPhone: \(snapshot.count) objetos e \(roomSnapshot.count) ambientes." }
                     } catch {
@@ -417,6 +442,7 @@ enum SpatialTheme: String, CaseIterable {
     }
 
     func prepareMapChange(restore source: URL? = nil) async throws {
+        autosave?.cancel();autosave=nil
         persistenceEpoch+=1;saving=false;changingMap=true
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void,Error>) in
             storageQueue.async {
@@ -433,7 +459,7 @@ enum SpatialTheme: String, CaseIterable {
         stopMoving();player?.stop();playingID=nil
         objects.values.forEach { $0.removeFromParentNode() }
         objects.removeAll();anchors.removeAll();supports.removeAll();planes.removeAll();radii.removeAll();records.removeAll();restored.removeAll();supportProofs.removeAll()
-        restoredPanel=nil;restoredDesktop=nil;selected=nil;hasSelection=false;objectCount=0;placing=false;visibility=false;active=false
+        restoredPanel=nil;restoredDesktop=nil;savedLocation=nil;unavailableModels.removeAll();selected=nil;hasSelection=false;objectCount=0;placing=false;visibility=false;active=false
         handGesture.reset();handDragging=nil;motions.removeAll();simulationTime=nil
         if newWorld {
             worldID=UUID();rooms=[SpatialRoom(id:UUID(),name:"Ambiente 1",origin:SpatialArchive.values(matrix_identity_float4x4))]
@@ -775,7 +801,10 @@ enum SpatialTheme: String, CaseIterable {
             objects[id]=root;anchors[id]=anchor;radii[id]=footprint(record.model)
             view.scene.rootNode.addChildNode(root);restored.removeValue(forKey:id);objectCount=objects.count
             if restored.isEmpty { persistenceStatus="Âncoras recuperadas. Aguardando rastreamento estável para exibir." }
-        } catch { persistenceStatus="Modelo salvo indisponível: \(record.model). Dados preservados." }
+        } catch {
+            unavailableModels[id]=record.model;restored.removeValue(forKey:id)
+            persistenceStatus="Modelo salvo indisponível: \(record.model). Dados preservados; ele não bloqueia a tela do PC."
+        }
     }
     func remove(_ anchor: ARAnchor) { planes.removeValue(forKey:anchor.identifier) }
     func setVisible(_ value: Bool) {
@@ -794,6 +823,7 @@ enum SpatialTheme: String, CaseIterable {
         objects.values.forEach { $0.isPaused=paused }
     }
     func stop() {
+        autosave?.cancel();autosave=nil
         stopMoving();onImpact=nil;onAttackRequest=nil
         supportProofs.removeAll()
         player?.stop();player=nil

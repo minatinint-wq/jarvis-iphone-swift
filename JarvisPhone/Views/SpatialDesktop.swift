@@ -69,6 +69,7 @@ struct SpatialDesktopRecord: Codable {
 
     func open(tracking: Bool) {
         guard tracking,let frame=view.session.currentFrame else { status="Espere o rastreamento estabilizar.";return }
+        let bringBack=root != nil && !isFramed
         if root == nil {
             let orientation=view.window?.windowScene?.interfaceOrientation ?? .portrait
             let camera=simd_inverse(frame.camera.viewMatrix(for:orientation))
@@ -84,6 +85,7 @@ struct SpatialDesktopRecord: Codable {
             build(anchor:anchor,scale:0.7);view.session.add(anchor:anchor);onChange?()
         }
         visible=true;setTracking(tracking);status="Conectando à área de trabalho do PC…"
+        if bringBack { recenter() }
     }
 
     private func build(anchor: ARAnchor,scale: Float) {
@@ -336,9 +338,9 @@ struct SpatialDesktopRecord: Codable {
         let anchor=ARAnchor(name:"JarvisDesktop",transform:transform);self.anchor=anchor;view.session.add(anchor:anchor);onChange?()
     }
 
-    func close(recordChange: Bool = true) {
+    func close(recordChange: Bool = true,preserveAnchor:Bool = false) {
         visible=false;setTracking(false)
-        if let anchor { view.session.remove(anchor:anchor) }
+        if !preserveAnchor,let anchor { view.session.remove(anchor:anchor) }
         root?.removeFromParentNode();root=nil;anchor=nil;screen=nil;sequence=0;keyboardVisible=false;focusToken=nil;autoFocusHandled=nil
         if recordChange { onChange?() }
     }

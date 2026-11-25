@@ -198,12 +198,12 @@ enum SpatialPanelGeometry {
         if !good { swipe=SpatialPageSwipe(); if dragging { finishDrag() };handGesture.reset() }
         root?.isHidden = !good || !visible
     }
-    func close(recordChange: Bool = true) {
+    func close(recordChange: Bool = true,preserveAnchor:Bool = false) {
         if recordChange,root != nil { onChange?() }
         contextRevision += 1;navigationContext=nil
         handGesture.reset();swipe=SpatialPageSwipe();dragging=false;hovered=nil
         timeout?.cancel();pending=nil;visible=false;immersive=false;compact=false;radialExpanded=false
-        if let anchor { view.session.remove(anchor:anchor) };anchor=nil
+        if !preserveAnchor,let anchor { view.session.remove(anchor:anchor) };anchor=nil
         root?.removeFromParentNode();root=nil;actions.removeAll()
     }
     private func localHit(_ point:CGPoint)->SIMD2<Float>? {

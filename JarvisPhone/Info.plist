@@ -23,7 +23,7 @@
     <key>NSMicrophoneUsageDescription</key><string>Reconhecer “Oi Jarvis” durante a escuta opcional e transmitir sua fala ao Jarvis no PC quando você usa o botão de conversa.</string>
     <key>NSCameraUsageDescription</key><string>Tirar uma foto para análise pela NVIDIA no seu Jarvis, capturar uma foto ou usar a lanterna.</string>
     <key>NSPhotoLibraryAddUsageDescription</key><string>Salvar em Fotos as imagens que você capturar pelo JARVIS.</string>
-    <key>NSLocationWhenInUseUsageDescription</key><string>Usar sua localização para consultar o tempo na sua região ou abrir o Mapas quando você pedir.</string>
+    <key>NSLocationWhenInUseUsageDescription</key><string>Usar sua localização para consultar o tempo, abrir o Mapas e ajudar a selecionar mapas de realidade aumentada próximos.</string>
     <key>NSRemindersFullAccessUsageDescription</key><string>Salvar os lembretes que você criar pelo JARVIS no app Lembretes.</string>
     <key>UILaunchScreen</key><dict/>
     <key>UIApplicationSceneManifest</key><dict>

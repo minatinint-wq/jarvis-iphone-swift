@@ -6,11 +6,15 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     private var pending: CheckedContinuation<CLLocationCoordinate2D, Error>?
     private var timeout: Task<Void, Never>?
+    private(set) var latestLocation:CLLocation?
 
     override init() {
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+    }
+    init(accuracy:CLLocationAccuracy) {
+        super.init();manager.delegate=self;manager.desiredAccuracy=accuracy
     }
 
     func currentCoordinate() async throws -> CLLocationCoordinate2D {
@@ -57,9 +61,11 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let value = locations.last else { return }
+        guard value.horizontalAccuracy>=0,abs(value.timestamp.timeIntervalSinceNow)<120 else { return }
         let latitude = value.coordinate.latitude
         let longitude = value.coordinate.longitude
         Task { @MainActor [weak self] in
+            self?.latestLocation=value
             self?.finish(.success(CLLocationCoordinate2D(latitude: latitude, longitude: longitude)))
         }
     }

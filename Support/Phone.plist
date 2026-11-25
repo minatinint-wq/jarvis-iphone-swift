@@ -32,7 +32,7 @@
     <key>NSCalendarsFullAccessUsageDescription</key><string>O Jarvis lê o próximo compromisso para avisar quando ele estiver perto.</string>
     <key>NSContactsUsageDescription</key><string>O Jarvis encontra o telefone do contato que você pedir para ligar ou enviar SMS.</string>
     <key>CFBundleVersion</key>
-	<string>35</string>
+	<string>36</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSApplicationQueriesSchemes</key>
@@ -44,7 +44,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Tirar uma foto para análise pela NVIDIA no seu Jarvis, capturar uma foto ou usar a lanterna.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Usar sua localização para consultar o tempo na sua região ou abrir o Mapas quando você pedir.</string>
+	<string>Usar sua localização para consultar o tempo, abrir o Mapas e ajudar a selecionar mapas de realidade aumentada próximos.</string>
 	<key>NSSpeechRecognitionUsageDescription</key><string>Reconhecer “Oi Jarvis” e o pedido seguinte no próprio iPhone quando você ativa a escuta.</string>
     <key>UIBackgroundModes</key><array><string>audio</string></array>
     <key>NSMicrophoneUsageDescription</key>

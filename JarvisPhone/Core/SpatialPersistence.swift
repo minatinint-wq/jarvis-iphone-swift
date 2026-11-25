@@ -1,5 +1,48 @@
 import Foundation
 import ARKit
+import CoreLocation
+
+/// GPS selects a site, never the pose of an object inside a room.
+struct SpatialMapLocation:Codable,Equatable {
+    var latitude:Double
+    var longitude:Double
+    var accuracy:Double
+    var timestamp:Date
+    var valid:Bool { latitude.isFinite && longitude.isFinite && accuracy.isFinite && (-90...90).contains(latitude) && (-180...180).contains(longitude) && (0...5000).contains(accuracy) }
+    func distance(to other:Self)->Double {
+        CLLocation(latitude:latitude,longitude:longitude).distance(from:CLLocation(latitude:other.latitude,longitude:other.longitude))
+    }
+    func separation(from other:Self)->Double? {
+        guard valid,other.valid,accuracy<=100,other.accuracy<=100 else { return nil }
+        return max(0,distance(to:other)-accuracy-other.accuracy)
+    }
+}
+
+struct SpatialMapSummary:Codable {
+    var world:UUID
+    var saved:Date
+    var location:SpatialMapLocation?
+}
+
+/// A connected desktop is an active tool, including when an older map predates it.
+struct SpatialDesktopResumeIntent {
+    private(set) var pending=false
+    mutating func prepare(wasOpen:Bool,savedWindow:Bool) { pending=wasOpen && !savedWindow }
+    mutating func consume(cameraStable:Bool,savedWindowPending:Bool)->Bool {
+        guard pending,cameraStable,!savedWindowPending else { return false }
+        pending=false;return true
+    }
+}
+
+struct SpatialLocalizationReadiness {
+    var cameraStable:Bool
+    var pendingObjects:Int
+    var pendingPanel:Bool
+    var pendingDesktop:Bool
+    var localized:Bool { cameraStable && pendingObjects == 0 && !pendingPanel && !pendingDesktop }
+    var desktopReady:Bool { cameraStable && !pendingDesktop }
+    var panelReady:Bool { cameraStable && !pendingPanel }
+}
 
 struct SpatialRoom: Codable, Equatable, Identifiable {
     var id: UUID
@@ -37,6 +80,7 @@ struct SpatialArchive: Codable {
     var desktop: SpatialDesktopRecord? = nil
     var map: Data
     var saved: Date
+    var location:SpatialMapLocation? = nil
 
     func validate() throws {
         guard version == 1, !rooms.isEmpty, rooms.count <= 32, objects.count <= 6,
@@ -61,6 +105,7 @@ struct SpatialArchive: Codable {
         if let desktop {
             guard desktop.scale.isFinite,(0.25...2).contains(desktop.scale) else { throw CocoaError(.fileReadCorruptFile) }
         }
+        if let location,!location.valid { throw CocoaError(.fileReadCorruptFile) }
     }
 
     static func values(_ m: simd_float4x4) -> [Float] {
@@ -99,6 +144,16 @@ struct SpatialArchive: Codable {
         return entries.filter { $0.lastPathComponent == "home.json" || ($0.lastPathComponent.hasPrefix("home-") && $0.pathExtension == "json") }
             .sorted { ((try? $0.resourceValues(forKeys:[.contentModificationDateKey]).contentModificationDate) ?? .distantPast) > ((try? $1.resourceValues(forKeys:[.contentModificationDateKey]).contentModificationDate) ?? .distantPast) }
     }
+    static func savedMaps(near location:SpatialMapLocation?,candidates:[URL]? = nil)->[URL] {
+        let files=candidates ?? savedMaps()
+        guard let location else { return files }
+        let ranked=files.enumerated().map { index,url -> (URL,Double,Int) in
+            let metadata=try? JSONDecoder().decode(SpatialMapSummary.self,from:Data(contentsOf:url.appendingPathExtension("mapinfo")))
+            let gap=metadata?.location.flatMap { location.separation(from:$0) }
+            return (url,gap ?? .infinity,index)
+        }
+        return ranked.sorted { $0.1 == $1.1 ? $0.2<$1.2 : $0.1<$1.1 }.map{$0.0}
+    }
 
     /// Switch only after validating the chosen archive; serialize calls with saves.
     /// Keep the previous map as an individually restorable file.
@@ -111,6 +166,8 @@ struct SpatialArchive: Codable {
         if source != file,FileManager.default.fileExists(atPath:file.path) {
             let backup=file.deletingLastPathComponent().appendingPathComponent("home-"+UUID().uuidString+".json")
             try FileManager.default.moveItem(at:file,to:backup)
+            let info=file.appendingPathExtension("mapinfo")
+            if FileManager.default.fileExists(atPath:info.path) { try? FileManager.default.moveItem(at:info,to:backup.appendingPathExtension("mapinfo")) }
         }
         if source != file,let archive { try archive.write(to:file) }
     }
@@ -119,6 +176,8 @@ struct SpatialArchive: Codable {
         try validate()
         try FileManager.default.createDirectory(at:file.deletingLastPathComponent(),withIntermediateDirectories:true)
         try JSONEncoder().encode(self).write(to:file,options:[.atomic,.completeFileProtectionUntilFirstUserAuthentication])
+        let metadata=SpatialMapSummary(world:world,saved:saved,location:location)
+        try? JSONEncoder().encode(metadata).write(to:file.appendingPathExtension("mapinfo"),options:[.atomic,.completeFileProtectionUntilFirstUserAuthentication])
         var directory = file.deletingLastPathComponent()
         var values = URLResourceValues(); values.isExcludedFromBackup = true
         try directory.setResourceValues(values)

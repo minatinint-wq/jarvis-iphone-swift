@@ -9,6 +9,70 @@ import ARKit
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    func testDesktopSurvivesLoadingAMapThatPredatesTheWindow() {
+        var intent=SpatialDesktopResumeIntent()
+        intent.prepare(wasOpen:true,savedWindow:false)
+        XCTAssertFalse(intent.consume(cameraStable:false,savedWindowPending:false))
+        XCTAssertTrue(intent.pending)
+        XCTAssertTrue(intent.consume(cameraStable:true,savedWindowPending:false))
+        XCTAssertFalse(intent.consume(cameraStable:true,savedWindowPending:false))
+        intent.prepare(wasOpen:true,savedWindow:true)
+        XCTAssertFalse(intent.consume(cameraStable:true,savedWindowPending:true),"A saved physical anchor must win over a new camera-relative window")
+        intent.prepare(wasOpen:false,savedWindow:false)
+        XCTAssertFalse(intent.consume(cameraStable:true,savedWindowPending:false))
+    }
+    func testCameraTrackingDoesNotClaimTheSavedMapIsLocalized() {
+        var state=SpatialLocalizationReadiness(cameraStable:true,pendingObjects:0,pendingPanel:false,pendingDesktop:true)
+        XCTAssertFalse(state.localized);XCTAssertFalse(state.desktopReady)
+        state.pendingDesktop=false;state.pendingObjects=1
+        XCTAssertFalse(state.localized);XCTAssertTrue(state.desktopReady,"An unrelated pending object must not hide an already restored desktop")
+        state.pendingObjects=0;XCTAssertTrue(state.localized)
+        state.cameraStable=false;XCTAssertFalse(state.localized);XCTAssertFalse(state.desktopReady)
+    }
+    @MainActor func testShutdownPreservesWindowAnchorsForThePendingWorldMapSnapshot() {
+        final class RecordingSession:ARSession {
+            var removed:[UUID]=[]
+            override func remove(anchor:ARAnchor) { removed.append(anchor.identifier) }
+        }
+        let view=ARSCNView(frame:CGRect(x:0,y:0,width:600,height:900)),session=RecordingSession()
+        view.scene=SCNScene();view.session=session
+        let desktop=SpatialDesktop(view:view);desktop.preview()
+        XCTAssertNotNil(desktop.snapshot());desktop.close(recordChange:false,preserveAnchor:true)
+        XCTAssertTrue(session.removed.isEmpty)
+        desktop.preview();desktop.close();XCTAssertEqual(session.removed.count,1)
+        let panel=SpatialPanel(view:view),anchor=ARAnchor(name:"JarvisControlPanel",transform:matrix_identity_float4x4)
+        panel.restore(SpatialPanelRecord(anchor:anchor.identifier,module:"dashboard",scale:0.5),anchor:anchor)
+        panel.close(recordChange:false,preserveAnchor:true);XCTAssertEqual(session.removed.count,1)
+    }
+    func testGPSRanksNearbyMapsWithoutPretendingToProvideAnIndoorPose() throws {
+        let directory=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
+        defer { try? FileManager.default.removeItem(at:directory) }
+        let current=SpatialMapLocation(latitude:0,longitude:0,accuracy:10,timestamp:Date())
+        let near=SpatialMapLocation(latitude:0,longitude:0.0001,accuracy:10,timestamp:Date())
+        let far=SpatialMapLocation(latitude:1,longitude:1,accuracy:10,timestamp:Date())
+        let urls=[directory.appendingPathComponent("far.json"),directory.appendingPathComponent("near.json")]
+        for (url,location) in zip(urls,[far,near]) {
+            try JSONEncoder().encode(SpatialMapSummary(world:UUID(),saved:Date(),location:location)).write(to:url.appendingPathExtension("mapinfo"))
+        }
+        XCTAssertEqual(SpatialArchive.savedMaps(near:current,candidates:urls),[urls[1],urls[0]])
+        var uncertain=current;uncertain.accuracy=1000
+        XCTAssertEqual(SpatialArchive.savedMaps(near:uncertain,candidates:urls),urls)
+        XCTAssertEqual(current.separation(from:near),0)
+    }
+    @MainActor func testUnavailableModelDoesNotBlockTheRestoredDesktop() {
+        let controller=WallARController(),id=UUID(),anchor=ARAnchor(name:"JarvisDesktop",transform:matrix_identity_float4x4)
+        let missing=ARAnchor(name:"JarvisObject:"+id.uuidString,transform:matrix_identity_float4x4)
+        controller.spatial.queueRestoration([SpatialObjectRecord(id:id,model:"not_in_the_asset_catalog",room:UUID(),anchor:missing.identifier,localTransform:SpatialArchive.values(matrix_identity_float4x4),scale:1,updated:Date())])
+        controller.spatial.restoredDesktop=SpatialDesktopRecord(anchor:anchor.identifier,scale:0.7)
+        XCTAssertTrue(controller.spatial.recovering)
+        controller.receiveTrackedAnchors([missing,anchor])
+        XCTAssertNotNil(controller.desktop.snapshot())
+        XCTAssertFalse(controller.spatial.recovering)
+        XCTAssertTrue(controller.spatial.readiness(cameraStable:true).desktopReady)
+        XCTAssertEqual(controller.spatial.unavailableModels[id],"not_in_the_asset_catalog")
+        controller.stop()
+    }
     func testProjectedTypingKeepsItsShortDwellAfterResetAndScrollingHasNoClickEvent() {
         var key=SpatialGesture(dwellDuration:0.55)
         var typed:[SpatialGesture.Event]=[]
