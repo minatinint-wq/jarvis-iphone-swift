@@ -198,6 +198,7 @@ final class PhoneCommandTests: XCTestCase {
         controller.stop()
     }
     @MainActor func testHoloVideoLayersDisplayBothEyesWithoutWaitingForWorldTracking() async throws {
+        guard #available(iOS 17.4,*) else { throw XCTSkip("Video presentation readiness is exposed from iOS 17.4") }
         let controller=WallARController(),host=SpatialHeadsetSurface(controller:controller)
         let window=UIWindow(frame:UIScreen.main.bounds),root=UIViewController()
         window.rootViewController=root;window.makeKeyAndVisible()
