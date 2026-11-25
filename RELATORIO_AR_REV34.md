@@ -1,39 +1,39 @@
-# RevisÃ£o 34 â€” Holo Comandos e controle do PC em AR/VR
+# Revisão 34 — Holo Comandos e controle do PC em AR/VR
 
-Fonte do aplicativo: eb45b3eb7839e4e4001e4bd35da5f698fd3b81e4. Pacote arm64 e extensÃ£o: execuÃ§Ã£o 45514913511 aprovada. IPA original validado; pacote pessoal preserva 21 recursos visuais, nove mapas e 362 arquivos espaciais conferidos por hash. SHA-256 pessoal: 253015b7200a3220a37de59d1a20c65d5217a4f47c1f9cc6c78f1773e29d3635.
+Fonte do aplicativo: eb45b3eb7839e4e4001e4bd35da5f698fd3b81e4. Pacote arm64 e extensão: execução 45514913511 aprovada. IPA original validado; pacote pessoal preserva 21 recursos visuais, nove mapas e 362 arquivos espaciais conferidos por hash. SHA-256 pessoal: 253015b7200a3220a37de59d1a20c65d5217a4f47c1f9cc6c78f1773e29d3635.
 
-## VÃ­deo do visor
+## Vídeo do visor
 
-ReferÃªncia local inspecionada: D:/iPhone-Apps/HoloComandos-2026-11-20/Sources/HoloComandos/StereoRendererView.swift. O projeto original foi preservado.
+Referência local inspecionada: D:/iPhone-Apps/HoloComandos-2026-11-20/Sources/HoloComandos/StereoRendererView.swift. O projeto original foi preservado.
 
-O Jarvis agora usa dois contÃªineres fÃ­sicos opacos e recortados, cada um com uma AVSampleBufferDisplayLayer prÃ³pria, como no Holo Comandos. Um Ãºnico ARFrame alimenta as duas camadas. NÃ£o hÃ¡ uma segunda captura da cÃ¢mera nem uma segunda ARSession. A cÃ¢mera continua independente da recuperaÃ§Ã£o do mapa ou da aquisiÃ§Ã£o de drawables do cenÃ¡rio.
+O Jarvis agora usa dois contêineres físicos opacos e recortados, cada um com uma AVSampleBufferDisplayLayer própria, como no Holo Comandos. Um único ARFrame alimenta as duas camadas. Não há uma segunda captura da câmera nem uma segunda ARSession. A câmera continua independente da recuperação do mapa ou da aquisição de drawables do cenário.
 
-O cenÃ¡rio Ã© renderizado uma vez e copiado pela GPU para duas superfÃ­cies transparentes sobre o vÃ­deo. Ossos e cursor continuam compartilhando o mesmo processamento Vision. A faixa central Ã© preta. O cabeÃ§alho Ãºnico e a mira central foram retirados do modo Ã³culos. A saÃ­da restaura a visualizaÃ§Ã£o normal e mantÃ©m a sessÃ£o e os dados do mapa.
+O cenário é renderizado uma vez e copiado pela GPU para duas superfícies transparentes sobre o vídeo. Ossos e cursor continuam compartilhando o mesmo processamento Vision. A faixa central é preta. O cabeçalho único e a mira central foram retirados do modo óculos. A saída restaura a visualização normal e mantém a sessão e os dados do mapa.
 
-O vÃ­deo Ã© monocular duplicado. NÃ£o foram implementadas disparidade binocular, correÃ§Ã£o de distorÃ§Ã£o ou calibraÃ§Ã£o individual das lentes do VR Box. A aparÃªncia e a estabilidade precisam de teste no aparelho e no suporte.
+O vídeo é monocular duplicado. Não foram implementadas disparidade binocular, correção de distorção ou calibração individual das lentes do VR Box. A aparência e a estabilidade precisam de teste no aparelho e no suporte.
 
 ## Entrada do computador
 
-Indicador parado por dois segundos clica; deslocar o indicador reinicia o tempo. Indicador e mÃ©dio estendidos rolam por eventos de roda do mouse, sem clique. PinÃ§a de uma mÃ£o move a janela; duas pinÃ§as redimensionam pela separaÃ§Ã£o entre as mÃ£os. Dois dedos na tela fazem zoom no modo sem visor.
+Indicador parado por dois segundos clica; deslocar o indicador reinicia o tempo. Indicador e médio estendidos rolam por eventos de roda do mouse, sem clique. Pinça de uma mão move a janela; duas pinças redimensionam pela separação entre as mãos. Dois dedos na tela fazem zoom no modo sem visor.
 
-O teclado QWERTY Ã© uma parte projetada da janela do PC, com Shift, nÃºmeros, sÃ­mbolos, Tab, espaÃ§o, apagar e Enter. O indicador permanece cerca de 0,55 s na tecla. TrÃªs dedos estendidos ou o botÃ£o do cabeÃ§alho abrem e recolhem o teclado. O texto entra numa fila; erros descartam aÃ§Ãµes pendentes para evitar repetiÃ§Ã£o incerta.
+O teclado QWERTY é uma parte projetada da janela do PC, com Shift, números, símbolos, Tab, espaço, apagar e Enter. O indicador permanece cerca de 0,55 s na tecla. Três dedos estendidos ou o botão do cabeçalho abrem e recolhem o teclado. O texto entra numa fila; erros descartam ações pendentes para evitar repetição incerta.
 
-A ponte consulta somente metadados de foco e editabilidade do Windows para abrir o teclado automaticamente apÃ³s clicar num campo compatÃ­vel. NÃ£o lÃª conteÃºdo, nomes ou senhas do campo. Aplicativos que nÃ£o expÃµem editabilidade usam abertura manual. As mudanÃ§as e sete testes Python da ponte estÃ£o em bridge-updates/vr34; o helper ativo usa o arquivo fonte atualizado ao iniciar uma nova sessÃ£o.
+A ponte consulta somente metadados de foco e editabilidade do Windows para abrir o teclado automaticamente após clicar num campo compatível. Não lê conteúdo, nomes ou senhas do campo. Aplicativos que não expõem editabilidade usam abertura manual. As mudanças e sete testes Python da ponte estão em bridge-updates/vr34; o helper ativo usa o arquivo fonte atualizado ao iniciar uma nova sessão.
 
-## ValidaÃ§Ã£o
+## Validação
 
-A execuÃ§Ã£o 45512395862 validou nove casos dos controles e gerou a captura do teclado projetado, que foi aberta e inspecionada. A execuÃ§Ã£o inicial do teste novo, 45514923764, falhou ao compilar a checagem isReadyForDisplay por falta da guarda de iOS 17.4; nenhum teste de apresentaÃ§Ã£o rodou nessa execuÃ§Ã£o.
+A execução 45512395862 validou nove casos dos controles e gerou a captura do teclado projetado, que foi aberta e inspecionada. A execução inicial do teste novo, 45514923764, falhou ao compilar a checagem isReadyForDisplay por falta da guarda de iOS 17.4; nenhum teste de apresentação rodou nessa execução.
 
-A correÃ§Ã£o estÃ¡ em 8d1bd7f0f24d90d19de296e5f3dab05a38f01f70 e nÃ£o altera JarvisPhone, Support ou WakeWidget em relaÃ§Ã£o ao pacote eb45b3e. Na execuÃ§Ã£o 45516197127 passaram sete casos funcionais de sessÃ£o, comandos, teclado, scroll, clique e escala. O caso novo chegou Ã s duas camadas prontas para apresentar, mas falhou em seguida porque XCUIScreen nÃ£o Ã© autorizado num teste unitÃ¡rio hospedado. A execuÃ§Ã£o ficou vermelha; nÃ£o Ã© apresentada como oito testes aprovados. A captura 1Ã—1 produzida nessa falha foi descartada como evidÃªncia.
+A correção está em 8d1bd7f0f24d90d19de296e5f3dab05a38f01f70 e não altera JarvisPhone, Support ou WakeWidget em relação ao pacote eb45b3e. Na execução 45516197127 passaram sete casos funcionais de sessão, comandos, teclado, scroll, clique e escala. O caso novo chegou às duas camadas prontas para apresentar, mas falhou em seguida porque XCUIScreen não é autorizado num teste unitário hospedado. A execução ficou vermelha; não é apresentada como oito testes aprovados. A captura 1×1 produzida nessa falha foi descartada como evidência.
 
-A verificaÃ§Ã£o de apresentaÃ§Ã£o foi entÃ£o executada em um aplicativo mÃ­nimo para iOS, extraindo da fonte as classes de vÃ­deo e o mÃ©todo real displayCamera, sem recompilar ou alterar o app distribuÃ­do. A execuÃ§Ã£o 45518048372 foi aprovada: cada camada apresentou 40 quadros, os buffers efetivamente exibidos eram idÃªnticos e os dois contÃªineres tinham recorte ativo. O prÃ³prio simctl capturou a tela desse aplicativo; a imagem foi aberta e inspecionada, mostrando duas sequÃªncias completas de quatro cores separadas por faixa preta. Ã‰ um teste de vÃ­deo sintÃ©tico, nÃ£o uma captura do quarto nem prova da composiÃ§Ã£o completa de cÃ¢mera, mÃ£os e mundo no iPhone fÃ­sico.
+A verificação de apresentação foi então executada em um aplicativo mínimo para iOS, extraindo da fonte as classes de vídeo e o método real displayCamera, sem recompilar ou alterar o app distribuído. A execução 45518048372 foi aprovada: cada camada apresentou 40 quadros, os buffers efetivamente exibidos eram idênticos e os dois contêineres tinham recorte ativo. O próprio simctl capturou a tela desse aplicativo; a imagem foi aberta e inspecionada, mostrando duas sequências completas de quatro cores separadas por faixa preta. É um teste de vídeo sintético, não uma captura do quarto nem prova da composição completa de câmera, mãos e mundo no iPhone físico.
 
-O teste unitÃ¡rio foi corrigido para comparar displayedPixelBuffer e anexar imagens dos quadros exibidos, sem solicitar privilÃ©gios de UI testing. Essa alteraÃ§Ã£o dos testes nÃ£o exigiu gerar outro pacote do aplicativo. O probe fica em scripts/video-presentation-probe.py e Ã© acionado pelo input video_probe de xtool-phone.yml.
+O teste unitário foi corrigido para comparar displayedPixelBuffer e anexar imagens dos quadros exibidos, sem solicitar privilégios de UI testing. Essa alteração dos testes não exigiu gerar outro pacote do aplicativo. O probe fica em scripts/video-presentation-probe.py e é acionado pelo input video_probe de xtool-phone.yml.
 
-InstalaÃ§Ã£o da revisÃ£o 34 e aceitaÃ§Ã£o fÃ­sica ainda pendentes. O iOS confirmou anteriormente a revisÃ£o 33; sua cÃ¢mera ficou contÃ­nua e esse resultado foi registrado no relatÃ³rio anterior.
+Instalação concluída no iPhone 13 Pro Max e verificada pelo serviço do iOS: JARVIS 1.2.0 build 34 / VERIFIED_JARVIS_BUILD=34. O pacote foi assinado e provisionado pelo xtool; a consulta de versão ocorreu após a instalação. A aceitação física da divisão da câmera e dos gestos permanece pendente do teste do usuário. O resultado de câmera contínua da revisão 33 foi preservado no relatório anterior.
 
 ## Escopo restante
 
-NÃ£o foram implementados nesta entrega o escaneamento RoomPlan da casa nem geraÃ§Ã£o de mundos com Google Genie. NÃ£o houve chamada paga ou envio de captura do ambiente ao Google. NÃ£o foi comprovada equivalÃªncia de rastreamento com Meta Quest ou Apple Vision.
+Não foram implementados nesta entrega o escaneamento RoomPlan da casa nem geração de mundos com Google Genie. Não houve chamada paga ou envio de captura do ambiente ao Google. Não foi comprovada equivalência de rastreamento com Meta Quest ou Apple Vision.
 
-ReferÃªncia de exibiÃ§Ã£o: https://developer.apple.com/documentation/avfoundation/avsamplebufferdisplaylayer e https://developer.apple.com/documentation/coremedia/kcmsampleattachmentkey_displayimmediately.
+Referência de exibição: https://developer.apple.com/documentation/avfoundation/avsamplebufferdisplaylayer e https://developer.apple.com/documentation/coremedia/kcmsampleattachmentkey_displayimmediately.
