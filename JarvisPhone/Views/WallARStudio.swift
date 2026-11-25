@@ -377,7 +377,7 @@ enum WallMeasureMode { case none, outline, opening }
         guard ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification) else {
             notice="Este teste automático precisa do LiDAR e de classificação da malha.";feedback(notice);return
         }
-        roomWall.cancelPaint();liveWall.arm(style);measureMode = .none
+        roomWall.cancelMatching();roomWall.cancelPaint();liveWall.arm(style);measureMode = .none
         scanTask?.cancel();scanning=true;run();feedback(liveWall.status)
         scanTask=Task { [weak self] in
             try? await Task.sleep(for:.seconds(8))
@@ -396,6 +396,10 @@ enum WallMeasureMode { case none, outline, opening }
         if reading {
             scanTask?.cancel();scanTask=nil;scanning=false;run()
         }
+    }
+    private func endManualWallInput() {
+        if roomWall.matching { cancelRoomMatching() }
+        roomWall.cancelPaint();roomSetupPresented=false
     }
     func cancelRoomMatching() {
         roomWall.cancelMatching();roomWall.cancelPaint()
@@ -606,6 +610,7 @@ enum WallMeasureMode { case none, outline, opening }
         switch command {
         case .effects: panel.openEffectsRadial(tracking:interactionReady)
         case .roomSetup:
+            cancelLiveWallCapture();roomWall.cancelPaint()
             if roomWall.prepare() { roomWall.resetSource();roomSetupPresented=true }
             else { notice=roomWall.status;feedback(notice) }
         case .roomWall(let style):
@@ -648,10 +653,10 @@ enum WallMeasureMode { case none, outline, opening }
         case .point: addPoint()
         case .opening: beginOpening()
         case .approve: confirm()
-        case .theme(let theme): measureMode = .none;cancelLiveWallCapture();spatial.setTheme(theme);prepareObjectPlacement()
+        case .theme(let theme): measureMode = .none;endManualWallInput();cancelLiveWallCapture();spatial.setTheme(theme);prepareObjectPlacement()
         case .interact: spatial.interact()
         case .removeObject: spatial.removeSelected()
-        case .model(let id): measureMode = .none;cancelLiveWallCapture();spatial.setModel(id);prepareObjectPlacement()
+        case .model(let id): measureMode = .none;endManualWallInput();cancelLiveWallCapture();spatial.setModel(id);prepareObjectPlacement()
         case .resizeObject(let factor): spatial.resizeSelected(factor)
         case .moveObject(let x,let z): spatial.moveSelected(x:x,z:z)
         case .saveMap: spatial.saveMap()

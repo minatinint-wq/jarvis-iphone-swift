@@ -25,13 +25,14 @@ enum LiveWallRegion {
     private var anchor:ARAnchor?
     private var depthNodes:[SCNNode]=[]
     private var style="white"
+    private var trackingGood=false
     private var gesture=SpatialAimSelection()
     private var ticket=UUID()
     var onFeedback:((String)->Void)?
     init(view:ARSCNView) { self.view=view }
     func arm(_ style:String) {
         self.style=style=="brick" ? "brick" : "white";armed=true;capturing=true;busy=false
-        ticket=UUID();meshes=[];gesture.reset()
+        ticket=UUID();meshes=[:];gesture.reset()
         status="Olhe devagar para a parede. Leitura automática por oito segundos; depois aponte por dois segundos."
     }
     func remember(_ mesh:ARMeshAnchor) {
@@ -86,9 +87,10 @@ enum LiveWallRegion {
                 patch.materials=[WallMaterials.effect(self.style)]
                 let node=SCNNode(geometry:patch);node.simdTransform=pose;node.simdPosition+=normal*0.012
                 let anchor=ARAnchor(name:"JarvisLiveWall",transform:node.simdTransform)
-                node.categoryBitMask=1;self.root=node;self.anchor=anchor
+                node.categoryBitMask=1;node.isHidden = !self.trackingGood;self.root=node;self.anchor=anchor
                 self.view.scene.rootNode.addChildNode(node);self.view.session.add(anchor:anchor)
-                self.depthNodes=depths;for depth in depths { self.view.scene.rootNode.addChildNode(depth) }
+                self.depthNodes=depths
+                for depth in depths { depth.simdTransform=simd_inverse(node.simdTransform)*depth.simdTransform;node.addChildNode(depth) }
                 self.armed=false;self.status="Efeito fixado. Faces classificadas como portas, janelas ou incertas ficaram fora."
                 self.onFeedback?(self.status)
             }
@@ -106,8 +108,8 @@ enum LiveWallRegion {
                 guard kind==ARMeshClassification.wall.rawValue else { continue }
                 var world:[SIMD3<Float>]=[]
                 for corner in 0..<3 {
-                    let ptr=g.faces.buffer.contents().advanced(by:(face*3+corner)*g.faces.bytesPerIndex)
-                    let i=g.faces.bytesPerIndex==2 ? Int(ptr.load(as:UInt16.self)) : Int(ptr.load(as:UInt32.self))
+                    let indexPointer=g.faces.buffer.contents().advanced(by:(face*3+corner)*g.faces.bytesPerIndex)
+                    let i=g.faces.bytesPerIndex==2 ? Int(indexPointer.load(as:UInt16.self)) : Int(indexPointer.load(as:UInt32.self))
                     guard i<g.vertices.count else { continue }
                     let ptr=g.vertices.buffer.contents().advanced(by:g.vertices.offset+i*g.vertices.stride)
                     let p=anchor.transform*SIMD4(ptr.load(as:Float.self),ptr.advanced(by:4).load(as:Float.self),ptr.advanced(by:8).load(as:Float.self),1)
@@ -122,13 +124,13 @@ enum LiveWallRegion {
         return SCNGeometry(sources:[SCNGeometrySource(vertices:vertices),SCNGeometrySource(normals:Array(repeating:SCNVector3(0,0,1),count:vertices.count)),SCNGeometrySource(textureCoordinates:uv)],elements:[SCNGeometryElement(indices:Array(0..<Int32(vertices.count)),primitiveType:.triangles)])
     }
     func update(_ updated:ARAnchor) { if updated.identifier==anchor?.identifier { anchor=updated;root?.simdTransform=updated.transform } }
-    func setTracking(_ good:Bool) { root?.isHidden = !good;for n in depthNodes { n.isHidden = !good } }
+    func setTracking(_ good:Bool) { guard trackingGood != good else { return };trackingGood=good;root?.isHidden = !good }
     func cancel() { ticket=UUID();armed=false;capturing=false;busy=false;gesture.reset() }
     func removePaint() {
         if let anchor { view.session.remove(anchor:anchor) };anchor=nil
         root?.removeFromParentNode();root=nil;depthNodes.forEach{$0.removeFromParentNode()};depthNodes=[]
     }
-    func clear() { cancel();removePaint();meshes=[] }
+    func clear() { cancel();removePaint();meshes=[:] }
 }
 
 struct LiveWallPrompt:View {

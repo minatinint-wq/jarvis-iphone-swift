@@ -575,9 +575,9 @@ enum SpatialPanelGeometry {
                     let angle=Float.pi/2-Float(i)*Float.pi/3
                     let start=CGFloat(angle)-CGFloat.pi/6+0.025,end=CGFloat(angle)+CGFloat.pi/6-0.025
                     let path=UIBezierPath();path.flatness=0.001;path.move(to:CGPoint(x:cos(start)*0.285,y:sin(start)*0.285))
-                    path.addArc(withCenter:.zero,radius:0.285,startAngle:start,endAngle:end,clockwise:true)
+                    for step in 1...20 { let a=start+(end-start)*CGFloat(step)/20;path.addLine(to:CGPoint(x:cos(a)*0.285,y:sin(a)*0.285)) }
                     path.addLine(to:CGPoint(x:cos(end)*0.115,y:sin(end)*0.115))
-                    path.addArc(withCenter:.zero,radius:0.115,startAngle:end,endAngle:start,clockwise:false);path.close()
+                    for step in 1...20 { let a=end+(start-end)*CGFloat(step)/20;path.addLine(to:CGPoint(x:cos(a)*0.115,y:sin(a)*0.115)) };path.close()
                     let sector=SCNNode(geometry:SCNShape(path:path,extrusionDepth:0.001))
                     sector.name="radial-sector:\(i)";sector.categoryBitMask=4;sector.position.z=0.006;sector.renderingOrder=100
                     let material=SCNMaterial();material.diffuse.contents=color;material.emission.contents=UIColor(red:0,green:0.03,blue:0.04,alpha:1)
