@@ -833,8 +833,8 @@ private struct WallCameraView: UIViewRepresentable {
     @State private var confirmAction: PhoneAction?
     var body: some View {
         ZStack {
-            WallCameraView(controller:controller).ignoresSafeArea(edges:controller.headset || immersive ? .all : .bottom).allowsHitTesting(webModule == nil && !controller.recoveryBusy)
-            if !immersive && !panelVisible && (!controller.selected || controller.measureMode != .none) {
+            WallCameraView(controller:controller).frame(maxWidth:.infinity,maxHeight:.infinity).ignoresSafeArea(edges:controller.headset || immersive ? .all : .bottom).allowsHitTesting(webModule == nil && !controller.recoveryBusy)
+            if !controller.headset && !immersive && !panelVisible && (!controller.selected || controller.measureMode != .none) {
                 Image(systemName:"plus").font(.title.weight(.ultraLight)).foregroundStyle(.white)
                     .shadow(color:.black,radius:2).allowsHitTesting(false)
             }
@@ -843,6 +843,7 @@ private struct WallCameraView: UIViewRepresentable {
             } else if !controller.headset && !immersive {
             VStack(spacing:10) {
                 HStack {
+                    Button { model.studioMode=nil } label: { Image(systemName:"xmark") }.accessibilityLabel("Fechar Espaço AR")
                     Label(controller.tracking ? "POSIÇÃO ESTÁVEL" : "MAPEANDO",systemImage:controller.tracking ? "viewfinder" : "viewfinder.circle")
                     Spacer()
                     Button { controller.panel.open(.dashboard,tracking:controller.tracking) } label: { Image(systemName:"square.grid.2x2") }

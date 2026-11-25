@@ -3,6 +3,8 @@ import ARKit
 import SceneKit
 import MetalKit
 import CoreVideo
+import AVFoundation
+import CoreMedia
 
 /// Each eye receives the entire same camera + world composite, never half of it.
 /// This remains monoscopic passthrough; optical lens calibration is separate.
@@ -106,6 +108,8 @@ final class SpatialEyeCompositor {
     private weak var controller:WallARController?
     private let primary:ARSCNView
     private(set) var output:SpatialMetalSurface?
+    private(set) var eyes:[SpatialHeadsetEye]=[]
+    private let stereoHost=UIView()
     private var worker:SpatialHeadsetWorker?
     private let renderQueue=DispatchQueue(label:"jarvis.vr.render",qos:.userInteractive)
     private let leftOverlay=UIView(),rightOverlay=UIView()
@@ -123,6 +127,8 @@ final class SpatialEyeCompositor {
     init(controller:WallARController) {
         self.controller=controller;primary=controller.view
         super.init(frame:.zero);backgroundColor = .black;clipsToBounds=true;addSubview(primary)
+        primary.clipsToBounds=true
+        stereoHost.backgroundColor = .black;stereoHost.clipsToBounds=true
         inputCamera.camera=SCNCamera();inputCamera.camera?.categoryBitMask=0
         leftOverlay.isUserInteractionEnabled=false;rightOverlay.isUserInteractionEnabled=false
         leftOverlay.clipsToBounds=true;rightOverlay.clipsToBounds=true
@@ -136,18 +142,19 @@ final class SpatialEyeCompositor {
             do {
                 guard let device=MTLCreateSystemDefaultDevice() else { throw CocoaError(.coderInvalidValue) }
                 let compositor=try SpatialEyeCompositor(device:device)
-                let output=SpatialMetalSurface(frame:bounds);let layer=output.metalLayer
-                layer.device=device;layer.pixelFormat = .bgra8Unorm;layer.framebufferOnly=true
-                layer.maximumDrawableCount=2;layer.allowsNextDrawableTimeout=true
+                let eyes=[SpatialHeadsetEye(device:device),SpatialHeadsetEye(device:device)]
+                self.eyes=eyes
                 originalCamera=primary.pointOfView;originalBackground=primary.scene.background.contents;originalDelegate=primary.delegate
                 compositor.renderer.delegate=originalDelegate
-                worker=SpatialHeadsetWorker(compositor:compositor,layer:layer,scene:primary.scene)
-                self.output=output;self.headset=true;lastPresented = -.infinity
+                worker=SpatialHeadsetWorker(compositor:compositor,layers:eyes.map{$0.world.metalLayer},scene:primary.scene)
+                self.output=eyes[0].world;self.headset=true;lastPresented = -.infinity
                 // Keep the ARKit view alive underneath. It renders no world
                 // geometry; the compositor owns its own independent camera.
                 primary.isHidden=false;primary.isPlaying=controller?.videoRunning == true;primary.rendersContinuously=primary.isPlaying
                 primary.pointOfView=inputCamera;primary.delegate=nil
-                addSubview(output);addSubview(leftOverlay);addSubview(rightOverlay)
+                addSubview(stereoHost)
+                for eye in eyes { stereoHost.addSubview(eye) }
+                eyes[0].addSubview(leftOverlay);eyes[1].addSubview(rightOverlay)
                 controller?.hands.presentOverlay(in:leftOverlay);controller?.hands.mirrorOverlay(in:rightOverlay)
                 addGestureRecognizer(UITapGestureRecognizer(target:self,action:#selector(tapHeadset(_:))))
             } catch {
@@ -157,7 +164,9 @@ final class SpatialEyeCompositor {
         } else {
             self.headset=false
             controller?.hands.mirrorOverlay(in:nil);controller?.hands.presentOverlay(in:nil)
-            leftOverlay.removeFromSuperview();rightOverlay.removeFromSuperview();output?.removeFromSuperview();output=nil;worker=nil
+            leftOverlay.removeFromSuperview();rightOverlay.removeFromSuperview()
+            for eye in eyes { eye.video.sampleBufferRenderer.flush(removingDisplayedImage:true,completionHandler:nil);eye.removeFromSuperview() }
+            stereoHost.removeFromSuperview();eyes=[];output=nil;worker=nil
             primary.pointOfView=originalCamera;primary.scene.background.contents=originalBackground;primary.delegate=originalDelegate
             originalCamera=nil;originalBackground=nil;originalDelegate=nil
             primary.isHidden=false;primary.isPlaying=controller?.videoRunning == true;primary.rendersContinuously=primary.isPlaying
@@ -169,13 +178,17 @@ final class SpatialEyeCompositor {
         super.layoutSubviews()
         let eyes=eyeFrames
         primary.frame=headset ? eyes[0] : bounds
-        output?.frame=bounds;leftOverlay.frame=eyes[0];rightOverlay.frame=eyes[1]
-        if let output { output.metalLayer.drawableSize=CGSize(width:bounds.width*output.contentScaleFactor,height:bounds.height*output.contentScaleFactor) }
+        stereoHost.frame=bounds
+        for (eye,frame) in zip(self.eyes,eyes) { eye.frame=frame;eye.layoutIfNeeded() }
+        leftOverlay.frame=CGRect(origin:.zero,size:eyes[0].size);rightOverlay.frame=CGRect(origin:.zero,size:eyes[1].size)
         if viewport != primary.bounds.size { viewport=primary.bounds.size;controller?.hands.reset() }
     }
     private func render(_ frame:ARFrame) {
-        guard headset,controller?.videoRunning == true,let output,let worker,bounds.width>0,bounds.height>0 else { return }
+        guard headset,controller?.videoRunning == true,let worker,bounds.width>0,bounds.height>0 else { return }
         let orientation=window?.windowScene?.interfaceOrientation ?? .landscapeRight
+        // Same physical, clipped video layers as Holo Comandos. Camera delivery
+        // does not wait for SceneKit, drawable acquisition or world localization.
+        displayCamera(frame.capturedImage,orientation:orientation,time:frame.timestamp)
         let transform=simd_inverse(frame.camera.viewMatrix(for:orientation))
         let projection=frame.camera.projectionMatrix(for:orientation,viewportSize:primary.bounds.size,zNear:0.01,zFar:20)
         inputCamera.simdTransform=transform;inputCamera.camera?.projectionTransform=SCNMatrix4(projection);primary.pointOfView=inputCamera
@@ -184,15 +197,63 @@ final class SpatialEyeCompositor {
         lastPresented=frame.timestamp;busy=true
         let stamp=generation,size=bounds.size,pointSize=primary.bounds.size,eyes=eyeFrames
         let packet=SpatialHeadsetPacket(frame:frame,orientation:orientation,pointSize:pointSize,outputSize:size,eyes:eyes,transform:transform,projection:projection)
-        _=output
         renderQueue.async { [weak self] in
             worker.render(packet)
             Task { @MainActor [weak self] in if let self,self.generation==stamp { self.busy=false } }
         }
     }
+    @discardableResult func displayCamera(_ pixels:CVPixelBuffer,orientation:UIInterfaceOrientation,time:Double)->Bool {
+        guard headset,eyes.count==2 else { return false }
+        var format:CMVideoFormatDescription?
+        guard CMVideoFormatDescriptionCreateForImageBuffer(allocator:kCFAllocatorDefault,imageBuffer:pixels,formatDescriptionOut:&format)==noErr,let format else { return false }
+        var timing=CMSampleTimingInfo(duration:.invalid,presentationTimeStamp:CMTime(seconds:time,preferredTimescale:600),decodeTimeStamp:.invalid)
+        var sample:CMSampleBuffer?
+        guard CMSampleBufferCreateReadyWithImageBuffer(allocator:kCFAllocatorDefault,imageBuffer:pixels,formatDescription:format,sampleTiming:&timing,sampleBufferOut:&sample)==noErr,let sample else { return false }
+        if let array=CMSampleBufferGetSampleAttachmentsArray(sample,createIfNecessary:true),CFArrayGetCount(array)>0 {
+            let dict=unsafeBitCast(CFArrayGetValueAtIndex(array,0),to:CFMutableDictionary.self)
+            CFDictionarySetValue(dict,Unmanaged.passUnretained(kCMSampleAttachmentKey_DisplayImmediately).toOpaque(),Unmanaged.passUnretained(kCFBooleanTrue).toOpaque())
+        }
+        for eye in eyes { eye.display(sample,orientation:orientation) }
+        return true
+    }
     @objc private func tapHeadset(_ gesture:UITapGestureRecognizer) {
         let point=gesture.location(in:self)
         for eye in eyeFrames where eye.contains(point) { controller?.tap(at:CGPoint(x:point.x-eye.minX,y:point.y-eye.minY));return }
+    }
+}
+
+/// Holo Comandos' two-host video layout, fed by the existing ARSession rather
+/// than a second AVCaptureSession. Both eyes get the entire same sample.
+@MainActor final class SpatialHeadsetEye:UIView {
+    let video=AVSampleBufferDisplayLayer()
+    let world=SpatialMetalSurface(frame:.zero)
+    private(set) var cameraFrames=0
+    private var orientation:UIInterfaceOrientation = .landscapeRight
+    init(device:MTLDevice) {
+        super.init(frame:.zero);clipsToBounds=true;backgroundColor = .black
+        video.videoGravity = .resizeAspectFill;layer.addSublayer(video)
+        world.isOpaque=false;world.backgroundColor = .clear
+        let output=world.metalLayer;output.isOpaque=false;output.device=device
+        output.pixelFormat = .bgra8Unorm;output.framebufferOnly=false
+        output.maximumDrawableCount=2;output.allowsNextDrawableTimeout=true
+        addSubview(world)
+    }
+    required init?(coder:NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override func layoutSubviews() {
+        super.layoutSubviews();world.frame=bounds
+        world.metalLayer.drawableSize=CGSize(width:bounds.width*world.contentScaleFactor,height:bounds.height*world.contentScaleFactor)
+        let portrait=orientation == .portrait || orientation == .portraitUpsideDown
+        let angle:CGFloat=orientation == .landscapeLeft ? .pi : orientation == .portrait ? .pi/2 : orientation == .portraitUpsideDown ? -.pi/2 : 0
+        CATransaction.begin();CATransaction.setDisableActions(true)
+        video.bounds=CGRect(origin:.zero,size:portrait ? CGSize(width:bounds.height,height:bounds.width) : bounds.size)
+        video.position=CGPoint(x:bounds.midX,y:bounds.midY);video.setAffineTransform(CGAffineTransform(rotationAngle:angle))
+        CATransaction.commit()
+    }
+    func display(_ sample:CMSampleBuffer,orientation:UIInterfaceOrientation) {
+        if self.orientation != orientation { self.orientation=orientation;setNeedsLayout();layoutIfNeeded() }
+        let renderer=video.sampleBufferRenderer
+        if renderer.status == .failed { renderer.flush(removingDisplayedImage:true,completionHandler:nil) }
+        if renderer.isReadyForMoreMediaData { renderer.enqueue(sample);cameraFrames+=1 }
     }
 }
 
@@ -213,20 +274,23 @@ private struct SpatialHeadsetPacket:@unchecked Sendable {
 }
 private final class SpatialHeadsetWorker:@unchecked Sendable {
     let compositor:SpatialEyeCompositor
-    let layer:CAMetalLayer
+    let layers:[CAMetalLayer]
     let scene:SCNScene
-    init(compositor:SpatialEyeCompositor,layer:CAMetalLayer,scene:SCNScene) { self.compositor=compositor;self.layer=layer;self.scene=scene }
+    init(compositor:SpatialEyeCompositor,layers:[CAMetalLayer],scene:SCNScene) { self.compositor=compositor;self.layers=layers;self.scene=scene }
     func render(_ packet:SpatialHeadsetPacket) {
         autoreleasepool {
             // Drawable waits and shader preparation must never block ARKit,
             // hand input, voice or the main run loop. Only one packet is queued.
-            guard let drawable=layer.nextDrawable(),let command=compositor.queue.makeCommandBuffer() else { return }
-            let scale=CGFloat(drawable.texture.width)/max(1,packet.outputSize.width)
-            let eyes=packet.eyes.map { CGRect(x:($0.minX*scale).rounded(),y:0,width:($0.width*scale).rounded(.down),height:CGFloat(drawable.texture.height)) }
-            guard let world=compositor.renderWorld(scene:scene,transform:packet.transform,projection:packet.projection,size:eyes[0].size,time:CACurrentMediaTime(),command:command) else { return }
-            let uv=packet.frame.displayTransform(for:packet.orientation,viewportSize:packet.pointSize).inverted()
-            guard compositor.compose(pixels:packet.frame.capturedImage,displayToCamera:uv,world:world,destination:drawable.texture,eyes:eyes,command:command) else { return }
-            command.present(drawable);command.commit()
+            let drawables=layers.compactMap{$0.nextDrawable()}
+            guard drawables.count==2,let first=drawables.first,let command=compositor.queue.makeCommandBuffer() else { return }
+            let size=CGSize(width:first.texture.width,height:first.texture.height)
+            guard let world=compositor.renderWorld(scene:scene,transform:packet.transform,projection:packet.projection,size:size,time:CACurrentMediaTime(),command:command),let blit=command.makeBlitCommandEncoder() else { return }
+            for drawable in drawables {
+                let size=MTLSize(width:min(world.width,drawable.texture.width),height:min(world.height,drawable.texture.height),depth:1)
+                blit.copy(from:world,sourceSlice:0,sourceLevel:0,sourceOrigin:MTLOrigin(x:0,y:0,z:0),sourceSize:size,to:drawable.texture,destinationSlice:0,destinationLevel:0,destinationOrigin:MTLOrigin(x:0,y:0,z:0))
+            }
+            blit.endEncoding()
+            for drawable in drawables { command.present(drawable) };command.commit()
         }
     }
 }

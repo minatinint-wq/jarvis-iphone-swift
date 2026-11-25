@@ -14,3 +14,6 @@ TECLADO PROJETADO: aponte o indicador para uma tecla por cerca de 0,55 s. Cada p
 Ao clicar num campo reconhecido como editável pelo Windows, o teclado aparece automaticamente. Se o aplicativo não expuser esse campo à acessibilidade, use três dedos ou o botão do cabeçalho. A detecção lê apenas tipo, foco, habilitação e leitura/edição; não lê nome, valor ou senha do campo.
 
 As teclas são enviadas em fila. Não existe envio automático de Enter; Enter só é executado quando você escolher a tecla. Se a conexão falhar, comandos pendentes são descartados para evitar repetição incerta.
+
+VR BOX: a divisão agora segue o Holo Comandos: dois espaços físicos recortados, com vídeo independente do carregamento do mundo 3D. O mesmo quadro inteiro da câmera vai para cada olho; há uma faixa preta entre eles. Não é vídeo estereoscópico real. O cabeçalho único e a mira central foram retirados do visor. Saia pelo botão Sair VR e use o × do modo normal para fechar o Espaço AR.
+

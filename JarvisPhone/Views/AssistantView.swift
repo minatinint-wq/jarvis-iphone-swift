@@ -144,6 +144,7 @@ private enum VoiceState {
             .fullScreenCover(isPresented: Binding(get: { model.studioMode != nil }, set: { if !$0 { model.studioMode = nil } })) {
                 if let mode = model.studioMode {
                     VStack(spacing: 0) {
+                        if mode != "wallAR" {
                         HStack {
                             Text(["sketch": model.localStudio ? "Desenho na tela" : "Desenho no ar", "music": "Cordas no ar", "libras": "Libras", "translate": "Traduzir pela câmera", "wallAR": "JARVIS · Espaço AR"][mode] ?? "Estúdio")
                                 .font(.headline)
@@ -151,6 +152,7 @@ private enum VoiceState {
                             if mode == "sketch" && model.localStudio && model.ready { Button("Estúdio completo") { model.openStudio(mode) } }
                             Button("Fechar") { model.studioMode = nil }
                         }.padding()
+                        }
                         if mode == "wallAR" {
                             WallARStudio(model:model)
                         } else if mode == "translate" {

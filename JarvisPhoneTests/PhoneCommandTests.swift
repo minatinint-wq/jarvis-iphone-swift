@@ -182,6 +182,11 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertTrue(controller.view.session === session)
         XCTAssertEqual(host.eyeFrames[0].width,438);XCTAssertEqual(host.eyeFrames[1].minX,462)
         XCTAssertEqual(controller.view.frame.width,438)
+        XCTAssertEqual(host.eyes.count,2)
+        XCTAssertTrue(host.eyes.allSatisfy{$0.clipsToBounds})
+        XCTAssertFalse(host.eyes[0].video === host.eyes[1].video)
+        XCTAssertEqual(host.eyes[0].frame.width,438)
+        XCTAssertEqual(host.eyes[1].frame.minX,462)
         let anchor=ARAnchor(name:"headset-event-probe",transform:simd_float4x4(SIMD4(1,0,0,0),SIMD4(0,1,0,0),SIMD4(0,0,1,0),SIMD4(0.3,0,0,1)))
         let marker=SCNNode();controller.worldAnchor=anchor;controller.painted=marker
         controller.receiveTrackedAnchors([anchor]);XCTAssertEqual(marker.position.x,0.3,accuracy:0.001)
@@ -191,6 +196,34 @@ final class PhoneCommandTests: XCTestCase {
         marker.position=SCNVector3(-9,0,0);controller.receiveTrackedAnchors([anchor])
         XCTAssertEqual(marker.position.x,0.3,accuracy:0.001)
         controller.stop()
+    }
+    @MainActor func testHoloVideoLayersDisplayBothEyesWithoutWaitingForWorldTracking() async throws {
+        let controller=WallARController(),host=SpatialHeadsetSurface(controller:controller)
+        let window=UIWindow(frame:UIScreen.main.bounds),root=UIViewController()
+        window.rootViewController=root;window.makeKeyAndVisible()
+        root.view.backgroundColor = .black
+        host.frame=CGRect(x:0,y:100,width:window.bounds.width,height:320)
+        root.view.addSubview(host);host.configure(headset:true);host.layoutIfNeeded()
+        defer { host.configure(headset:false);controller.stop();window.isHidden=true }
+        var buffer:CVPixelBuffer?
+        let attrs:[CFString:Any]=[kCVPixelBufferIOSurfacePropertiesKey:[:]]
+        XCTAssertEqual(CVPixelBufferCreate(nil,240,320,kCVPixelFormatType_32BGRA,attrs as CFDictionary,&buffer),kCVReturnSuccess)
+        let pixels=try XCTUnwrap(buffer)
+        CVPixelBufferLockBaseAddress(pixels,[])
+        let bytes=try XCTUnwrap(CVPixelBufferGetBaseAddress(pixels)).assumingMemoryBound(to:UInt8.self)
+        let colors:[[UInt8]]=[[0,0,255,255],[0,255,0,255],[255,0,0,255],[0,255,255,255]]
+        for y in 0..<320 { for x in 0..<240 { for c in 0..<4 { bytes[y*CVPixelBufferGetBytesPerRow(pixels)+x*4+c]=colors[x/60][c] } } }
+        CVPixelBufferUnlockBaseAddress(pixels,[])
+        for tick in 0..<30 {
+            XCTAssertTrue(host.displayCamera(pixels,orientation:.landscapeRight,time:Double(tick)/30))
+            try await Task.sleep(for:.milliseconds(33))
+        }
+        XCTAssertFalse(controller.videoRunning,"No world session was started for this camera-only proof")
+        XCTAssertTrue(host.eyes.allSatisfy{$0.cameraFrames>0})
+        XCTAssertTrue(host.eyes.allSatisfy{$0.video.isReadyForDisplay},"Both physical video layers must present, not only the shader test")
+        let attachment=XCTAttachment(screenshot:XCUIScreen.main.screenshot());attachment.name="Holo-two-physical-video-eyes";attachment.lifetime = .keepAlways;add(attachment)
+        host.frame.size=CGSize(width:400,height:250);host.setNeedsLayout();host.layoutIfNeeded()
+        XCTAssertEqual(host.eyes[0].frame.width,188);XCTAssertEqual(host.eyes[1].frame.minX,212)
     }
     @MainActor func testHeadsetCompositorRepeatsWholeCameraAndScenePerEye() throws {
         guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
