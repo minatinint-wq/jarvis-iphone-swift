@@ -1,13 +1,10 @@
-JARVIS AR — última entrega: 1.2.0 (32)
-Instalação confirmada no iPhone 13 Pro Max: VERIFIED_JARVIS_BUILD=32
-Código do app: db89c250a2e75934c370fb3989f885fceae3948a
-Compilação xtool/arm64 e pacote com extensão: 45501256333 aprovado.
-XCTest direcionado: 45502057519 aprovado — 5 testes, 0 falhas.
-Teste direto da GPU: 45504089931 aprovado — duas orientações, zero pixels diferentes entre os olhos.
-Imagens do iOS e da GPU inspecionadas: quatro faixas completas e um cubo em cada olho; faixa central preta.
-Modo óculos usa uma câmera e uma renderização 3D, repetidas integralmente em duas áreas independentes.
-Mantém o modo limpo, o radial e a mesma sessão/mapa.
-Vídeo monocular duplicado: não inclui profundidade binocular nem calibração óptica das lentes.
-Teste físico no suporte pendente.
-Guia: COMO_TESTAR_AR_REV32.txt
-Relatório: RELATORIO_AR_REV32.md
+JARVIS AR — revisão 34 preparada; instalação pendente
+Última instalação confirmada no iPhone: 1.2.0 (33). O vídeo dessa versão ainda ficou contínuo.
+Código do aplicativo preparado: eb45b3eb7839e4e4001e4bd35da5f698fd3b81e4
+Compilação e pacote: 45514913511 aprovado.
+Teste de apresentação das duas camadas de vídeo: 45516197127 em andamento.
+Fonte dos testes corrigidos: 8d1bd7f0f24d90d19de296e5f3dab05a38f01f70; runtime igual ao pacote.
+Referência reaproveitada: Holo Comandos, dois contêineres de vídeo recortados.
+Inclui teclado projetado, scroll sem clique, escala com duas pinças e zoom de toque.
+Guia: COMO_TESTAR_AR_REV34.txt
+Relatório: RELATORIO_AR_REV34.md

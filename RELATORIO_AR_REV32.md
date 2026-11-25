@@ -1,5 +1,7 @@
 # JARVIS — revisão 32 — duas imagens completas no VR Box
 
+Atualização posterior ao teste físico: o usuário informou travamento em “recuperando posição”. A revisão 33 devolveu o vídeo ao vivo, mas a captura do aparelho ainda mostrou câmera contínua. As provas de GPU descritas abaixo são válidas para o compositor isolado e não demonstram que a apresentação completa no iPhone estava correta. Ver RELATORIO_AR_REV33.md.
+
 Fonte do aplicativo: db89c250a2e75934c370fb3989f885fceae3948a.
 Compilação xtool/arm64 e pacote com extensão: 45501256333, aprovado.
 XCTest no simulador iOS: 45502057519 aprovado, 5 testes e zero falhas. Probe direto no Metal do macOS: 45504089931 aprovado. O probe usa o compositor extraído da mesma fonte; as árvores de runtime db89c25 e 7ece1c5 são idênticas. Instalação confirmada pelo iOS: JARVIS 1.2.0 build 32 / VERIFIED_JARVIS_BUILD=32. Aceitação física no VR Box pendente.
