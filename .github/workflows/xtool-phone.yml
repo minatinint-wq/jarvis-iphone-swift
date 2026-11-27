@@ -16,6 +16,14 @@ on:
         description: 'Verify the production compositor directly on Metal without a simulator'
         type: boolean
         default: false
+      notification_shortcut:
+        description: Sign only the native notification shortcut
+        type: boolean
+        default: false
+      notification_bundle:
+        description: Installed application identifier for the native notification action
+        type: string
+        default: com.jarvisxlv.iphone
       ui_only:
         description: 'Compilar ajuste visual após validação completa do núcleo'
         type: boolean
@@ -96,7 +104,7 @@ jobs:
 
   iphone:
 
-    if: ${{ !inputs.gpu_probe && !inputs.video_probe }}
+    if: ${{ !inputs.gpu_probe && !inputs.video_probe && !inputs.notification_shortcut }}
 
     runs-on: macos-26
 
@@ -246,3 +254,31 @@ jobs:
             ${{ runner.temp }}/xtool-build.log
             ${{ runner.temp }}/wall-attachments
 
+
+  notification:
+    if: ${{ inputs.notification_shortcut }}
+    runs-on: macos-26
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate the native intent action
+        env:
+          JARVIS_TARGET_BUNDLE: ${{ inputs.notification_bundle }}
+        run: python3 scripts/build-notification-shortcut.py --bundle-id "$JARVIS_TARGET_BUNDLE" --output "$RUNNER_TEMP/JARVIS+Notificacoes.plist"
+      - name: Sign with Apple Shortcuts
+        run: |
+          shortcuts sign --mode anyone --input "$RUNNER_TEMP/JARVIS+Notificacoes.plist" --output "$RUNNER_TEMP/JARVIS+Notificacoes.shortcut"
+          python3 - <<'PY'
+          import os,hashlib,json
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/'JARVIS+Notificacoes.shortcut'
+          assert p.read_bytes().startswith(b'AEA1')
+          (p.parent/'notification-shortcut-verification.json').write_text(json.dumps({'signed':True,'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'network_requests':0}))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-Notificacoes-Nativo
+          path: |
+            ${{ runner.temp }}/JARVIS+Notificacoes.shortcut
+            ${{ runner.temp }}/JARVIS+Notificacoes.plist
+            ${{ runner.temp }}/notification-shortcut-verification.json
