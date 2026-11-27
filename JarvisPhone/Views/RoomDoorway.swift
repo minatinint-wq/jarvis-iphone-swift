@@ -20,7 +20,10 @@ struct RoomDoorwayOpening { var pose:simd_float4x4;var width:Float;var height:Fl
             let c=p.transform*SIMD4(p.center,1),projected=view.projectPoint(SCNVector3(c.x,c.y,c.z))
             guard projected.z>0,projected.z<1,hypot(CGFloat(projected.x)-point.x,CGFloat(projected.y)-point.y)<110,
                   p.extent.x>=0.6,p.extent.z>=1.6 else { continue }
-            return make(origin:SIMD3(c.x,c.y,c.z),normal:SIMD3(p.transform.columns.1.x,0,p.transform.columns.1.z),width:min(1.25,p.extent.x-0.06),height:min(2.15,p.extent.z-0.05))
+            let candidate=make(origin:SIMD3(c.x,c.y,c.z),normal:SIMD3(p.transform.columns.1.x,0,p.transform.columns.1.z),width:min(1.25,p.extent.x-0.06),height:min(2.15,p.extent.z-0.05))
+            // A door label also matches a closed leaf. Verify the live opening
+            // before letting the effect conceal the physical doorway.
+            if clear(candidate,frame:frame,orientation:orientation,size:view.bounds.size) { return candidate }
         }
         // An open doorway can be absent from the mesh. Confirm free depth beyond
         // the old wall, rather than drawing a rectangle over an arbitrary wall.
