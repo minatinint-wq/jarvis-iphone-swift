@@ -263,17 +263,17 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify the reviewed Apple-signed native shortcut
         run: |
-          python3 scripts/check-notification-shortcut.py
-          aea decrypt -i "Shortcuts/JARVIS+Notificacoes-Nativo.shortcut" -o "$RUNNER_TEMP/notification.aa" -sign-pub Shortcuts/notification-signing-public.hex
+          python3 scripts/check-pc-notification-shortcut.py
+          aea decrypt -i "Shortcuts/JARVIS+Notificacoes-PC.shortcut" -o "$RUNNER_TEMP/notification.aa" -sign-pub Shortcuts/notification-pc-signing-public.hex
           mkdir -p "$RUNNER_TEMP/notification-decoded"
           aa extract -i "$RUNNER_TEMP/notification.aa" -d "$RUNNER_TEMP/notification-decoded"
-          python3 scripts/check-notification-shortcut.py "$RUNNER_TEMP/notification-decoded/Shortcut.wflow"
-          cp "Shortcuts/JARVIS+Notificacoes-Nativo.shortcut" "$RUNNER_TEMP/JARVIS+Notificacoes.shortcut"
-          cp "Shortcuts/JARVIS+Notificacoes-Nativo.plist" "$RUNNER_TEMP/JARVIS+Notificacoes.plist"
-          cp "Shortcuts/notification-native-signature.json" "$RUNNER_TEMP/notification-shortcut-verification.json"
+          python3 scripts/check-pc-notification-shortcut.py "$RUNNER_TEMP/notification-decoded/Shortcut.wflow"
+          cp "Shortcuts/JARVIS+Notificacoes-PC.shortcut" "$RUNNER_TEMP/JARVIS+Notificacoes.shortcut"
+          cp "Shortcuts/JARVIS+Notificacoes-PC.plist" "$RUNNER_TEMP/JARVIS+Notificacoes.plist"
+          cp "Shortcuts/notification-pc-signature.json" "$RUNNER_TEMP/notification-shortcut-verification.json"
       - uses: actions/upload-artifact@v4
         with:
-          name: JARVIS-Notificacoes-Nativo
+          name: JARVIS-Notificacoes-PC
           path: |
             ${{ runner.temp }}/JARVIS+Notificacoes.shortcut
             ${{ runner.temp }}/JARVIS+Notificacoes.plist
