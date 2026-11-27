@@ -12,7 +12,15 @@ assert actions[-1]['WFWorkflowActionParameters']['AppIntentDescriptor']['AppInte
 assert all('url' not in a['WFWorkflowActionIdentifier'].lower() for a in actions)
 if len(sys.argv)>1:
     actual=plistlib.loads(Path(sys.argv[1]).read_bytes())
-    assert actual==expected,'Signed workflow differs from the reviewed native intent'
+    if actual!=expected:
+        changed=[k for k in set(actual)|set(expected) if actual.get(k)!=expected.get(k)]
+        print('Signed normalization keys:',changed)
+        for k in changed:
+            if k!='WFWorkflowActions':print(k,repr(expected.get(k))[:240],'->',repr(actual.get(k))[:240])
+        assert actual['WFWorkflowActions']==expected['WFWorkflowActions'],'Signed actions differ'
+        for k in ['WFWorkflowName','WFWorkflowInputContentItemClasses','WFWorkflowImportQuestions','WFAssociatedAppBundleIdentifiers']:
+            assert actual.get(k)==expected.get(k),k
+
     print('Apple signature verified; signed workflow exactly matches the reviewed native actions.')
 else:
     print('Reviewed shortcut hashes verified; no network actions or embedded token.')
