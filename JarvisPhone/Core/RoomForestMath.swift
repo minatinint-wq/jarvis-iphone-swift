@@ -136,3 +136,12 @@ struct SpatialDoorPassage {
         crossed=false;return next==1
     }
 }
+
+enum RoomForestShot {
+    static func visible(target:Float?,obstacle:Float?)->Bool {
+        guard let target,target.isFinite,target>0 else { return false }
+        guard let obstacle else { return true }
+        guard obstacle.isFinite,obstacle>0 else { return false }
+        return target<=obstacle+0.08
+    }
+}

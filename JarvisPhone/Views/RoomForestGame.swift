@@ -23,13 +23,13 @@ import AVFoundation
         let root=SCNNode();root.name="RoomForest-game";root.simdTransform=pose;self.root=root;view.scene.rootNode.addChildNode(root)
         spots=room.gameSpots();makeScoreboard();refreshLabel()
         if let url=Bundle.main.url(forResource:"RoomForest_pickup",withExtension:"wav") { sound=try? AVAudioPlayer(contentsOf:url);sound?.volume=0.35;sound?.prepareToPlay() }
-        onFeedback?("Caçada da Floresta. Acerte seis cristais com o gesto de arma para chamar o guardião. Pode pegar cristais próximos com a pinça. Diga pausar jogo ou sair do jogo quando quiser.")
+        onFeedback?("CaÃ§ada da Floresta. Acerte seis cristais com o gesto de arma para chamar o guardiÃ£o. Pode pegar cristais prÃ³ximos com a pinÃ§a. Diga pausar jogo ou sair do jogo quando quiser.")
     }
     func stop() {
         root?.removeFromParentNode();root=nil;targets=[:];enabled=false;paused=false;finished=false;tracking=false;score=0;collected=0;bossHealth=0;lastTime=nil;lastSpawn = -Double.infinity;trigger.reset();pinched=false;sound?.stop();sound=nil
     }
     func pause(_ value:Bool) { paused=value;trigger.reset();lastTime=nil;refreshLabel() }
-    func showScore() { makeScoreboard();refreshLabel();onFeedback?("Você tem \(score) pontos e \(Int(remaining)) segundos restantes.") }
+    func showScore() { makeScoreboard();refreshLabel();onFeedback?("VocÃª tem \(score) pontos e \(Int(remaining)) segundos restantes.") }
     private func makeScoreboard() {
         guard let root,let frame=view.session.currentFrame else { return }
         root.childNode(withName:"game-scoreboard",recursively:false)?.removeFromParentNode()
@@ -42,7 +42,7 @@ import AVFoundation
         let node=SCNNode(geometry:text);node.scale=SCNVector3(0.00125,0.00125,0.00125);node.position=SCNVector3(-0.19,-0.012,0.003);board.addChildNode(node);root.addChildNode(board);label=text
     }
     private func refreshLabel() {
-        label?.string=finished ? "\(score) PT · \(bossHealth==0 && collected>=6 ? "VITÓRIA" : "TEMPO")" : paused ? "PAUSADO · \(score) PT" : "\(score) PT · \(Int(remaining))s · \(collected<6 ? "\(collected)/6" : "GUARDIÃO \(bossHealth)/3")"
+        label?.string=finished ? "\(score) PT Â· \(bossHealth==0 && collected>=6 ? "VITÃ“RIA" : "TEMPO")" : paused ? "PAUSADO Â· \(score) PT" : "\(score) PT Â· \(Int(remaining))s Â· \(collected<6 ? "\(collected)/6" : "GUARDIÃƒO \(bossHealth)/3")"
     }
     func frame(time:Double,stable:Bool) {
         guard enabled else { return };tracking=stable;root?.isHidden = !stable
@@ -50,7 +50,7 @@ import AVFoundation
         guard stable,!paused,!finished else { lastTime=nil;trigger.reset();return }
         let dt=lastTime.map{max(0,min(0.1,time-$0))} ?? 0;lastTime=time
         let before=Int(remaining);remaining=max(0,remaining-dt);if Int(remaining) != before { refreshLabel() }
-        if remaining==0 { finished=true;targets.values.forEach{$0.removeFromParentNode()};targets=[:];refreshLabel();onFeedback?("Tempo encerrado. Você fez \(score) pontos. Diga jogar novamente para recomeçar.");return }
+        if remaining==0 { finished=true;targets.values.forEach{$0.removeFromParentNode()};targets=[:];refreshLabel();onFeedback?("Tempo encerrado. VocÃª fez \(score) pontos. Diga jogar novamente para recomeÃ§ar.");return }
         if time-lastSpawn>1.2 { spawn();lastSpawn=time }
     }
     private func candidate()->SIMD3<Float>? {
@@ -62,7 +62,7 @@ import AVFoundation
             guard distance>0.75,distance<3.4 else { continue }
             let screen=view.projectPoint(SCNVector3(world));let point=CGPoint(x:CGFloat(screen.x),y:CGFloat(screen.y))
             guard screen.z>0,screen.z<1,view.bounds.insetBy(dx:25,dy:30).contains(point) else { continue }
-            if let solid=view.hitTest(point,options:[.categoryBitMask:16,.backFaceCulling:false]).first,Float(solid.distance)<distance-0.12 { continue }
+            if let solid=view.hitTest(point,options:[.categoryBitMask:16,.backFaceCulling:false]).first,simd_distance(SIMD3<Float>(solid.worldCoordinates.x,solid.worldCoordinates.y,solid.worldCoordinates.z),eye)<distance-0.12 { continue }
             return p
         }
         return nil
@@ -72,7 +72,7 @@ import AVFoundation
         if collected>=6 {
             guard targets.isEmpty,bossHealth==0,let p=candidate(),let model=try? SpatialAssets.load("animated_dragon") else { return }
             let id="game-guardian";model.name=id;model.simdPosition=p;model.enumerateChildNodes{n,_ in n.categoryBitMask=64;n.name=id};model.categoryBitMask=64
-            root.addChildNode(model);targets[id]=model;bossHealth=3;refreshLabel();onFeedback?("O guardião apareceu. Três acertos para concluir a caçada.");return
+            root.addChildNode(model);targets[id]=model;bossHealth=3;refreshLabel();onFeedback?("O guardiÃ£o apareceu. TrÃªs acertos para concluir a caÃ§ada.");return
         }
         guard targets.count<3,let p=candidate() else { return }
         let id="crystal-"+UUID().uuidString,node=SCNNode();node.name=id;node.simdPosition=p+SIMD3(0,0.65,0)
@@ -96,7 +96,8 @@ import AVFoundation
         let eye=SIMD3(frame.camera.transform.columns.3.x,frame.camera.transform.columns.3.y,frame.camera.transform.columns.3.z)
         let solid=view.hitTest(sample.point,options:[.categoryBitMask:16,.backFaceCulling:false]).first
         let target=view.hitTest(sample.point,options:[.categoryBitMask:64,.backFaceCulling:false]).first
-        let visible=target.map{solid == nil || $0.distance <= solid!.distance+0.08} ?? false
+        func distance(_ hit:SCNHitTestResult)->Float { simd_distance(SIMD3<Float>(hit.worldCoordinates.x,hit.worldCoordinates.y,hit.worldCoordinates.z),eye) }
+        let visible=RoomForestShot.visible(target:target.map(distance),obstacle:solid.map(distance))
         let far=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),1)),direction=simd_normalize(SIMD3(far)-eye)
         let end=visible ? SIMD3(target!.worldCoordinates) : solid.map{SIMD3($0.worldCoordinates)} ?? eye+direction*3
         beam(from:sample.worldPoint ?? eye+direction*0.15,to:end)
@@ -107,7 +108,7 @@ import AVFoundation
         if id=="game-guardian" {
             bossHealth-=1;score+=25
             _=SpatialRig.play(node,clip:bossHealth==0 ? "Death_A" : "DragonArmature|DragonArmature|Dragon_Hit")
-            if bossHealth==0 { node.runAction(.sequence([.wait(duration:2.5),.fadeOut(duration:0.4),.removeFromParentNode()]));finished=true;score+=100;onFeedback?("Caçada concluída. Você fez \(score) pontos.") }
+            if bossHealth==0 { node.runAction(.sequence([.wait(duration:2.5),.fadeOut(duration:0.4),.removeFromParentNode()]));finished=true;score+=100;onFeedback?("CaÃ§ada concluÃ­da. VocÃª fez \(score) pontos.") }
         } else { score+=points;collected+=1;node.runAction(.sequence([.group([.scale(to:0.01,duration:0.2),.fadeOut(duration:0.2)]),.removeFromParentNode()]));targets.removeValue(forKey:id) }
         if collected>=6 { for (key,value) in targets where key != "game-guardian" { value.removeFromParentNode();targets.removeValue(forKey:key) } }
         refreshLabel()
@@ -124,6 +125,6 @@ enum SCNOctahedron {
     static func make(radius:Float)->SCNGeometry {
         let p:[SCNVector3]=[.init(0,radius,0),.init(radius,0,0),.init(0,0,radius),.init(-radius,0,0),.init(0,0,-radius),.init(0,-radius,0)]
         let i:[Int32]=[0,2,1,0,3,2,0,4,3,0,1,4,5,1,2,5,2,3,5,3,4,5,4,1]
-        return SCNGeometry(sources:[SCNGeometrySource(vertices:p),SCNGeometrySource(normals:p.map{SCNVector3(simd_normalize(SIMD3($0)))})],elements:[SCNGeometryElement(indices:i,primitiveType:.triangles)])
+        return SCNGeometry(sources:[SCNGeometrySource(vertices:p),SCNGeometrySource(normals:p.map{SCNVector3(simd_normalize(SIMD3<Float>($0.x,$0.y,$0.z)))})],elements:[SCNGeometryElement(indices:i,primitiveType:.triangles)])
     }
 }
