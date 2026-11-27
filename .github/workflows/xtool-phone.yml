@@ -8,6 +8,10 @@ on:
 
   workflow_dispatch:
     inputs:
+      forest_probe:
+        description: Verify forest geometry and typecheck native sources
+        type: boolean
+        default: false
       video_probe:
         description: Verify actual production video presentation on iOS
         type: boolean
@@ -25,7 +29,7 @@ on:
         type: string
         default: com.jarvisxlv.iphone
       ui_only:
-        description: 'Compilar ajuste visual após validação completa do núcleo'
+        description: 'Compilar ajuste visual apÃ³s validaÃ§Ã£o completa do nÃºcleo'
         type: boolean
         default: false
 
@@ -34,6 +38,25 @@ permissions:
   contents: read
 
 jobs:
+  forest:
+    if: ${{ inputs.forest_probe }}
+    runs-on: macos-26
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify forest geometry and hand input
+        run: |
+          swiftc JarvisPhone/Core/RoomForestMath.swift scripts/probe-forest-math.swift -o /tmp/forest-probe
+          /tmp/forest-probe
+      - name: Typecheck the native app
+        run: |
+          set -o pipefail
+          find JarvisPhone -name '*.swift' -print0 | xargs -0 xcrun swiftc -typecheck -parse-as-library -swift-version 5 -D DEBUG -module-name JarvisPhone -sdk "$(xcrun --sdk iphonesimulator --show-sdk-path)" -target "$(uname -m)-apple-ios17.0-simulator" 2>&1 | tee forest-typecheck.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: forest-swift-verification
+          path: forest-typecheck.log
   video:
     if: ${{ inputs.video_probe }}
     runs-on: macos-26
@@ -104,7 +127,7 @@ jobs:
 
   iphone:
 
-    if: ${{ !inputs.gpu_probe && !inputs.video_probe && !inputs.notification_shortcut }}
+    if: ${{ !inputs.gpu_probe && !inputs.video_probe && !inputs.notification_shortcut && !inputs.forest_probe }}
 
     runs-on: macos-26
 
@@ -139,15 +162,15 @@ jobs:
 
           echo "$RUNNER_TEMP/xtool-bin/xtool.app/Contents/Resources/bin" >> "$GITHUB_PATH"
 
-      - name: Testar áudio e protocolo da câmera
+      - name: Testar Ã¡udio e protocolo da cÃ¢mera
 
         run: swiftc JarvisPhone/Core/PhoneMedia.swift scripts/test-phone-media.swift -o "$RUNNER_TEMP/media-test" && "$RUNNER_TEMP/media-test"
 
-      - name: Medir saída do sampler da Apple por instrumento
+      - name: Medir saÃ­da do sampler da Apple por instrumento
 
         run: swift scripts/probe-bank.swift JarvisPhone/Resources/JarvisInstruments.sf2
 
-      - name: Validar mãos reais, pinça e continuidade de rastreamento
+      - name: Validar mÃ£os reais, pinÃ§a e continuidade de rastreamento
         run: |
           mkdir -p /tmp/hand-fixtures
           for image in pointing_up thumb_up cats_and_dogs; do
@@ -156,7 +179,7 @@ jobs:
           swiftc JarvisPhone/Core/SpatialGesture.swift JarvisPhone/Core/HandPoseInput.swift scripts/probe-hand-control.swift -o /tmp/hand-probe
           /tmp/hand-probe /tmp/hand-fixtures
 
-      - name: Validar limpeza e preservação do mapa único
+      - name: Validar limpeza e preservaÃ§Ã£o do mapa Ãºnico
         run: |
           swiftc JarvisPhone/Core/SpatialSingleMap.swift scripts/probe-single-map.swift -o /tmp/single-map-probe
           /tmp/single-map-probe
@@ -179,7 +202,7 @@ jobs:
 
           python3 scripts/check-ipa.py entrega/JarvisPhone.ipa
 
-      - name: Empacotar aplicativo com a extensão da tela bloqueada e metadados do Atalhos
+      - name: Empacotar aplicativo com a extensÃ£o da tela bloqueada e metadados do Atalhos
 
         run: |
 
@@ -232,7 +255,7 @@ jobs:
 
           xcrun simctl io "$id" screenshot "$RUNNER_TEMP/assistant.png"
 
-      - name: Exportar evidência visual dos materiais AR
+      - name: Exportar evidÃªncia visual dos materiais AR
         if: always() && !inputs.ui_only
         run: |
           if [ -d "$RUNNER_TEMP/wall-tests.xcresult" ]; then

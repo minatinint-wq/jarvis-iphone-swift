@@ -53,7 +53,7 @@ enum WallARCommand: Equatable {
         let s = PhoneIntentPhrases.normalized(input)
         guard !s.isEmpty, s.range(of: #"\b(nao|nunca|nem|talvez|disse|dizer|dissesse|se)\b"#, options: .regularExpression) == nil else { return nil }
         if inStudio,s.contains("portal"),s.range(of:#"^(?:fecha|feche|fechar|apaga|apague|remova|remover)\b"#,options:.regularExpression) != nil { return .closePortal }
-        if s.contains("portal"),s.contains("porta"),!s.contains("parede") { return .doorPortal }
+        if s.contains("portal"),s.range(of:#"\bportas?\b"#,options:.regularExpression) != nil,!s.contains("parede") { return .doorPortal }
         if s.contains("floresta"),(s.contains("quarto") || s.contains("casa")),s.range(of:#"^(?:transforma|transforme|transformar|cria|crie|criar|ativa|ative|ativar)\b"#,options:.regularExpression) != nil { return .roomForest(true) }
         if ["iniciar jogo da floresta","jogar na floresta","iniciar cacada","cacada da floresta","modo jogo","jogar novamente","iniciar minigame"].contains(s) { return .forestGame("start") }
         if inStudio,["pausar jogo","pausa o jogo"].contains(s) { return .forestGame("pause") }
