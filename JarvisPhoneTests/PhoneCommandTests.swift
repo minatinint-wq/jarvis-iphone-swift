@@ -94,7 +94,9 @@ final class PhoneCommandTests: XCTestCase {
     @MainActor func testForestAndGuardianRenderWithRealBoneAnimation() throws {
         guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
         let (g,manifest,labels)=forestFixture(),scene=SCNScene();scene.rootNode.addChildNode(RoomForestScene.make(base:g,manifest:manifest,assignments:labels))
-        let model=try SpatialAssets.load("animated_dragon");model.position=SCNVector3(-0.45,0,0.8);scene.rootNode.addChildNode(model)
+        let model=try RoomForestGame.guardian(scale:1);model.position=SCNVector3(-0.45,0,1.1);scene.rootNode.addChildNode(model)
+        XCTAssertTrue(SpatialRig.play(model,clip:"DragonArmature|DragonArmature|Dragon_Hit"))
+        XCTAssertTrue(SpatialRig.play(model,clip:"Death_A"))
         let camera=SCNNode();camera.camera=SCNCamera();camera.camera?.zNear=0.01;camera.camera?.zFar=20;camera.position=SCNVector3(2.5,2.0,4.5);camera.look(at:SCNVector3(0,0.9,0));scene.rootNode.addChildNode(camera)
         let ambient=SCNNode();ambient.light=SCNLight();ambient.light?.type = .ambient;ambient.light?.intensity=350;scene.rootNode.addChildNode(ambient)
         let renderer=SCNRenderer(device:device,options:nil);renderer.scene=scene;renderer.pointOfView=camera

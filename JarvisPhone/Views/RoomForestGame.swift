@@ -19,6 +19,16 @@ import AVFoundation
     private var sound:AVAudioPlayer?
     var onFeedback:((String)->Void)?
     init(view:ARSCNView) { self.view=view }
+    static func guardian(scale:Float)throws->SCNNode {
+        let wrapper=SCNNode();wrapper.name="game-guardian";wrapper.simdScale=SIMD3(repeating:scale)
+        let model=try SpatialAssets.load("animated_dragon")
+        // Hit surfaces carry the game ID; skeleton and joint names remain intact
+        // so the real reaction/death clips can still find their bones.
+        model.enumerateChildNodes { node,_ in
+            if node.geometry != nil { node.categoryBitMask=64;node.name="game-guardian" }
+        }
+        wrapper.addChildNode(model);return wrapper
+    }
     func start(room:ScannedRoomWall) {
         guard let pose=room.pose else { return };stop();self.room=room;enabled=true;remaining=90
         let root=SCNNode();root.name="RoomForest-game";root.simdTransform=pose;self.root=root;view.scene.rootNode.addChildNode(root)
@@ -80,8 +90,8 @@ import AVFoundation
             for group in guardianSites {
                 if let point=candidate(sites:group.spots) { placement=(point,group.scale);break }
             }
-            guard let placement,let model=try? SpatialAssets.load("animated_dragon") else { return }
-            let id="game-guardian";model.name=id;model.simdPosition=placement.point;model.simdScale=SIMD3(repeating:placement.scale);model.enumerateChildNodes{n,_ in n.categoryBitMask=64;n.name=id};model.categoryBitMask=64
+            guard let placement,let model=try? Self.guardian(scale:placement.scale) else { return }
+            let id="game-guardian";model.simdPosition=placement.point
             root.addChildNode(model);targets[id]=model;bossHealth=3;refreshLabel();onFeedback?("O guardião apareceu. Três acertos para concluir a caçada.");return
         }
         guard targets.count<3,let p=candidate() else { return }
