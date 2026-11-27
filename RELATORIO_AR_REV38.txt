@@ -1,0 +1,23 @@
+JARVIS iPhone — revisão 38 — 2026-11-27
+Instalação confirmada no iPhone 13 Pro Max: 1.2.0 (38). O cabo pode ser retirado.
+
+Portal de parede: “Jarvis, abre um portal na parede”. Leitura limitada a 8 segundos; indicador apontado para uma parede livre durante 2 segundos coloca o portal. Dimensão inicial 65 x 85 cm, recorte irregular, borda e fragmentos; panorama HDR Forest Slope com pedras/plantas 3D e perspectiva conforme o observador. O exterior do bosque não é reconstrução geométrica completa. As faces de parede precisam cobrir a área do recorte; portas, janelas e regiões sem prova são recusadas. “Fechar portal” remove e cancela a colocação.
+
+22 modelos acabados disponíveis no catálogo radial por mão fechada, sem download durante o uso. Robô e raposa são animados; demais objetos permitem seleção/interação/manipulação conforme o módulo existente. Até 6 objetos ativos e orçamento de triângulos preservados. O catálogo e suas 362 partes/texturas foram conferidos no IPA.
+
+Persistência: âncora e registro do portal salvos no mesmo arquivo atômico do ARWorldMap. Ao sair do AR, a captura do mapa é atualizada mesmo sem alterar objetos, incluindo detalhes vistos após o primeiro ponto de vista. Nunca aplicar a transformação de uma câmera nova a um portal antigo. Após 20 segundos sem recuperar o mapa antigo, sessão livre sem apagar/sobrescrever o arquivo salvo; “recuperar mapa” tenta novamente. “Salvar mapa” na sessão livre autoriza substituir o mapa atual. A migração de mapas antigos não foi repetida.
+
+Notificações: novo arquivo JARVIS+Notificacoes.shortcut entrega texto ao AppIntent nativo JarvisAnnounceNotification. Não abre o app, não usa IP/token/arquivo JSON e não interpreta o texto como comando. Substituir o atalho antigo com o mesmo nome na automação existente. Última prévia é guardada no próprio iPhone; anúncio depende do modo de voz já autorizado, volume e estado de silêncio. Importação e entrega real ainda precisam de confirmação do usuário.
+
+Servidor persistente: JARVIS_SERVIDOR.cmd continua sendo a entrada. server_watchdog.py inicia/adota a ponte móvel 9897 e ativa o receptor dos atalhos antigos 9887 junto ao núcleo 9884. Foram preservados vínculo, tokens e backend em execução. Receptor e ponte verificados online; /health alcançado pelo próprio iPhone. O novo atalho nativo dispensa o receptor para entregar notificações ao app.
+
+Validação: 22 testes iOS, zero falhas, zero testes ignorados; capturas reais do renderizador nativo conferidas (recorte, perspectiva, catálogo circular). Regressão da divisão VR, gestos e segurança do arquivo de mapa incluída. Compilação arm64, extensão e 16 recursos PBR/HDR + 362 arquivos de modelos verificados. 21 recursos visuais pessoais e 19 arquivos da captura privada mantidos localmente, sem envio da casa ao repositório.
+
+Limite da validação: não foi feito um teste físico de deriva no cômodo ou de relocalização após andar 3 metros. O simulador não substitui isso. Testar também a colocação por mão e a estabilidade na parede no aparelho.
+
+Fonte runtime: b1ca8f2550e62f27486c80a05b052584181f9c44
+Compilação: workflow 46056335196
+Testes/capturas: workflow 46056339599
+SHA-256 do IPA pessoal: 2707eb7eae25b46de47a0f9790f1ad4f261ec95a953b3b2a909692f37b22fa44
+
+Assinatura do atalho: verificação criptográfica Apple AEA e comparação exata das ações aprovadas no workflow 46058926400. Nome e lista de apps opcionais são normalizados/removidos pela Apple; o alvo nativo permanece na ação assinada. Distribuir com o nome JARVIS+Notificacoes.shortcut.

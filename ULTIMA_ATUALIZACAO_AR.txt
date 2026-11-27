@@ -1,12 +1,8 @@
-JARVIS XLV — revisão 37 instalada e confirmada no iPhone.
-VERIFIED_JARVIS_BUILD=37
-
-Mapas antigos apagados (8 artefatos removidos, 0 restantes); GLB preservado.
-Mapa único home.json, com leitura automática de oito segundos ao abrir AR.
-Catálogo por mão fechada; efeitos de parede e colocação de modelos por indicador.
-Sem calibração manual obrigatória no fluxo dos óculos.
-
-16 testes do AR aprovados; limpeza/migração testadas no pacote final.
-Teste no cômodo real fica pendente para a próxima sessão da usuária.
-Guia: COMO_TESTAR_AR_REV37.txt
-Detalhes: RELATORIO_AR_REV37.txt
+REVISÃO 38 INSTALADA — iPhone 1.2.0 (38)
+Portal de parede por voz/gesto + 22 objetos locais + retomada limitada sem apagar o mapa.
+“Jarvis, abre um portal na parede”; aguarde 8 s e aponte por 2 s.
+Feche a mão por 0,6 s para abrir o catálogo.
+Novo atalho nativo: RELEASES/REV38/JARVIS+Notificacoes.shortcut — substituir o antigo.
+Servidor persistente agora inicia/adota ponte móvel e receptor legado juntos.
+22 testes passaram. Deriva e relocalização no cômodo ainda aguardam teste físico.
+Ver COMO_TESTAR_AR_REV38.txt e RELATORIO_AR_REV38.txt.
