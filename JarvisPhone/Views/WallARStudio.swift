@@ -164,7 +164,7 @@ enum WallMeasureMode { case none, outline, opening }
         }
     }
     private func armDoorPortal() {
-        portalGunArmed=true;portalTrigger.reset();forestGame.pause(true);endManualWallInput();panel.close();registrationRestarted=false
+        spatial.placing=false;portalGunArmed=true;portalTrigger.reset();forestGame.pause(true);endManualWallInput();panel.close();registrationRestarted=false
         if !roomWall.aligned { beginForestRegistration();return }
         if !scanning { toggleScan() } else { run() }
         feedback("Mostre a porta. Faça uma arma com indicador estendido e os outros três dedos dobrados. Segure o polegar levantado e abaixe para disparar.")
@@ -240,16 +240,15 @@ enum WallMeasureMode { case none, outline, opening }
         hands=SpatialHands(view:view)
         hands.onSample = { [weak self] sample in
             guard let self else { return }
-            if self.desktop.inputBlocked { return }
             guard self.interactionReady,!self.recoveryBusy else {
                 _=self.fistMenu.update(closed:nil,time:sample?.time ?? ProcessInfo.processInfo.systemUptime)
-                self.portalTrigger.reset()
+                self.portalTrigger.reset();_ = self.portal.hand(nil);_ = self.forestGame.hand(nil)
                 self.palmRecall=SpatialPalmRecall();self.dualScale=SpatialDualPinchScale();self.dualScaleTarget=nil
                 self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
                 self.hands.showProgress(0);return
             }
-            let closed=sample?.closedFist == true
-            if self.fistMenu.update(closed:sample.map{$0.closedFist && !self.panel.isDragging && !self.desktop.isDragging},time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {
+            let closed=sample?.closedFist == true && !self.desktop.isDragging && !self.panel.isDragging && !self.portal.isDragging && !self.spatial.isDragging
+            if self.fistMenu.update(closed:sample.map{$0.closedFist && !self.panel.isDragging && !self.desktop.isDragging && !self.portal.isDragging && !self.spatial.isDragging},time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {
                 self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
                 self.dualScale=SpatialDualPinchScale();self.palmRecall=SpatialPalmRecall()
                 self.panel.openEffectsRadial(tracking:true);self.hands.showProgress(0);return
@@ -258,29 +257,8 @@ enum WallMeasureMode { case none, outline, opening }
                 self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
                 self.hands.showProgress(0);return
             }
-            if !self.panel.visible,self.forestGame.hand(sample) { self.hands.showProgress(0);self.handStatus="Caçada · prepare o polegar e abaixe para disparar; pinça pega cristais próximos";return }
-            if self.portalGunArmed {
-                self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
-                let fire=self.portalTrigger.update(gun:sample.map{$0.portalGun},thumbRaised:sample?.thumbRaised ?? false,time:sample?.time ?? ProcessInfo.processInfo.systemUptime)
-                self.hands.showProgress(0)
-                self.handStatus=self.roomWall.aligned ? "Arma de portal · polegar para cima prepara, para baixo dispara" : "Reconhecendo a geometria do quarto…"
-                if fire,let sample,self.roomWall.aligned {
-                    if let opening=RoomDoorway.placement(point:sample.point,view:self.view,room:self.roomWall,planes:Array(self.planes.values)),self.portal.placeDoorway(opening) {
-                        self.portalGunArmed=false;self.run();self.spatial.markDirty();self.spatial.saveMap(force:true)
-                    } else { self.feedback("Não confirmei uma porta nesse alvo. Mostre a porta aberta por inteiro e tente de novo.") }
-                }
-                return
-            }
-            if self.liveWall.armed && !self.panel.contains(sample?.point ?? CGPoint(x:-1,y:-1)) {
-                self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
-                self.hands.showProgress(self.liveWall.hand(sample));return
-            }
-            if self.roomWall.armed && !self.panel.contains(sample?.point ?? CGPoint(x:-1,y:-1)) {
-                self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
-                self.hands.showProgress(self.roomWall.hand(sample));return
-            }
             if self.spatial.recovering {
-                self.spatial.hand(nil)
+                self.spatial.hand(nil);_ = self.portal.hand(nil);_ = self.forestGame.hand(nil)
                 if self.spatial.restoredDesktop == nil,self.desktop.hand(sample) { self.hands.showProgress(self.desktop.progress) }
                 else { self.hands.showProgress(0) }
                 self.panel.hand(self.spatial.restoredPanel == nil ? sample : nil)
@@ -291,7 +269,7 @@ enum WallMeasureMode { case none, outline, opening }
                 if self.dualScaleTarget==nil,let points=sample?.dualPinch,points.count==2 {
                     self.dualScaleTarget=self.scaleTarget(at:CGPoint(x:(points[0].x+points[1].x)/2,y:(points[0].y+points[1].y)/2))
                 }
-                self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
+                self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil);_ = self.portal.hand(nil);_ = self.forestGame.hand(nil)
                 if let factor,let target=self.dualScaleTarget { self.resize(target,factor:factor) }
                 self.hands.showProgress(0);self.handStatus="Duas pinças: afaste para aumentar, aproxime para diminuir.";return
             }
@@ -303,22 +281,50 @@ enum WallMeasureMode { case none, outline, opening }
             else if self.panel.visible { candidate=self.panel.isFramed ? nil : "panel" }
             else if self.desktop.visible { candidate=self.desktop.isFramed ? nil : "desktop" }
             else { candidate=nil }
-            if let target=self.palmRecall.update(open:sample?.openPalm == true && self.tracking && !self.spatial.recovering,target:candidate,overInterface:over,time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {
+            if let target=self.palmRecall.update(open:sample?.openPalm == true && self.tracking && !self.spatial.recovering && !self.desktop.isDragging && !self.panel.isDragging && !self.portal.isDragging && !self.spatial.isDragging,target:candidate,overInterface:over,time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {
                 if target == "desktop" { self.desktop.recenter() } else { self.panel.reposition() }
                 self.handStatus="Janela reenquadrada. Relaxe a mão para continuar."
             }
             if self.palmRecall.progress>0 || self.palmRecall.hasFired {
                 self.hands.showProgress(self.palmRecall.progress);return
             }
-            if self.panel.visible,self.panel.immersive,
-               self.panel.isDragging || sample.map({self.panel.contains($0.point)}) == true {
-                self.panel.hand(sample);self.hands.showProgress(self.panel.dwellProgress);return
+            let point=sample?.point ?? CGPoint(x:-1,y:-1)
+            let held:SpatialHandTarget?=self.panel.isDragging ? .panel : self.desktop.isDragging ? .desktop : self.portal.isDragging ? .portal : self.spatial.isDragging ? .object : nil
+            let target=SpatialHandTarget.choose(held:held,panel:self.panel.visible && self.panel.contains(point),desktop:!self.desktop.inputBlocked && self.desktop.contains(point),object:self.spatial.contains(point),portal:self.portal.contains(point),placing:self.spatial.active && self.spatial.placing,gun:self.portalGunArmed,liveWall:self.liveWall.armed,capturedWall:self.roomWall.armed,game:self.forestGame.enabled)
+            if target != .panel { self.panel.hand(nil) }
+            if target != .desktop { _=self.desktop.hand(nil) }
+            if target != .object { self.spatial.hand(nil) }
+            if target != .portal { _=self.portal.hand(nil) }
+            if target != .game { _=self.forestGame.hand(nil) }
+            if target != .portalGun { self.portalTrigger.reset() }
+            switch target {
+            case .panel:self.panel.hand(sample);self.hands.showProgress(self.panel.dwellProgress)
+            case .desktop:_=self.desktop.hand(sample);self.hands.showProgress(self.desktop.progress)
+            case .object:self.spatial.hand(sample);self.hands.showProgress(self.spatial.dwellProgress)
+            case .portal:_=self.portal.hand(sample);self.hands.showProgress(0);self.handStatus="Pinça segura o portal; mova pela parede e solte para fixar."
+            case .game:_=self.forestGame.hand(sample);self.hands.showProgress(0);self.handStatus="Caçada · polegar sobe e desce para disparar; pinça coleta cristais."
+            case .liveWall:self.hands.showProgress(self.liveWall.hand(sample))
+            case .capturedWall:self.hands.showProgress(self.roomWall.hand(sample))
+            case .portalGun:
+                let fire=self.portalTrigger.update(gun:sample.map{$0.portalGun},thumbRaised:sample?.thumbRaised ?? false,time:sample?.time ?? ProcessInfo.processInfo.systemUptime)
+                self.hands.showProgress(0);self.handStatus=self.roomWall.aligned ? "Arma de portal · polegar sobe e desce para disparar" : "Reconhecendo o quarto…"
+                if fire,let sample,self.roomWall.aligned {
+                    if let opening=RoomDoorway.placement(point:sample.point,view:self.view,room:self.roomWall,planes:Array(self.planes.values)),self.portal.placeDoorway(opening) {
+                        self.portalGunArmed=false;self.run();self.spatial.markDirty();self.spatial.saveMap(force:true)
+                    } else { self.feedback("Mostre a porta aberta por inteiro e tente novamente.") }
+                }
+            case .none:self.hands.showProgress(0)
             }
-            if self.desktop.hand(sample) { self.hands.showProgress(self.desktop.progress);return }
-            if self.panel.visible && !self.panel.immersive { self.panel.hand(sample);self.hands.showProgress(self.panel.dwellProgress) }
-            else { self.panel.hand(nil);self.spatial.hand(sample);self.hands.showProgress(self.spatial.dwellProgress) }
         }
         hands.onQuality = { [weak self] in self?.handStatus=$0 }
+        spatial.capturedPlacement = { [weak self] point,radius in self?.roomWall.placement(point,radius:radius) }
+        spatial.capturedSupport = { [weak self] point,radius in self?.roomWall.support(point,radius:radius) }
+        spatial.capturedSupportIdentifier = { [weak self] in self?.roomWall.supportIdentifier }
+        portal.windowPlacement = { [weak self] point,width,height in self?.roomWall.portalPlacement(point,width:width,height:height) }
+        portal.doorwayPlacement = { [weak self] point in
+            guard let self else { return nil }
+            return RoomDoorway.placement(point:point,view:self.view,room:self.roomWall,planes:Array(self.planes.values))
+        }
         spatial.attach()
         spatial.onWindowPinch={ [weak self] gesture in
             guard let self,self.interactionReady else { return false }
@@ -400,7 +406,7 @@ enum WallMeasureMode { case none, outline, opening }
         let shouldReset=reset || pendingMapReset
         let config = SpatialCaptureProfile.configuration(scanning:scanning)
         if (liveWall.capturing || roomRegistering),ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification) { config.sceneReconstruction = .meshWithClassification }
-        if (portalGunArmed || forestGame.enabled),ARWorldTrackingConfiguration.supportsFrameSemantics(.smoothedSceneDepth) { config.frameSemantics.insert(.smoothedSceneDepth) }
+        if (portalGunArmed || portal.root != nil || forestGame.enabled),ARWorldTrackingConfiguration.supportsFrameSemantics(.smoothedSceneDepth) { config.frameSemantics.insert(.smoothedSceneDepth) }
         if !mapStarted || shouldReset { config.initialWorldMap=initialMap;mapStarted=true }
         // Prefer moderate camera resolution at 60 Hz rather than 4K capture + AI.
         if activeVideoFormat == nil {
@@ -489,6 +495,8 @@ enum WallMeasureMode { case none, outline, opening }
         }
     }
     private func prepareObjectPlacement() {
+        if roomWall.aligned { feedback("O personagem começa pequeno. Aponte por dois segundos para uma área livre do mapa; depois ajuste com duas pinças.");return }
+        if !roomRegistering,roomWall.prepare() { beginForestRegistration();return }
         guard !planes.values.contains(where:{$0.classification == .floor || $0.classification == .table}),!scanning else { return }
         toggleScan()
         feedback("Olhe para uma área livre do piso ou da mesa. Depois aponte por dois segundos para colocar o modelo.")
@@ -758,6 +766,7 @@ enum WallMeasureMode { case none, outline, opening }
 
     private var modelSelectionTask:Task<Void,Never>?
     private func chooseModel(_ id:String) {
+        portalGunArmed=false;portalTrigger.reset()
         modelSelectionTask?.cancel()
         if SpatialAssets.isBundled(id) { spatial.setModel(id);prepareObjectPlacement();return }
         modelSelectionTask=Task { @MainActor in
@@ -775,7 +784,7 @@ enum WallMeasureMode { case none, outline, opening }
         switch command {
         case .forestGame(let action):
             switch action {
-            case "start": panel.close();gameRequested=true;portalGunArmed=false;setRoomForest(true);if roomWall.aligned { forestGame.start(room:roomWall);run() }
+            case "start": panel.close();spatial.placing=false;gameRequested=true;portalGunArmed=false;setRoomForest(true);if roomWall.aligned { forestGame.start(room:roomWall);run() }
             case "pause": forestGame.pause(true);feedback("Jogo pausado.")
             case "resume": portalGunArmed=false;portalTrigger.reset();forestGame.pause(false);feedback("Jogo retomado.")
             case "score": forestGame.showScore()
@@ -918,7 +927,7 @@ enum WallMeasureMode { case none, outline, opening }
         roomWall.setTracking(good)
         liveWall.setTracking(good)
         portal.frame(frame,stable:interactionReady)
-        forestGame.frame(time:frame.timestamp,stable:interactionReady && roomWall.forestActive && !panel.visible)
+        forestGame.frame(time:frame.timestamp,stable:interactionReady && roomWall.forestActive && !panel.visible && !spatial.placing)
         if gameRequested,roomWall.aligned,!forestGame.enabled { forestGame.start(room:roomWall);run() }
         if interactionReady,forestWanted,roomWall.aligned,!roomWall.forestActive { setRoomForest(true,announce:false) }
         // Vision's 2D skeleton does not need a mapped room or an active module.

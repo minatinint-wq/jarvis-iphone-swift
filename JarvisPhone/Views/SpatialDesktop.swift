@@ -14,7 +14,7 @@ struct SpatialDesktopRecord: Codable {
     @Published var status="Área de trabalho do PC"
     var send: (([String:Any]) -> Void)?
     var onChange: (() -> Void)?
-    var inputBlocked=false { didSet { if inputBlocked { gesture.reset();keyGesture.reset();headerGesture.reset();scroll=SpatialDesktopScroll();palmScale=SpatialPalmScale() } } }
+    var inputBlocked=false { didSet { if inputBlocked { if dragging { finishDrag() };gesture.reset();keyGesture.reset();headerGesture.reset();scroll=SpatialDesktopScroll();palmScale=SpatialPalmScale() } } }
     private let view: ARSCNView
     private var root: SCNNode?
     private var screen: SCNPlane?

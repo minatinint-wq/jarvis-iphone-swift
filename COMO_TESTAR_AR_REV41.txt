@@ -1,6 +1,6 @@
 JARVIS 41 — CENÁRIO RECONSTRUÍDO E PERSONAGENS
 Mapa privado: Scaniverse 2026-11-27 185731.glb; original preservado.
-Cena visível: 2147 triângulos reconstruídos, superfícies planas e volumes de apoio dos móveis.
+Cena visível: 693 triângulos reconstruídos, superfícies planas e volumes de apoio dos móveis.
 A captura bruta continua sendo a referência para reconhecer o quarto. Em floresta, as colisões usam a cena limpa.
 Os volumes dos móveis são aproximações medidas, sem afirmar identificação semântica exata de todos os objetos.
 
@@ -18,3 +18,11 @@ O dragão anterior permanece opcional, mas deixou de ser o personagem principal.
 Portal na porta: dentro do cômodo, mostre a porta aberta por inteiro e dispare com o gesto de arma.
 Saia pela porta e retorne para entrar na versão florestada. Teste o alinhamento fora do suporte antes da travessia.
 O teste físico de alinhamento, FPS e precisão das mãos depende deste iPhone; os testes automáticos usam cenas de verificação.
+
+GESTOS INTEGRADOS E TAMANHO
+Personagens novos começam com 35% do tamanho de referência: cerca de 63cm nos três guardiões.
+O apoio usa o piso/volume limpo do mapa já alinhado. Não pede outra área do ARKit quando esse apoio está disponível.
+Indicador estável por dois segundos clica. Pinça arrasta. Dois dedos sobre a tela do PC rolam.
+Abrir portal ou jogo não monopoliza os gestos sobre a tela do PC. A pinça mantém o dono do arrasto até soltar.
+Pinça sobre a borda do portal permite deslocar: solte num trecho válido da parede; passagem de porta exige outra abertura confirmada.
+O reconhecimento físico da mão, o destino do arrasto e os apoios ainda precisam do teste no iPhone.

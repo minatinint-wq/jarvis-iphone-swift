@@ -159,6 +159,28 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertLessThan(values[0],30);XCTAssertGreaterThan(values[1],180)
     }
 
+    func testSharedHandPriorityPreservesPCAndCapturedDragAcrossModes() {
+        XCTAssertEqual(SpatialHandTarget.choose(desktop:true,gun:true,game:true),.desktop)
+        XCTAssertEqual(SpatialHandTarget.choose(held:.portal,desktop:true,game:true),.portal)
+        XCTAssertEqual(SpatialHandTarget.choose(held:.desktop,portal:true,gun:true),.desktop)
+        XCTAssertEqual(SpatialHandTarget.choose(object:true,game:true),.object)
+        XCTAssertEqual(SpatialHandTarget.choose(placing:true,game:true),.object)
+        XCTAssertEqual(SpatialHandTarget.choose(),.none)
+        XCTAssertEqual(SpatialHandTarget.choose(gun:true,game:true),.portalGun)
+    }
+    @MainActor func testCapturedSupportKeepsSmallCharactersOffObstaclesAndEdges() {
+        let points:[SCNVector3]=[.init(-1,0,-1),.init(1,0,-1),.init(1,0,1),.init(-1,0,1),.init(-0.3,0.6,-0.3),.init(0.3,0.6,-0.3),.init(0.3,0.6,0.3),.init(-0.3,0.6,0.3)]
+        let ids:[Int32]=[0,2,1,0,3,2,4,6,5,4,7,6]
+        let geometry=SCNGeometry(sources:[SCNGeometrySource(vertices:points)],elements:[SCNGeometryElement(indices:ids,primitiveType:.triangles)])
+        let manifest=ScannedRoomManifest(sourceSHA256:String(repeating:"0",count:64),mesh:"fixture",texture:"fixture",previewIndices:"fixture",facePlanes:"fixture",floorY:0,lower:[-1,0,-1],upper:[1,2,1],planes:[.init(id:1,kind:"floor",normal:[0,1,0],center:[0,0,0],indices:"fixture"),.init(id:100,kind:"furniture",normal:[0,1,0],center:[0,0.6,0],indices:"fixture")],files:[])
+        let labels:[Int32]=[1,1,100,100],data=labels.withUnsafeBytes{Data($0)}
+        XCTAssertFalse(RoomForestScene.supports(base:geometry,manifest:manifest,assignments:data,point:SIMD3(0,0,0),radius:0.1))
+        XCTAssertTrue(RoomForestScene.supports(base:geometry,manifest:manifest,assignments:data,point:SIMD3(0,0.6,0),radius:0.1))
+        XCTAssertTrue(RoomForestScene.supports(base:geometry,manifest:manifest,assignments:data,point:SIMD3(0.8,0,0),radius:0.1))
+        XCTAssertFalse(RoomForestScene.supports(base:geometry,manifest:manifest,assignments:data,point:SIMD3(0.95,0,0),radius:0.15))
+        for id in SpatialRig.forestIdentifiers { XCTAssertLessThanOrEqual(SpatialAssets.placementScale(id)*1.8,0.65) }
+    }
+
     func testPortalProjectionKeepsTheWallFixedAndChangesDepthWithViewpoint() throws {
         let w:Float=0.65,h:Float=0.85
         func project(_ point:SIMD3<Float>,eye:SIMD3<Float>)->SIMD2<Float> {

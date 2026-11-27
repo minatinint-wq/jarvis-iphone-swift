@@ -52,12 +52,42 @@ struct ScannedRoomManifest:Decodable {
     private func updateCollision(forest:Bool) {
         guard let root,let base,let faces else { return }
         var geometry=base,labels=faces
-        if forest,let clean=forestCapture() { geometry=clean.base;labels=clean.faces }
+        if let clean=forestCapture() { geometry=clean.base;labels=clean.faces }
         if let doorway { (geometry,labels)=RoomForestScene.cut(base:geometry,assignments:labels,opening:doorway) }
         let collider=SCNGeometry(sources:geometry.sources,elements:geometry.elements)
         let material=SCNMaterial();material.colorBufferWriteMask=[];material.readsFromDepthBuffer=true;material.isDoubleSided=true
         collider.materials=[material];RoomForestScene.setCapturedDepth(collider,forest:forest)
         root.geometry=collider;hitFaces=labels
+    }
+    func support(_ world:SIMD3<Float>,radius:Float)->UUID? {
+        guard tracking,let pose,let anchor,let capture=forestCapture(),capture.manifest.sceneProfile=="clean-game-v1" else { return nil }
+        let local=simd_inverse(pose)*SIMD4(world,1)
+        return RoomForestScene.supports(base:capture.base,manifest:capture.manifest,assignments:capture.faces,point:SIMD3(local.x,local.y,local.z),radius:radius) ? anchor.identifier : nil
+    }
+    func placement(_ point:CGPoint,radius:Float)->(simd_float4x4,UUID)? {
+        guard aligned,tracking,let root,let hit=view.hitTest(point,options:[.categoryBitMask:16,.backFaceCulling:false]).first(where:{$0.node===root}),abs(hit.worldNormal.y)>0.8 else { return nil }
+        let p=SIMD3<Float>(hit.worldCoordinates)
+        guard let support=support(p,radius:radius) else { return nil }
+        var transform=matrix_identity_float4x4;transform.columns.3=SIMD4(p,1);return (transform,support)
+    }
+    func portalPlacement(_ point:CGPoint,width:Float,height:Float)->(simd_float4x4,Int)? {
+        guard tracking,let root,let geometry=root.geometry,let labels=hitFaces,let frame=view.session.currentFrame,
+              let hit=view.hitTest(point,options:[.categoryBitMask:16,.backFaceCulling:false]).first(where:{$0.node===root}),abs(hit.worldNormal.y)<0.2 else { return nil }
+        let kinds=labels.withUnsafeBytes{b in (0..<(labels.count/4)).map{Int(b.loadUnaligned(fromByteOffset:$0*4,as:Int32.self))}}
+        guard hit.faceIndex>=0,hit.faceIndex<kinds.count else { return nil }
+        let id=kinds[hit.faceIndex]
+        guard forestCapture()?.manifest.planes.contains(where:{$0.id==id && $0.kind=="wall"}) == true else { return nil }
+        var n=simd_normalize(SIMD3<Float>(hit.worldNormal)),p=SIMD3<Float>(hit.worldCoordinates)
+        let eye=SIMD3(frame.camera.transform.columns.3.x,frame.camera.transform.columns.3.y,frame.camera.transform.columns.3.z)
+        if simd_dot(eye-p,n)<0 { n = -n };let u=simd_normalize(simd_cross(SIMD3<Float>(0,1,0),n))
+        let pose=simd_float4x4(SIMD4(u,0),SIMD4(0,1,0,0),SIMD4(n,0),SIMD4(p,1)),local=simd_inverse(pose)*root.simdTransform
+        let vertices=RoomForestScene.points(geometry),indices=RoomForestScene.indices(geometry)
+        var wall:[SIMD2<Float>]=[]
+        for face in kinds.indices where kinds[face]==id {
+            for j in 0..<3 { let q=local*SIMD4(vertices[Int(indices[face*3+j])],1);if abs(q.z)<0.12 { wall.append(SIMD2(q.x,q.y)) } }
+        }
+        guard wall.count%3==0,SpatialPortalMath.fitsWall(width:width,height:height,triangles:wall) else { return nil }
+        var raised=pose;raised.columns.3 += SIMD4(n*0.025,0);return (raised,id)
     }
     func setDoorway(_ opening:RoomDoorwayOpening) {
         guard let pose else { return }
@@ -67,6 +97,7 @@ struct ScannedRoomManifest:Decodable {
         if active { _ = setForest(true) }
     }
     var pose:simd_float4x4? { aligned ? root?.simdTransform : nil }
+    var supportIdentifier:UUID? { aligned ? anchor?.identifier : nil }
     var floorCenter:SIMD3<Float>? {
         guard let m=manifest,let p=m.planes.first(where:{$0.kind=="floor"}),p.center.count==3 else { return nil }
         return SIMD3(p.center[0],m.floorY,p.center[2])
@@ -248,7 +279,7 @@ struct ScannedRoomManifest:Decodable {
         material.colorBufferWriteMask=[];material.writesToDepthBuffer=true;material.readsFromDepthBuffer=true;material.isDoubleSided=true
         geometry.materials=[material]
         let node=SCNNode(geometry:geometry);node.categoryBitMask=16;node.simdTransform=anchor.transform;node.renderingOrder = -50
-        root=node;hitFaces=faces;view.scene.rootNode.addChildNode(node);aligned=true;node.isHidden = !tracking
+        root=node;hitFaces=faces;view.scene.rootNode.addChildNode(node);aligned=true;node.isHidden = !tracking;updateCollision(forest:false)
     }
     private func paint(_ id:Int) {
         guard let base,let root,let m=manifest,let p=m.planes.first(where:{$0.id==id && $0.kind=="wall"}),p.normal.count==3,

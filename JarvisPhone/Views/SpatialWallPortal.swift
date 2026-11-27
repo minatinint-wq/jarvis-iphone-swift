@@ -123,6 +123,50 @@ import UIKit
     var onDoorwayReady:((RoomDoorwayOpening)->Void)?
     var onCross:((Bool)->Void)?
     var forestVisible:(()->Bool)?
+    var windowPlacement:((CGPoint,Float,Float)->(simd_float4x4,Int)?)?
+    var doorwayPlacement:((CGPoint)->RoomDoorwayOpening?)?
+    private var dragPose:simd_float4x4?
+    private var dragOffset=SIMD3<Float>.zero
+    private var dragPoint=CGPoint.zero
+    var isDragging:Bool { dragPose != nil }
+    func contains(_ point:CGPoint)->Bool {
+        guard tracking,let root,!root.isHidden else { return false }
+        return view.hitTest(point,options:[.categoryBitMask:32,.backFaceCulling:false]).contains { hit in
+            var node:SCNNode?=hit.node
+            while let current=node { if current===root { return true };node=current.parent };return false
+        }
+    }
+    private func onPlane(_ point:CGPoint,pose:simd_float4x4)->SIMD3<Float>? {
+        guard let frame=view.session.currentFrame else { return nil }
+        let eye=SIMD3(frame.camera.transform.columns.3.x,frame.camera.transform.columns.3.y,frame.camera.transform.columns.3.z),far=SIMD3<Float>(view.unprojectPoint(SCNVector3(Float(point.x),Float(point.y),1)))
+        let direction=simd_normalize(far-eye),normal=SIMD3(pose.columns.2.x,pose.columns.2.y,pose.columns.2.z),center=SIMD3(pose.columns.3.x,pose.columns.3.y,pose.columns.3.z),denominator=simd_dot(normal,direction)
+        guard abs(denominator)>0.1 else { return nil };let distance=simd_dot(center-eye,normal)/denominator
+        return (0.1...8).contains(distance) ? eye+direction*distance : nil
+    }
+    @discardableResult func hand(_ sample:SpatialHandSample?)->Bool {
+        guard tracking,let root,let record,let sample,sample.ratio.isFinite else {
+            if let dragPose { self.root?.simdTransform=dragPose };dragPose=nil;return false
+        }
+        if dragPose==nil,sample.ratio<0.28,contains(sample.point),let hit=onPlane(sample.point,pose:root.simdTransform) {
+            dragPose=root.simdTransform;dragOffset=root.simdPosition-hit;dragPoint=sample.point;return true
+        }
+        guard let initial=dragPose else { return false }
+        if sample.ratio<0.52 {
+            if let hit=onPlane(sample.point,pose:initial) { root.simdPosition=hit+dragOffset;let screen=view.projectPoint(root.worldPosition);dragPoint=CGPoint(x:CGFloat(screen.x),y:CGFloat(screen.y)) }
+            return true
+        }
+        root.simdTransform=initial;dragPose=nil
+        if record.doorway == true {
+            if let opening=doorwayPlacement?(dragPoint) { _=placeDoorway(opening) }
+            else { onFeedback?("A passagem precisa continuar numa porta aberta. Mantive o portal no lugar anterior.") }
+        } else if let placement=windowPlacement?(dragPoint,record.width,record.height) {
+            if let anchor { view.session.remove(anchor:anchor) }
+            let anchor=ARAnchor(name:"JarvisWallPortal",transform:placement.0)
+            var moved=SpatialPortalRecord(anchor:anchor.identifier,width:record.width,height:record.height);moved.capturedWall=placement.1;moved.theme=record.theme
+            self.anchor=anchor;self.record=moved;root.simdTransform=placement.0;view.session.add(anchor:anchor);rebindRoom();onChange?()
+        } else { onFeedback?("Esse destino não tem parede livre para o portal. Mantive o lugar anterior.") }
+        return true
+    }
     @discardableResult func placeDoorway(_ opening:RoomDoorwayOpening)->Bool {
         guard roomPose?() != nil,let renderer=SpatialPortalRenderer(device:view.device) else { return false }
         clear(recordChange:false)
@@ -184,12 +228,12 @@ import UIKit
     private func build(pose:simd_float4x4,animate:Bool) {
         guard let record,let renderer else { return }
         let root=SCNNode();root.simdTransform=pose;root.isHidden = !tracking
-        let hole=SCNNode(geometry:Self.aperture(width:record.width,height:record.height));hole.name="portal-window";renderer.material.isDoubleSided=record.doorway == true;hole.geometry?.materials=[renderer.material];root.addChildNode(hole)
+        let hole=SCNNode(geometry:Self.aperture(width:record.width,height:record.height));hole.name="portal-window";hole.categoryBitMask=33;renderer.material.isDoubleSided=record.doorway == true;hole.geometry?.materials=[renderer.material];root.addChildNode(hole)
         let edge=SpatialPortalMath.outline(width:record.width,height:record.height)
         for i in 0..<edge.count {
             let a=edge[i],b=edge[(i+1)%edge.count],delta=b-a
             let chunk=SCNNode(geometry:SCNBox(width:CGFloat(simd_length(delta)+0.012),height:0.045, length:0.065,chamferRadius:0.008))
-            chunk.position=SCNVector3((a.x+b.x)/2,(a.y+b.y)/2,0.018);chunk.eulerAngles.z=atan2(delta.y,delta.x)
+            chunk.categoryBitMask=33;chunk.position=SCNVector3((a.x+b.x)/2,(a.y+b.y)/2,0.018);chunk.eulerAngles.z=atan2(delta.y,delta.x)
             let rim=SCNMaterial();rim.lightingModel = .constant;rim.diffuse.contents=UIColor(red:0.15,green:0.82,blue:0.52,alpha:1);rim.emission.contents=UIColor(red:0.02,green:0.17,blue:0.05,alpha:1)
             chunk.geometry?.materials=[record.doorway == true ? rim : WallMaterials.effect("brick")];root.addChildNode(chunk)
             if animate,i%2==0 {
@@ -206,7 +250,7 @@ import UIKit
         clear(recordChange:false);record=saved;self.anchor=anchor;self.renderer=renderer;build(pose:anchor.transform,animate:false);return true
     }
     func update(_ updated:ARAnchor) {
-        guard updated.identifier==anchor?.identifier else { return };anchor=updated;root?.simdTransform=updated.transform
+        guard updated.identifier==anchor?.identifier else { return };anchor=updated;if !isDragging { root?.simdTransform=updated.transform }
     }
     func frame(_ frame:ARFrame,stable:Bool) {
         tracking=stable
@@ -238,6 +282,7 @@ import UIKit
         }
     }
     func clear(recordChange:Bool=true,preserveAnchor:Bool=false) {
+        dragPose=nil
         if !preserveAnchor,let anchor { view.session.remove(anchor:anchor) }
         anchor=nil;root?.removeFromParentNode();root=nil;record=nil;renderer=nil;roomInstalled=false;outsideSince=nil;passage.reset()
         if recordChange { onChange?() }

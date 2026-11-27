@@ -7,6 +7,35 @@ import SwiftUI
     static func setCapturedDepth(_ geometry:SCNGeometry,forest:Bool) {
         geometry.materials.forEach{$0.writesToDepthBuffer = !forest}
     }
+    static func supports(base:SCNGeometry,manifest:ScannedRoomManifest,assignments:Data,point:SIMD3<Float>,radius:Float)->Bool {
+        guard radius.isFinite,radius>0,point.x.isFinite,point.y.isFinite,point.z.isFinite else { return false }
+        let v=points(base),ids=indices(base),labels=assignments.withUnsafeBytes{b in (0..<(assignments.count/4)).map{Int(b.loadUnaligned(fromByteOffset:$0*4,as:Int32.self))}}
+        let kinds=Dictionary(uniqueKeysWithValues:manifest.planes.map{($0.id,$0.kind)})
+        var surfaces:[(SIMD3<Float>,SIMD3<Float>,SIMD3<Float>)]=[],obstacles:[(SIMD3<Float>,SIMD3<Float>,SIMD3<Float>)]=[]
+        for f in labels.indices {
+            let a=v[Int(ids[f*3])],b=v[Int(ids[f*3+1])],c=v[Int(ids[f*3+2])],cross=simd_cross(b-a,c-a)
+            let length=simd_length(cross);guard length>0.000001 else { continue }
+            if abs(cross.y/length)>0.8,let kind=kinds[labels[f]],kind=="floor" || kind=="furniture" {
+                let y=(a.y+b.y+c.y)/3
+                if abs(y-point.y)<0.07 { surfaces.append((a,b,c)) }
+                else if y>point.y+0.12,y<point.y+1.7 { obstacles.append((a,b,c)) }
+            }
+            if kinds[labels[f]]=="wall",max(a.y,max(b.y,c.y))>point.y+0.15,min(a.y,min(b.y,c.y))<point.y+1.4 {
+                let normal=simd_normalize(SIMD3(cross.x,0,cross.z))
+                guard normal.x.isFinite else { continue }
+                let u=simd_cross(SIMD3<Float>(0,1,0),normal),p=simd_dot(point,u)
+                if abs(simd_dot(point-a,normal))<radius+0.025,p>=min(simd_dot(a,u),min(simd_dot(b,u),simd_dot(c,u)))-radius,p<=max(simd_dot(a,u),max(simd_dot(b,u),simd_dot(c,u)))+radius { return false }
+            }
+        }
+        func contains(_ p:SIMD2<Float>,_ triangle:(SIMD3<Float>,SIMD3<Float>,SIMD3<Float>))->Bool {
+            MeasuredWall.contains(p,polygon:[SIMD2(triangle.0.x,triangle.0.z),SIMD2(triangle.1.x,triangle.1.z),SIMD2(triangle.2.x,triangle.2.z)])
+        }
+        for i in 0...16 {
+            let a=Float(i)*2 * .pi/16,p=i==16 ? SIMD2(point.x,point.z) : SIMD2(point.x+cos(a)*radius,point.z+sin(a)*radius)
+            guard surfaces.contains(where:{contains(p,$0)}),!obstacles.contains(where:{contains(p,$0)}) else { return false }
+        }
+        return true
+    }
     static func points(_ geometry:SCNGeometry)->[SIMD3<Float>] {
         guard let s=geometry.sources(for:.vertex).first else { return [] }
         return s.data.withUnsafeBytes { b in (0..<s.vectorCount).map { i in

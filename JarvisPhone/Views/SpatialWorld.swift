@@ -31,6 +31,7 @@ enum SpatialTheme: String, CaseIterable {
         guard let url=Bundle.main.url(forResource:"SPATIAL_ASSETS",withExtension:"json"),let bytes=try? Data(contentsOf:url),let entries=try? JSONSerialization.jsonObject(with:bytes) as? [[String:Any]] else { return [] };return entries
     }()
     static func isBundled(_ id:String)->Bool { bundled.contains{$0["id"] as? String==id} }
+    static func placementScale(_ id:String?)->Float { id.map{SpatialRig.identifiers.contains($0)} == true ? 0.35 : 1 }
     static var specifications:[[String:Any]] {
         let local=bundled,ids=Set(local.compactMap{$0["id"] as? String})
         return local+SpatialCloudLibrary.shared.models.filter{!ids.contains($0["id"] as? String ?? "")}
@@ -152,6 +153,21 @@ enum SpatialTheme: String, CaseIterable {
     @Published var selectedModel:String?
     var panelBlocking=false
     var onWindowPinch:((UIPinchGestureRecognizer)->Bool)?
+    var capturedPlacement:((CGPoint,Float)->(simd_float4x4,UUID)?)?
+    var capturedSupport:((SIMD3<Float>,Float)->UUID?)?
+    var capturedSupportIdentifier:(()->UUID?)?
+    var isDragging:Bool { handDragging != nil }
+    func contains(_ point:CGPoint)->Bool { visibility && hit(point) != nil }
+    private func clearObjects(_ p:SIMD3<Float>,radius:Float,ignoring:UUID?)->Bool {
+        objects.allSatisfy { id,node in id==ignoring || abs(node.simdPosition.y-p.y)>0.25 || simd_distance(SIMD2(p.x,p.z),SIMD2(node.simdPosition.x,node.simdPosition.z))>=radius+self.radius(id)*node.simdScale.x }
+    }
+    private func supportFits(_ p:SIMD3<Float>,radius:Float,key:UUID,ignoring:UUID?)->Bool {
+        if let plane=planes[key] { return fits(SIMD4(p,1),radius:radius,on:plane,ignoring:ignoring) }
+        return capturedSupport?(p,radius) != nil && clearObjects(p,radius:radius,ignoring:ignoring)
+    }
+    private func startingScale(_ model:String?)->Float {
+        SpatialAssets.placementScale(model)
+    }
     private var radii:[UUID:Float]=[:]
     @Published var placing=false
     @Published var status="Escolha um cenário e toque em uma área livre do piso ou de uma mesa."
@@ -175,6 +191,7 @@ enum SpatialTheme: String, CaseIterable {
     private var handDragging:UUID?
     private var handOffset=SIMD3<Float>.zero
     private var handDepth:Float=0
+    private var handSupportHeight:Float=0
     private var palmScale=SpatialPalmScale()
     private var pinchZoom=SpatialPinchZoom()
     private func pinchDistance(_ sample:SpatialHandSample) -> Double? {
@@ -202,8 +219,8 @@ enum SpatialTheme: String, CaseIterable {
         guard visibility,let id=selected,let root=objects[id],!root.isHidden,let (_,model)=SpatialRig.character(in:root) else { status="Selecione um personagem com apoio confirmado.";return }
         guard impact == nil || model == "animated_robot" else { status="Selecione o robô para testar o impacto.";return }
         let support=planes.values.first { $0.alignment == .horizontal && ($0.classification == .floor || $0.classification == .table) && fits(SIMD4(root.simdPosition,1),radius:radius(id)*root.simdScale.x,on:$0,ignoring:id) }
-        guard let support else { status="Mostre mais da superfície livre antes de movimentar o personagem.";return }
-        stopMoving();supports[id]=support.identifier
+        guard let supportKey=support?.identifier ?? capturedSupport?(root.simdPosition,radius(id)*root.simdScale.x) else { status="Escolha uma superfície livre antes de mover o personagem.";return }
+        stopMoving();supports[id]=supportKey
         let forward=simd_normalize(SIMD3(root.simdTransform.columns.2.x,0,root.simdTransform.columns.2.z))
         let goal=point ?? root.simdPosition+forward*0.75
         let direction=SIMD3(goal.x-root.simdPosition.x,0,goal.z-root.simdPosition.z)
@@ -218,7 +235,7 @@ enum SpatialTheme: String, CaseIterable {
         let delta=Float(min(0.05,max(0,time-(simulationTime ?? time))));simulationTime=time
         guard visibility,!thermalPaused,delta>0 else { return }
         for (id,motion) in Array(motions) {
-            guard let root=objects[id],!root.isHidden,let supportID=supports[id],let support=planes[supportID] else { finishMotion(id);continue }
+            guard let root=objects[id],!root.isHidden,let supportID=supports[id] else { finishMotion(id);continue }
             let offset=motion.destination-root.simdPosition,distance=simd_length(offset)
             let stopDistance: Float=motion.impact == nil ? 0.04 : 0.55
             if distance<=stopDistance {
@@ -233,7 +250,7 @@ enum SpatialTheme: String, CaseIterable {
                 continue
             }
             let next=root.simdPosition+offset/distance*min(motion.speed*delta,max(0,distance-stopDistance))
-            guard fits(SIMD4(next,1),radius:radius(id)*root.simdScale.x,on:support,ignoring:id) else { finishMotion(id);status="Movimento interrompido pela borda ou por um obstáculo medido.";continue }
+            guard supportFits(next,radius:radius(id)*root.simdScale.x,key:supportID,ignoring:id) else { finishMotion(id);status="Movimento interrompido pela borda ou por um obstáculo medido.";continue }
             root.simdPosition=next
         }
     }
@@ -282,6 +299,12 @@ enum SpatialTheme: String, CaseIterable {
     /// A normal, relocalized ARKit world provides the saved anchor references.
     /// The lightweight mode does not ask LiDAR to recheck them continuously.
     func reuseLocalizedSupports() {
+        if visibility,!recovering {
+            let captureKey=capturedSupportIdentifier?()
+            for (id,node) in objects where supports[id] == nil || (supports[id] != captureKey && supports[id].flatMap({planes[$0]}) == nil) {
+                if let key=capturedSupport?(node.simdPosition,radius(id)*node.simdScale.x) { supports[id]=key }
+            }
+        }
         guard visibility,!recovering,!supportsConfirmed else { return }
         for (id,node) in objects { supportProofs[id]=SpatialSupportProof(confirmed:true);node.isHidden=false }
         persistenceStatus="Ambiente fixado. Leitura de superfícies desligada."
@@ -626,15 +649,15 @@ enum SpatialTheme: String, CaseIterable {
         }
         guard placing else { status="Toque em Adicionar para colocar outro conjunto."; return }
         guard objects.count<6 else { status="Limite de seis conjuntos para manter o desempenho."; return }
-        let placementRadius=footprint(selectedModel)
+        let startScale=startingScale(selectedModel),placementRadius=footprint(selectedModel)*startScale
         guard let placement=placement(point,radius:placementRadius,ignoring:nil) else { return }
         do {
             let content=try content(), root=SCNNode()
             guard triangles(content)+objects.values.reduce(0,{ $0+triangles($1) })<=350000 else { status="Remova um objeto antes de adicionar outro modelo detalhado.";return }
             let id=UUID(),anchor=ARAnchor(name:"JarvisObject:"+id.uuidString,transform:placement.0)
-            root.simdTransform=anchor.transform;root.addChildNode(content);root.isHidden = !visibility
+            root.simdTransform=anchor.transform;root.simdScale=SIMD3(repeating:startScale);root.addChildNode(content);root.isHidden = !visibility
             view.scene.rootNode.addChildNode(root);view.session.add(anchor:anchor)
-            objects[id]=root;anchors[id]=anchor;supports[id]=placement.1;radii[id]=placementRadius
+            objects[id]=root;anchors[id]=anchor;supports[id]=placement.1;radii[id]=footprint(selectedModel)
             supportProofs[id]=SpatialSupportProof(confirmed:true)
             remember(id,model:selectedModel ?? "theme:"+theme.rawValue)
             selected=id;objectCount=objects.count;hasSelection=true;placing=false;markSelection()
@@ -651,10 +674,10 @@ enum SpatialTheme: String, CaseIterable {
         return nil
     }
     func hand(_ sample:SpatialHandSample?) {
-        guard active,!panelBlocking,visibility,!recovering else { handGesture.reset();placementGesture.reset();palmScale=SpatialPalmScale();return }
+        guard active,!panelBlocking,visibility,!recovering else { if let id=handDragging { reanchor(id);handDragging=nil };handGesture.reset();placementGesture.reset();palmScale=SpatialPalmScale();return }
         if placing {
             handGesture.reset()
-            guard let sample,sample.pointing,let support=placement(sample.point,radius:footprint(selectedModel),ignoring:nil) else { placementGesture.reset();return }
+            guard let sample,sample.pointing,let support=placement(sample.point,radius:footprint(selectedModel)*startingScale(selectedModel),ignoring:nil) else { placementGesture.reset();return }
             if placementGesture.update(target:"place:"+support.1.uuidString,point:sample.point,pointing:true,time:sample.time) != nil { tap(sample.point,tracking:true);placementGesture.reset() }
             return
         }
@@ -666,6 +689,7 @@ enum SpatialTheme: String, CaseIterable {
             case .press(let key):
                 selected=UUID(uuidString:key);hasSelection=selected != nil;markSelection()
                 if let selected,let node=objects[selected],let sample {
+                    handDragging=selected;handSupportHeight=node.simdPosition.y
                     handDepth=view.projectPoint(node.worldPosition).z
                     let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),handDepth))
                     handOffset=node.simdWorldPosition-SIMD3(p.x,p.y,p.z)
@@ -674,7 +698,8 @@ enum SpatialTheme: String, CaseIterable {
             case .drag(let key):
                 guard let id=UUID(uuidString:key),let node=objects[id],let sample else { continue }
                 let p=view.unprojectPoint(SCNVector3(Float(sample.point.x),Float(sample.point.y),handDepth))
-                handDragging=id;node.simdPosition=SIMD3(p.x,p.y,p.z)+handOffset
+                var candidate=SIMD3(p.x,p.y,p.z)+handOffset;candidate.y=handSupportHeight
+                if let key=supports[id],supportFits(candidate,radius:radius(id)*node.simdScale.x,key:key,ignoring:id) { handDragging=id;node.simdPosition=candidate }
             case .release:
                 pinchZoom=SpatialPinchZoom()
                 if let id=handDragging { reanchor(id);handDragging=nil }
@@ -685,14 +710,14 @@ enum SpatialTheme: String, CaseIterable {
     }
     func resizeSelected(_ factor: Float) {
         guard visibility,let selected,let node=objects[selected],factor.isFinite else { return }
-        let scale=min(2,max(0.25,node.simdScale.x*factor))
-        if let support=supports[selected],let plane=planes[support],!fits(SIMD4(node.simdPosition,1),radius:radius(selected)*scale,on:plane,ignoring:selected) { status="Esse tamanho ultrapassa a superfície livre.";return }
+        let scale=min(2,max(0.08,node.simdScale.x*factor))
+        if let support=supports[selected],!supportFits(node.simdPosition,radius:radius(selected)*scale,key:support,ignoring:selected) { status="Esse tamanho ultrapassa a superfície livre.";return }
         node.simdScale=SIMD3(repeating:scale);remember(selected)
     }
     func moveSelected(x: Float,z: Float) {
         guard visibility,!recovering,x.isFinite,z.isFinite,let selected,let node=objects[selected] else { return }
         let destination=node.simdPosition+SIMD3(x,0,z)
-        guard let support=supports[selected],let plane=planes[support],fits(SIMD4(destination,1),radius:radius(selected)*node.simdScale.x,on:plane,ignoring:selected) else {
+        guard let support=supports[selected],supportFits(destination,radius:radius(selected)*node.simdScale.x,key:support,ignoring:selected) else {
             status="Mapeie a superfície antes de mover o objeto por comando.";return
         }
         node.simdPosition=destination;reanchor(selected)
@@ -701,6 +726,10 @@ enum SpatialTheme: String, CaseIterable {
     /// infinite plane, through walls, in doorways, or on an unmapped passage.
     private func placement(_ point: CGPoint, radius: Float, ignoring: UUID?) -> (simd_float4x4,UUID)? {
         let panelSurface=selectedModel == SpatialDemo.panel.rawValue
+        if !panelSurface,let captured=capturedPlacement?(point,radius) {
+            let p=captured.0.columns.3
+            if clearObjects(SIMD3(p.x,p.y,p.z),radius:radius,ignoring:ignoring) { return captured }
+        }
         guard let query=view.raycastQuery(from:point,allowing:.existingPlaneGeometry,alignment:panelSurface ? .any : .horizontal),
               let result=view.session.raycast(query).first, let plane=result.anchor as? ARPlaneAnchor,
               plane.classification == .floor || plane.classification == .table || (panelSurface && plane.classification == .wall) else {
@@ -750,10 +779,10 @@ enum SpatialTheme: String, CaseIterable {
     }
     @objc private func pinch(_ gesture: UIPinchGestureRecognizer) {
         if onWindowPinch?(gesture)==true { return }
-        guard active,!panelBlocking,visibility, let id=selected,let node=objects[id],let support=supports[id],let plane=planes[support] else { return }
+        guard active,!panelBlocking,visibility, let id=selected,let node=objects[id],let support=supports[id] else { return }
         if gesture.state == .began { initialScale=node.simdScale.x }
-        let scale=min(2,max(0.25,initialScale*Float(gesture.scale)))
-        guard fits(SIMD4<Float>(node.simdPosition,1),radius:radius(id)*scale,on:plane,ignoring:id) else { status="Esse tamanho ultrapassa a área livre.";return }
+        let scale=min(2,max(0.08,initialScale*Float(gesture.scale)))
+        guard supportFits(node.simdPosition,radius:radius(id)*scale,key:support,ignoring:id) else { status="Esse tamanho ultrapassa a área livre.";return }
         node.simdScale=SIMD3<Float>(repeating:scale)
         if gesture.state == .ended { reanchor(id) }
     }

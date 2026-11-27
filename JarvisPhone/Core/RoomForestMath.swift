@@ -1,6 +1,16 @@
 import Foundation
 import simd
 
+enum SpatialHandTarget:Equatable {
+    case none,panel,desktop,object,portal,game,portalGun,liveWall,capturedWall
+    static func choose(held:Self?=nil,panel:Bool=false,desktop:Bool=false,object:Bool=false,portal:Bool=false,placing:Bool=false,gun:Bool=false,liveWall:Bool=false,capturedWall:Bool=false,game:Bool=false)->Self {
+        if let held { return held }
+        if panel { return .panel };if desktop { return .desktop };if portal { return .portal };if object { return .object }
+        if gun { return .portalGun };if liveWall { return .liveWall };if capturedWall { return .capturedWall }
+        if placing { return .object };return game ? .game : .none
+    }
+}
+
 /// A metric fit is accepted only when geometry, gravity and a distinct solution agree.
 enum RoomForestRegistration {
     struct Point:Sendable { var p:SIMD3<Float>;var n:SIMD3<Float>;var kind:Int }
