@@ -91,5 +91,41 @@
     "source": "https://polyhaven.com/a/brick_wall_001",
     "license": "CC0",
     "author": "Dimitrios Savva & Rob Tuytel"
+  },
+  {
+    "file": "Portal_forest_slope_2k.hdr",
+    "sha256": "aa76871c301a2ea5977043e48036b53bb3f26eff0d96fa833789a7738569c279",
+    "width": 2048,
+    "height": 1024,
+    "source": "https://polyhaven.com/a/forest_slope",
+    "license": "CC0-1.0",
+    "role": "portal environment"
+  },
+  {
+    "file": "Portal_forest_floor_diff_2k.jpg",
+    "sha256": "0947e100c08e2238503fbce7258c57ee08d5df40149dfe0c19d5f3aed7e850b8",
+    "width": 1024,
+    "height": 1024,
+    "source": "https://polyhaven.com/a/forest_floor",
+    "license": "CC0-1.0",
+    "role": "portal ground PBR"
+  },
+  {
+    "file": "Portal_forest_floor_nor_gl_2k.jpg",
+    "sha256": "8b5eb9da3ae03a6920452ccf6811144e7e12916b0d3274916c271d34e252ae93",
+    "width": 1024,
+    "height": 1024,
+    "source": "https://polyhaven.com/a/forest_floor",
+    "license": "CC0-1.0",
+    "role": "portal ground PBR"
+  },
+  {
+    "file": "Portal_forest_floor_rough_2k.jpg",
+    "sha256": "dc98d8ad7b50614e19af8e6da882bcb6c7bb8f8d1c3ce872a30632fd2588834f",
+    "width": 1024,
+    "height": 1024,
+    "source": "https://polyhaven.com/a/forest_floor",
+    "license": "CC0-1.0",
+    "role": "portal ground PBR"
   }
 ]

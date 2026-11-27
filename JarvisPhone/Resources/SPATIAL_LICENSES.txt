@@ -232,3 +232,7 @@ Fox — model PixelMannen (CC0), rigging/animation tomkranis (CC BY 4.0), glTF c
 https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/e124e8d8d7330a5372bc2b4d00d39a4a9d7997ea/Models/Fox/README.md
 https://creativecommons.org/licenses/by/4.0/legalcode
 Changes: unit normalization, native geometry/rig conversion and animation sampling for SceneKit.
+
+Portal forest environment: Forest Slope by Andreas Mischok, Poly Haven, CC0-1.0. https://polyhaven.com/a/forest_slope
+Portal ground: Forest Floor by eye-candy.xyz, Poly Haven, CC0-1.0. https://polyhaven.com/a/forest_floor
+Ground color/normal/roughness derived from 2K originals, resized to 1K for mobile. HDRI remains original 2K. See AR_MATERIALS.json hashes.

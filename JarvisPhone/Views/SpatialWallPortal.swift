@@ -40,15 +40,21 @@ import UIKit
     }
     static func populate(_ scene:SCNScene) {
         scene.background.contents=UIColor(red:0.34,green:0.48,blue:0.43,alpha:1)
-        scene.fogColor=UIColor(red:0.34,green:0.48,blue:0.43,alpha:1);scene.fogStartDistance=5;scene.fogEndDistance=17
-        let sun=SCNNode();sun.light=SCNLight();sun.light?.type = .directional;sun.light?.intensity=1300
+        if let environment=Bundle.main.url(forResource:"Portal_forest_slope_2k",withExtension:"hdr") {
+            scene.background.contents=environment
+            scene.lightingEnvironment.contents=environment;scene.lightingEnvironment.intensity=0.65
+        }
+        let sun=SCNNode();sun.light=SCNLight();sun.light?.type = .directional;sun.light?.intensity=650
         sun.light?.color=UIColor(red:1,green:0.91,blue:0.73,alpha:1);sun.eulerAngles=SCNVector3(-0.8,-0.4,0);scene.rootNode.addChildNode(sun)
-        let ambient=SCNNode();ambient.light=SCNLight();ambient.light?.type = .ambient;ambient.light?.intensity=450
+        let ambient=SCNNode();ambient.light=SCNLight();ambient.light?.type = .ambient;ambient.light?.intensity=200
         ambient.light?.color=UIColor(red:0.63,green:0.75,blue:0.70,alpha:1);scene.rootNode.addChildNode(ambient)
-        let ground=SCNNode(geometry:SCNPlane(width:24,height:24));ground.eulerAngles.x = -.pi/2;ground.position=SCNVector3(0,-0.65,-9)
+        let ground=SCNNode(geometry:SCNPlane(width:12,height:12));ground.eulerAngles.x = -.pi/2;ground.position=SCNVector3(0,-0.65,-5.5)
         let moss=SCNMaterial();moss.lightingModel = .physicallyBased;moss.roughness.contents=0.95
-        moss.diffuse.contents=(UIImage(named:"Spatial_mossrock_Color.jpg") as Any?) ?? UIColor(red:0.19,green:0.25,blue:0.12,alpha:1) as Any
-        moss.diffuse.contentsTransform=SCNMatrix4MakeScale(10,10,1);moss.diffuse.wrapS = .repeat;moss.diffuse.wrapT = .repeat
+        moss.diffuse.contents=(UIImage(named:"Portal_forest_floor_diff_2k.jpg") as Any?) ?? UIColor(red:0.19,green:0.25,blue:0.12,alpha:1) as Any
+        moss.diffuse.contentsTransform=SCNMatrix4MakeScale(6,6,1);moss.diffuse.wrapS = .repeat;moss.diffuse.wrapT = .repeat
+        moss.normal.contents=UIImage(named:"Portal_forest_floor_nor_gl_2k.jpg");moss.roughness.contents=UIImage(named:"Portal_forest_floor_rough_2k.jpg")
+        for property in [moss.normal,moss.roughness] { property.contentsTransform=moss.diffuse.contentsTransform;property.wrapS = .repeat;property.wrapT = .repeat;property.mipFilter = .linear }
+        moss.diffuse.mipFilter = .linear;moss.diffuse.maxAnisotropy=4
         ground.geometry?.materials=[moss];scene.rootNode.addChildNode(ground)
         // Finished, textured local models; loaded once, never downloaded per frame.
         func model(_ id:String,_ size:Float,_ position:SCNVector3,_ rotation:Float=0) {
@@ -64,14 +70,6 @@ import UIKit
             model("fern",0.65+Float(i%3)*0.17,SCNVector3(x,-0.65,z),Float(i)*1.71)
         }
         for i in 0..<7 { model("mossrock",0.45+Float(i%3)*0.18,SCNVector3(Float(i%3)-0.85,-0.65,-1.3-Float(i)*0.69),Float(i)) }
-        for i in 0..<14 {
-            let x:Float=(i%2==0 ? -1 : 1)*(1.2+Float(i%4)*0.45),z:Float = -1.4-Float(i/2)*1.5
-            let trunk=SCNNode(geometry:SCNCylinder(radius:CGFloat(0.10+Float(i%3)*0.035),height:7))
-            trunk.position=SCNVector3(x,2.85,z);trunk.geometry?.materials=[moss.copy() as! SCNMaterial]
-            trunk.geometry?.firstMaterial?.multiply.contents=UIColor(red:0.45,green:0.36,blue:0.24,alpha:1);scene.rootNode.addChildNode(trunk)
-            let crown=SCNNode(geometry:SCNSphere(radius:1.5));crown.scale=SCNVector3(1,0.55,1);crown.position=SCNVector3(x,3.25,z)
-            let leaf=SCNMaterial();leaf.diffuse.contents=UIColor(red:0.11,green:0.24,blue:0.10,alpha:1);leaf.roughness.contents=1;crown.geometry?.materials=[leaf];scene.rootNode.addChildNode(crown)
-        }
         model("animated_fox",0.40,SCNVector3(0.13,-0.65,-2.8))
         for i in 0..<10 {
             let mote=SCNNode(geometry:SCNSphere(radius:0.009));mote.position=SCNVector3(sin(Float(i)*2.7)*1.2,-0.2+Float(i%4)*0.22,-0.8-Float(i)*0.4)

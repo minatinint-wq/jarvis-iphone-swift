@@ -4,6 +4,10 @@ product: JarvisPhone
 infoPath: Support/Phone.plist
 iconPath: JarvisPhone/Assets.xcassets/AppIcon.appiconset/icon-1024.png
 resources:
+- JarvisPhone/Resources/Portal_forest_slope_2k.hdr
+- JarvisPhone/Resources/Portal_forest_floor_diff_2k.jpg
+- JarvisPhone/Resources/Portal_forest_floor_nor_gl_2k.jpg
+- JarvisPhone/Resources/Portal_forest_floor_rough_2k.jpg
 - JarvisPhone/Resources/RoomFX_brick_Color.jpg
 - JarvisPhone/Resources/RoomFX_brick_NormalGL.jpg
 - JarvisPhone/Resources/RoomFX_brick_Roughness.jpg
