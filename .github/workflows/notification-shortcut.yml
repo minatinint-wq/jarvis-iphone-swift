@@ -14,24 +14,20 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Generate the native intent action
-        env:
-          JARVIS_TARGET_BUNDLE: ${{ inputs.bundle_id }}
-        run: python3 scripts/build-notification-shortcut.py --bundle-id "$JARVIS_TARGET_BUNDLE" --output "$RUNNER_TEMP/JARVIS+Notificacoes.unsigned.shortcut"
-      - name: Sign with Apple Shortcuts
+      - name: Verify the reviewed Apple-signed native shortcut
         run: |
-          shortcuts sign --mode anyone --input "$RUNNER_TEMP/JARVIS+Notificacoes.unsigned.shortcut" --output "$RUNNER_TEMP/JARVIS+Notificacoes.shortcut"
-          python3 - <<'PY'
-          import os,hashlib,json
-          from pathlib import Path
-          p=Path(os.environ['RUNNER_TEMP'])/'JARVIS+Notificacoes.shortcut'
-          assert p.read_bytes().startswith(b'AEA1')
-          (p.parent/'notification-shortcut-verification.json').write_text(json.dumps({'signed':True,'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'network_requests':0}))
-          PY
+          python3 scripts/check-notification-shortcut.py
+          aea decrypt -i "Shortcuts/JARVIS+Notificacoes-Nativo.shortcut" -o "$RUNNER_TEMP/notification.aa" -sign-pub Shortcuts/notification-signing-public.hex
+          mkdir -p "$RUNNER_TEMP/notification-decoded"
+          aa extract -i "$RUNNER_TEMP/notification.aa" -d "$RUNNER_TEMP/notification-decoded"
+          python3 scripts/check-notification-shortcut.py "$RUNNER_TEMP/notification-decoded/Shortcut.wflow"
+          cp "Shortcuts/JARVIS+Notificacoes-Nativo.shortcut" "$RUNNER_TEMP/JARVIS+Notificacoes.shortcut"
+          cp "Shortcuts/JARVIS+Notificacoes-Nativo.plist" "$RUNNER_TEMP/JARVIS+Notificacoes.plist"
+          cp "Shortcuts/notification-native-signature.json" "$RUNNER_TEMP/notification-shortcut-verification.json"
       - uses: actions/upload-artifact@v4
         with:
           name: JARVIS-Notificacoes-Nativo
           path: |
             ${{ runner.temp }}/JARVIS+Notificacoes.shortcut
-            ${{ runner.temp }}/JARVIS+Notificacoes.unsigned.shortcut
+            ${{ runner.temp }}/JARVIS+Notificacoes.plist
             ${{ runner.temp }}/notification-shortcut-verification.json
