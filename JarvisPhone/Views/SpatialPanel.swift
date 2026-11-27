@@ -511,7 +511,7 @@ enum SpatialPanelGeometry {
     }
     private var radialItems:[(String,String,SpatialPanelAction)] {
         if effectsCatalog {
-            return [("Branco","paintbrush.fill",.wall(.roomWall("white"))),
+            return [("Portal","door.left.hand.open",.wall(.portal)),("Fechar portal","xmark",.wall(.closePortal)),("Branco","paintbrush.fill",.wall(.roomWall("white"))),
                     ("Tijolos","square.grid.3x3.fill",.wall(.roomWall("brick"))),
                     ("Robô","figure.wave",.model("animated_robot")),
                     ("Raposa","pawprint.fill",.model("animated_fox")),
@@ -522,7 +522,7 @@ enum SpatialPanelGeometry {
                     ("Garagem","car.fill",.scene(.garage)),
                     ("Sala","sofa.fill",.scene(.lounge)),
                     ("Limpar parede","eraser.fill",.wall(.roomClear)),
-                    ("Módulos","square.grid.2x2",.showInterface)]
+                    ("Módulos","square.grid.2x2",.showInterface)] + SpatialAssets.catalog.filter{!$0.id.hasPrefix("demo_") && !["animated_robot","animated_fox"].contains($0.id)}.map { ($0.title,"cube",.model($0.id)) }
         }
         return SpatialModule.allCases.filter { $0 != .dashboard }.map { ($0.title,$0.symbol,.module($0)) }
             + [("Tela do PC","desktopcomputer",.wall(.desktop)),("Mostrar interface","eye",.showInterface)]

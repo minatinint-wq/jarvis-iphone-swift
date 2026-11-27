@@ -1,0 +1,11 @@
+JARVIS iPhone — revisão 38
+
+1. Diga “Jarvis, abre um portal na parede”. A leitura termina em oito segundos.
+2. Mostre uma área LIVRE da parede à câmera traseira e aponte o indicador para ela durante dois segundos. Não precisa tocar na tela. Se houver uma porta, móvel ou falha na malha dentro do recorte, a colocação é recusada.
+3. O primeiro portal tem 65 x 85 cm e revela um bosque 3D, com abertura irregular e fragmentos. Ande para os lados: o interior deve mudar de perspectiva, a borda deve permanecer na parede.
+4. Feche totalmente a mão por 0,6 s para abrir o catálogo. Aponte durante dois segundos para escolher; solte o gesto antes da próxima escolha. As setas trocam a página. “Fechar portal” remove o efeito.
+5. Objetos locais: robô, raposa, carro, peixe, poltrona, sofá de veludo, sofá de couro, tênis, capacete espacial, capacete de piloto, câmera antiga, cone, geladeira, relógio, cadeira clássica, pufe, luminária, concha, vaso de flores, garrafa, abacate e lanterna antiga. Exemplo: “coloca um carro”. Aponte para piso/mesa livre durante dois segundos. Até seis objetos simultâneos; remova alguns para trocar os testes. O catálogo fica no aparelho, sem gerar ou baixar a cada pedido.
+6. Diga “salvar mapa” e aguarde a confirmação escrita de salvamento. Saia do app e reabra mostrando detalhes da mesma parede. O portal só reaparece quando a âncora original for recuperada.
+7. Se o mapa não recuperar em 20 s, uma sessão livre é iniciada e o arquivo anterior permanece intacto. O portal antigo fica oculto: não é colocado em uma parede adivinhada. “Recuperar mapa” tenta o salvo novamente. “Salvar mapa” na sessão livre substitui o mapa atual; sem esse pedido o mapa anterior não é sobrescrito.
+
+Validar no aparelho: deriva ao andar 3 m, retomada após fechar o app, abertura em outra posição, gestos sob luz normal e desempenho do portal. Testes de renderização e persistência não substituem esse teste físico. Mantenha a câmera e o LiDAR livres no suporte VR. O app continua no renderizador AR/VR existente.

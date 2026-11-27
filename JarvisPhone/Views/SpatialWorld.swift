@@ -331,12 +331,15 @@ enum SpatialTheme: String, CaseIterable {
     var canSaveWindows: (() -> Bool)?
     var restoredPanel: SpatialPanelRecord?
     var restoredDesktop: SpatialDesktopRecord?
+    var restoredPortal:SpatialPortalRecord?
+    var portalSnapshot:(()->SpatialPortalRecord?)?
+    private(set) var preservingSavedMap=false
     var restoredScannedRoom:SpatialScannedRoomRecord?
     var scannedRoomSnapshot:(()->SpatialScannedRoomRecord?)?
     private let storageQueue = DispatchQueue(label:"jarvis.spatial.persistence",qos:.utility)
-    var pendingReferenceCount:Int { restored.count + (restoredPanel == nil ? 0 : 1) + (restoredDesktop == nil ? 0 : 1) + (restoredScannedRoom == nil ? 0 : 1) }
+    var pendingReferenceCount:Int { restored.count + (restoredPanel == nil ? 0 : 1) + (restoredDesktop == nil ? 0 : 1) + (restoredScannedRoom == nil ? 0 : 1) + (restoredPortal == nil ? 0 : 1) }
     func readiness(cameraStable:Bool)->SpatialLocalizationReadiness {
-        SpatialLocalizationReadiness(cameraStable:cameraStable,pendingObjects:restored.count+(restoredScannedRoom == nil ? 0 : 1),pendingPanel:restoredPanel != nil,pendingDesktop:restoredDesktop != nil)
+        SpatialLocalizationReadiness(cameraStable:cameraStable,pendingObjects:restored.count+(restoredScannedRoom == nil ? 0 : 1) + (restoredPortal == nil ? 0 : 1),pendingPanel:restoredPanel != nil,pendingDesktop:restoredDesktop != nil)
     }
     var recovering: Bool { pendingReferenceCount>0 }
     func queueRestoration(_ archivedObjects:[SpatialObjectRecord]) {
@@ -360,10 +363,12 @@ enum SpatialTheme: String, CaseIterable {
     func loadMap() async throws -> ARWorldMap? {
         let archive = try await Task.detached(priority:.utility) { try SpatialArchive.load() }.value
         guard let archive else { return nil }
+        preservingSavedMap=false
         let map = try NSKeyedUnarchiver.unarchivedObject(ofClass:ARWorldMap.self,from:archive.map)
         guard let map, archive.objects.allSatisfy({ record in map.anchors.contains { $0.identifier == record.anchor && $0.name == "JarvisObject:" + record.id.uuidString } }),
               archive.panel.map({ panel in map.anchors.contains { $0.identifier == panel.anchor && $0.name == "JarvisControlPanel" } }) ?? true,
               archive.desktop.map({ desktop in map.anchors.contains { $0.identifier == desktop.anchor && $0.name == "JarvisDesktop" } }) ?? true,
+              archive.portal.map({ portal in map.anchors.contains { $0.identifier == portal.anchor && $0.name == "JarvisWallPortal" } }) ?? true,
               archive.scannedRoom.map({ room in map.anchors.contains { $0.identifier == room.anchor && $0.name == "JarvisScannedRoom" } }) ?? true else {
             throw CocoaError(.fileReadCorruptFile)
         }
@@ -395,6 +400,7 @@ enum SpatialTheme: String, CaseIterable {
         restoredPanel=archive.panel
         restoredDesktop=archive.desktop
         restoredScannedRoom=archive.scannedRoom
+        restoredPortal=archive.portal
         relocalizationBegan=ProcessInfo.processInfo.systemUptime
         revision=0;lastSavedRevision=0
         active = !records.isEmpty
@@ -414,7 +420,7 @@ enum SpatialTheme: String, CaseIterable {
 
     func saveMap(force: Bool = true) {
         if force { stopMoving() }
-        guard !changingMap,!saving,!recovering,handDragging == nil,(canSaveWindows?() ?? true),
+        guard !preservingSavedMap,!changingMap,!saving,!recovering,handDragging == nil,(canSaveWindows?() ?? true),
               motions.isEmpty,
               objects.isEmpty || supportProofs.values.contains(where:{$0.confirmed}),let frame=view.session.currentFrame,
               case .normal=frame.camera.trackingState,frame.worldMappingStatus == .mapped || frame.worldMappingStatus == .extending else {
@@ -422,7 +428,7 @@ enum SpatialTheme: String, CaseIterable {
         }
         guard force || revision != lastSavedRevision else { return }
         lastSaveAttempt=frame.timestamp;saving=true
-        let epoch=persistenceEpoch,savedRevision=revision, snapshot=Array(records.values), roomSnapshot=rooms, world=worldID, panel=panelSnapshot?(),desktop=desktopSnapshot?(),location=locationHint ?? savedLocation,scannedRoom=scannedRoomSnapshot?()
+        let epoch=persistenceEpoch,savedRevision=revision, snapshot=Array(records.values), roomSnapshot=rooms, world=worldID, panel=panelSnapshot?(),desktop=desktopSnapshot?(),location=locationHint ?? savedLocation,scannedRoom=scannedRoomSnapshot?(),portal=portalSnapshot?()
         view.session.getCurrentWorldMap { [self] map,error in
             Task { @MainActor in
                 guard epoch == self.persistenceEpoch else { return }
@@ -430,13 +436,14 @@ enum SpatialTheme: String, CaseIterable {
                       snapshot.allSatisfy({ record in map.anchors.contains { $0.identifier == record.anchor } }),
                       panel.map({ p in map.anchors.contains { $0.identifier == p.anchor } }) ?? true,
                       desktop.map({ p in map.anchors.contains { $0.identifier == p.anchor } }) ?? true,
+                      portal.map({ p in map.anchors.contains { $0.identifier == p.anchor } }) ?? true,
                       scannedRoom.map({ p in map.anchors.contains { $0.identifier == p.anchor } }) ?? true else {
                     self.saving=false;self.persistenceStatus="Mapa não salvo. Aguarde estabilizar e tente novamente.";return
                 }
                 self.storageQueue.async {
                     do {
                         let bytes=try NSKeyedArchiver.archivedData(withRootObject:map,requiringSecureCoding:true)
-                        let archive=SpatialArchive(world:world,rooms:roomSnapshot,objects:snapshot,panel:panel,desktop:desktop,map:bytes,saved:Date(),location:location,scannedRoom:scannedRoom)
+                        let archive=SpatialArchive(world:world,rooms:roomSnapshot,objects:snapshot,panel:panel,desktop:desktop,map:bytes,saved:Date(),location:location,scannedRoom:scannedRoom,portal:portal)
                         try archive.write(singleMap:true)
                         Task { @MainActor in guard epoch == self.persistenceEpoch else { return };self.saving=false;self.lastSavedRevision=savedRevision;self.persistenceStatus="Salvo no iPhone: \(snapshot.count) objetos e \(roomSnapshot.count) ambientes." }
                     } catch {
@@ -459,13 +466,21 @@ enum SpatialTheme: String, CaseIterable {
             }
         }
     }
-    func finishMapChange() { changingMap=false }
+    func finishMapChange() { changingMap=false;preservingSavedMap=false }
+    /// Release unusable live coordinates without deleting or overwriting the archive.
+    func suspendSavedMap() {
+        autosave?.cancel();autosave=nil;persistenceEpoch+=1;saving=false
+        resetLiveScene(newWorld:true);preservingSavedMap=true
+        persistenceStatus="Sessão livre. O mapa salvo foi preservado; diga recuperar mapa para tentar novamente."
+    }
+    func approveLiveMapReplacement() { preservingSavedMap=false;markDirty() }
+
 
     func resetLiveScene(newWorld: Bool) {
         stopMoving();player?.stop();playingID=nil
         objects.values.forEach { $0.removeFromParentNode() }
         objects.removeAll();anchors.removeAll();supports.removeAll();planes.removeAll();radii.removeAll();records.removeAll();restored.removeAll();supportProofs.removeAll()
-        restoredPanel=nil;restoredDesktop=nil;restoredScannedRoom=nil;savedLocation=nil;unavailableModels.removeAll();selected=nil;hasSelection=false;objectCount=0;placing=false;visibility=false;active=false
+        restoredPanel=nil;restoredDesktop=nil;restoredScannedRoom=nil;restoredPortal=nil;savedLocation=nil;unavailableModels.removeAll();selected=nil;hasSelection=false;objectCount=0;placing=false;visibility=false;active=false
         handGesture.reset();handDragging=nil;motions.removeAll();simulationTime=nil
         if newWorld {
             worldID=UUID();rooms=[SpatialRoom(id:UUID(),name:"Ambiente 1",origin:SpatialArchive.values(matrix_identity_float4x4))]

@@ -9,6 +9,77 @@ import ARKit
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+    func testPortalProjectionKeepsTheWallFixedAndChangesDepthWithViewpoint() throws {
+        let w:Float=0.65,h:Float=0.85
+        func project(_ point:SIMD3<Float>,eye:SIMD3<Float>)->SIMD2<Float> {
+            let p=SpatialPortalMath.projection(eye:eye,width:w,height:h)!*SIMD4(point-eye,1)
+            return SIMD2(p.x/p.w,p.y/p.w)
+        }
+        let a=SIMD3<Float>(0,0,1),b=SIMD3<Float>(0.6,0,1)
+        for eye in [a,b,SIMD3(-1,0.4,2),SIMD3(2,0,3)] {
+            let corner=project(SIMD3(w/2,h/2,0),eye:eye)
+            XCTAssertEqual(corner.x,1,accuracy:0.0001);XCTAssertEqual(corner.y,1,accuracy:0.0001)
+        }
+        XCTAssertGreaterThan(abs(project(SIMD3(0,0,-2),eye:a).x-project(SIMD3(0,0,-2),eye:b).x),0.5)
+        XCTAssertNil(SpatialPortalMath.projection(eye:SIMD3(0,0,-1),width:w,height:h))
+        XCTAssertNil(SpatialPortalMath.projection(eye:SIMD3(.nan,0,1),width:w,height:h))
+    }
+    func testPortalRejectsAHoleInItsWallFootprint() {
+        let full:[SIMD2<Float>]=[SIMD2(-1,-1),SIMD2(1,-1),SIMD2(1,1),SIMD2(-1,-1),SIMD2(1,1),SIMD2(-1,1)]
+        XCTAssertTrue(SpatialPortalMath.fitsWall(width:0.65,height:0.85,triangles:full))
+        XCTAssertFalse(SpatialPortalMath.fitsWall(width:0.65,height:0.85,triangles:Array(full.prefix(3))))
+        XCTAssertFalse(SpatialPortalMath.fitsWall(width:0.65,height:0.85,triangles:[]))
+    }
+    func testPortalArchiveSurvivesRoundTripAndRejectsUnsafeDimensions() throws {
+        let room=SpatialRoom(id:UUID(),name:"Quarto",origin:SpatialArchive.values(matrix_identity_float4x4))
+        var archive=SpatialArchive(world:UUID(),rooms:[room],objects:[],panel:nil,map:Data([1]),saved:Date(),portal:SpatialPortalRecord(anchor:UUID(),width:0.65,height:0.85))
+        try archive.validate()
+        let copy=try JSONDecoder().decode(SpatialArchive.self,from:JSONEncoder().encode(archive))
+        XCTAssertEqual(copy.portal,archive.portal)
+        archive.portal?.height = .infinity;XCTAssertThrowsError(try archive.validate())
+        archive.portal?.height=0.85;archive.portal?.theme="unknown";XCTAssertThrowsError(try archive.validate())
+    }
+    @MainActor func testFailedMapRecoveryPreservesTheArchiveAndUnlocksNewObjects() throws {
+        let view=ARSCNView();view.scene=SCNScene();let world=SpatialWorld(view:view)
+        world.restoredPortal=SpatialPortalRecord(anchor:UUID(),width:0.65,height:0.85)
+        XCTAssertTrue(world.recovering)
+        let before=try? Data(contentsOf:SpatialArchive.file)
+        world.suspendSavedMap()
+        XCTAssertFalse(world.recovering);XCTAssertTrue(world.preservingSavedMap)
+        world.setModel("animated_fox");XCTAssertEqual(world.selectedModel,"animated_fox")
+        world.saveMap();XCTAssertEqual(try? Data(contentsOf:SpatialArchive.file),before)
+        world.stop()
+    }
+    func testPortalAndCatalogModelsHaveLocalVoiceRoutes() {
+        XCTAssertEqual(WallARCommand.parse("abre um portal na parede",inStudio:false),.portal)
+        XCTAssertEqual(WallARCommand.parse("fechar portal",inStudio:true),.closePortal)
+        XCTAssertNil(WallARCommand.parse("não abrir portal",inStudio:true))
+        for (phrase,id) in [("carro","toycar"),("sofa de couro","sheenwoodleathersofa"),("capacete espacial","scifihelmet"),("vaso de flores","glassvaseflowers"),("raposa","animated_fox")] {
+            XCTAssertEqual(WallARCommand.parse("coloca um "+phrase,inStudio:true),.model(id))
+        }
+    }
+    @MainActor func testPortalRendersAnIrregularClippedWorldWithParallax() async throws {
+        guard let device=MTLCreateSystemDefaultDevice(),let portal=SpatialPortalRenderer(device:device) else { throw XCTSkip("Metal unavailable") }
+        let scene=SCNScene();scene.background.contents=UIColor.black
+        let hole=SCNNode(geometry:SpatialWallPortal.aperture(width:0.65,height:0.85));hole.geometry?.materials=[portal.material];scene.rootNode.addChildNode(hole)
+        let camera=SCNNode();camera.camera=SCNCamera();camera.camera?.zNear=0.01;camera.camera?.zFar=10;camera.camera?.usesOrthographicProjection=true;camera.camera?.orthographicScale=0.55;camera.position=SCNVector3(0,0,2);scene.rootNode.addChildNode(camera)
+        let renderer=SCNRenderer(device:device,options:nil);renderer.scene=scene;renderer.pointOfView=camera
+        var pictures:[Data]=[]
+        for (i,eye) in [SIMD3<Float>(0,0,1),SIMD3<Float>(0.5,0.1,1)].enumerated() {
+            portal.frame(eye:eye,width:0.65,height:0.85,time:Double(i)+1)
+            for _ in 0..<40 { if portal.material.diffuse.contents is MTLTexture { break };try await Task.sleep(for:.milliseconds(50)) }
+            try await Task.sleep(for:.milliseconds(200))
+            XCTAssertTrue(portal.material.diffuse.contents is MTLTexture,"The live Metal target must replace the placeholder")
+            let image=renderer.snapshot(atTime:Double(i)+1,with:CGSize(width:720,height:960),antialiasingMode:.multisampling4X)
+            pictures.append(try XCTUnwrap(image.pngData()))
+            let attachment=XCTAttachment(image:image);attachment.name="PORTAL-NATIVE-VIEW-"+String(i);attachment.lifetime = .keepAlways;add(attachment)
+            let cg=try XCTUnwrap(image.cgImage);var pixels=[UInt8](repeating:0,count:128*128*4)
+            let ctx=try XCTUnwrap(CGContext(data:&pixels,width:128,height:128,bitsPerComponent:8,bytesPerRow:512,space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.premultipliedLast.rawValue));ctx.draw(cg,in:CGRect(x:0,y:0,width:128,height:128))
+            XCTAssertEqual(pixels[0],0,"Scene outside the aperture stays black")
+            XCTAssertGreaterThan(stride(from:0,to:pixels.count,by:4).filter{max(pixels[$0],pixels[$0+1],pixels[$0+2])>45}.count,1000)
+        }
+        XCTAssertNotEqual(pictures[0],pictures[1],"A viewpoint change must reveal different 3D content")
+    }
     func testHandsFreePlacementNeedsStablePointAndNeverUsesPinch() {
         var gesture=SpatialAimSelection(),clicks:[String]=[]
         for i in 0...25 {

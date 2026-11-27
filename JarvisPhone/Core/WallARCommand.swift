@@ -39,7 +39,7 @@ enum WallARCommand: Equatable {
     case measure, point, opening, approve, theme(SpatialTheme), interact, removeObject, panel(SpatialModule), navigate(String)
     case model(String), resizeObject(Float), moveObject(Float,Float), saveMap, room(String), desktop
     case character(String), headset(Bool), recover, keyboard(Bool)
-    case roomSetup,roomWall(String),roomClear,effects,calibrate
+    case roomSetup,roomWall(String),roomClear,effects,calibrate,portal,closePortal
 
     /// Only navigation-like speech enters the spatial interpreter; ordinary tools stay available.
     static func needsInterpretation(_ input: String) -> Bool {
@@ -51,6 +51,8 @@ enum WallARCommand: Equatable {
     static func parse(_ input: String, inStudio: Bool) -> Self? {
         let s = PhoneIntentPhrases.normalized(input)
         guard !s.isEmpty, s.range(of: #"\b(nao|nunca|nem|talvez|disse|dizer|dissesse|se)\b"#, options: .regularExpression) == nil else { return nil }
+        if ["abrir portal","abre o portal","abrir portal na parede","abre um portal na parede","cria um portal","criar portal","portal na parede","portal de parede"].contains(s) { return .portal }
+        if inStudio,["fechar portal","fecha o portal","remover portal","apagar portal"].contains(s) { return .closePortal }
         if ["modo vr box","vr box","ativar vr box","abrir vr box","modo oculos","ativar modo oculos"].contains(s) { return .headset(true) }
         if inStudio,["sair do vr box","sair vr","desativar vr box","modo celular","sair do modo oculos"].contains(s) { return .headset(false) }
         if inStudio,["recuperar posicao","recupera a posicao","recupere a posicao","recuperar sem apagar","retomar vr","retoma o vr","recuperar visor","recuperar mapa"].contains(s) { return .recover }
@@ -73,9 +75,9 @@ enum WallARCommand: Equatable {
             if ["esta e a sala","estou na sala","ambiente sala"].contains(s) { return .room("Sala") }
             let actions=["robo acene":"Wave","robo dance":"Dance","robo ande":"walk","robo pare":"stop","testar impacto":"impact","socar parede":"impact","reparar parede":"repair"]
             if let action=actions[s] { return .character(action) }
-            let models:[String:String] = ["personagem":"animated_robot","robo":"animated_robot","raposa":"animated_fox","humanoide":"demo_human","caixa":"demo_box","cadeira":"demo_chair","mesa":"demo_table"]
+            let models:[String:String] = ["personagem":"animated_robot","robo":"animated_robot","raposa":"animated_fox","humanoide":"demo_human","caixa":"demo_box","cadeira":"demo_chair","mesa":"demo_table","abacate":"avocado","garrafa":"waterbottle","lanterna antiga":"lantern","carro":"toycar","peixe":"barramundifish","poltrona":"sheenchair","sofa de veludo":"glamvelvetsofa","tenis":"materialsvariantsshoe","capacete espacial":"scifihelmet","capacete de piloto":"flighthelmet","camera antiga":"antiquecamera","cone":"trafficcone","geladeira":"commercialrefrigerator","relogio":"chronographwatch","cadeira classica":"chairdamaskpurplegold","pufe":"specularsilkpouf","sofa de couro":"sheenwoodleathersofa","luminaria":"anisotropybarnlamp","concha":"iridescenceabalone","vaso de flores":"glassvaseflowers"]
             if s.range(of:#"^(?:coloca|coloque|cria|crie|adiciona|adicione)\b"#,options:.regularExpression) != nil,
-               let model=s.split(separator:" ").compactMap({ models[String($0)] }).first { return .model(model) }
+               let model=models.keys.sorted(by:{$0.count>$1.count}).first(where:{ s.range(of:"\\b"+NSRegularExpression.escapedPattern(for:$0)+"\\b",options:.regularExpression) != nil }).flatMap({models[$0]}) { return .model(model) }
             if ["aumente esse objeto","aumenta esse objeto","aumentar objeto"].contains(s) { return .resizeObject(1.15) }
             if ["diminua esse objeto","diminui esse objeto","diminuir objeto"].contains(s) { return .resizeObject(0.85) }
             if ["leve o objeto para a esquerda","mova o objeto para a esquerda"].contains(s) { return .moveObject(-0.1,0) }

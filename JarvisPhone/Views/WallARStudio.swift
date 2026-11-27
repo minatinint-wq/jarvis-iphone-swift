@@ -98,6 +98,8 @@ enum WallMeasureMode { case none, outline, opening }
     var desktop: SpatialDesktop!
     var roomWall:ScannedRoomWall!
     var liveWall:LiveWallEffect!
+    var portal:SpatialWallPortal!
+    private var savedMapSuspended=false
     @Published var roomSetupPresented=false
     private var fistMenu=SpatialFistMenuGesture()
     @Published var status = "Ambiente fixo. Escaneie somente para ler uma nova superfície."
@@ -145,6 +147,10 @@ enum WallMeasureMode { case none, outline, opening }
         spatial = SpatialWorld(view:view)
         desktop=SpatialDesktop(view:view)
         roomWall=ScannedRoomWall(view:view)
+        portal=SpatialWallPortal(view:view)
+        portal.onChange = { [weak self] in self?.spatial.markDirty() }
+        portal.onFeedback = { [weak self] in self?.feedback($0) }
+        spatial.portalSnapshot = { [weak self] in self?.portal.snapshot() }
         liveWall=LiveWallEffect(view:view)
         liveWall.onFeedback = { [weak self] in self?.feedback($0) }
         spatial.scannedRoomSnapshot = { [weak self] in self?.roomWall.snapshot() }
@@ -300,7 +306,10 @@ enum WallMeasureMode { case none, outline, opening }
                 guard let self, !self.stopped else { return }
                 self.prepared = ready
                 self.started = true
-                if self.foreground && !self.localizationTimedOut { self.calibrateCurrentRoom() }
+                if self.foreground {
+                    if self.localizationTimedOut { self.spatial.suspendSavedMap();self.savedMapSuspended=true;self.initialMap=nil;self.localizationTimedOut=false }
+                    self.calibrateCurrentRoom()
+                }
             }
         }
     }
@@ -419,12 +428,29 @@ enum WallMeasureMode { case none, outline, opening }
         if scanning { scanning=false;run() }
     }
 
+    func beginPortal() {
+        beginHandsFreeWall("white")
+        liveWall.onSurface = { [weak self] hit,meshes in self?.portal.place(hit,meshes:meshes) ?? false }
+        feedback("Aponte para uma área livre da parede por dois segundos. Vou abrir um portal para um bosque.")
+    }
+    private func releaseUnlocalizedMap() {
+        // A saved coordinate frame is never transplanted to a guessed camera pose.
+        scanTask?.cancel();scanTask=nil;scanning=false
+        panel.close(recordChange:false);desktop.close(recordChange:false);portal.clear(recordChange:false)
+        roomWall.clear();liveWall.clear();spatial.suspendSavedMap()
+        savedMapSuspended=true;initialMap=nil;mapStarted=false;planes.removeAll();occluders.values.forEach{$0.removeFromParentNode()};occluders.removeAll()
+        poseStability.reset();tracking=false;interactionReady=false;run(reset:true);calibrateCurrentRoom()
+        feedback("O mapa antigo não foi reconhecido. Liberei uma sessão nova sem apagar o salvo. Diga recuperar mapa para tentar de novo; salvar mapa substitui o anterior.")
+    }
     private func armRecoveryTimer() {
         guard recoveryTimer == nil,(!tracking || spatial.recovering) else { return }
         recoveryTimer=Task { [weak self] in
             try? await Task.sleep(for:self?.recoveryDelay ?? .seconds(20))
             guard !Task.isCancelled,let self,!self.stopped,(!self.tracking || self.spatial.recovering) else { return }
-            self.localizationTimedOut=true;self.status="A referência ainda está sendo recuperada. Mostre detalhes do mesmo local; não precisa apagar o mapa."
+            if self.initialMap != nil && !self.savedMapSuspended {
+                self.recoveryTimer=nil;self.releaseUnlocalizedMap();return
+            }
+            self.localizationTimedOut=true;self.status="A câmera precisa de mais detalhes e luz. O mapa salvo continua preservado."
             self.refreshSavedMaps()
             self.recoveryTimer=nil
         }
@@ -433,6 +459,22 @@ enum WallMeasureMode { case none, outline, opening }
     func retryLocalization() {
         guard started,!stopped,!recoveryBusy,!fatal else { return }
         recoveryTimer?.cancel();recoveryTimer=nil;localizationTimedOut=false
+        if savedMapSuspended {
+            recoveryBusy=true
+            Task { [weak self] in
+                guard let self else { return }
+                do {
+                    self.spatial.suspendSavedMap()
+                    let map=try await self.spatial.loadMap()
+                    self.portal.clear(recordChange:false);self.panel.close(recordChange:false);self.desktop.close(recordChange:false)
+                    self.liveWall.clear();self.roomWall.clear();self.initialMap=map;self.savedMapSuspended=false
+                    self.poseStability.reset();self.run(reset:true)
+                } catch { self.notice="Não consegui ler o mapa salvo; ele foi preservado." }
+                self.recoveryBusy=false
+                if !self.savedMapSuspended { self.calibrateCurrentRoom() }
+            }
+            return
+        }
         status="Retomando a mesma sessão e suas âncoras. Mostre detalhes do ambiente original."
         run() // Deliberately no resetTracking or removeExistingAnchors.
     }
@@ -466,7 +508,7 @@ enum WallMeasureMode { case none, outline, opening }
             do {
                 try await self.spatial.prepareMapChange(restore:source)
                 guard !self.stopped else { self.spatial.finishMapChange();return }
-                self.panel.close(recordChange:false);self.desktop.close(recordChange:false);self.roomWall.clear();self.liveWall.clear();self.clear(silent:true)
+                self.panel.close(recordChange:false);self.desktop.close(recordChange:false);self.roomWall.clear();self.liveWall.clear();self.portal.clear(recordChange:false);self.clear(silent:true)
                 self.spatial.resetLiveScene(newWorld:source == nil)
                 self.occluders.values.forEach { $0.removeFromParentNode() };self.occluders.removeAll();self.planes.removeAll();self.meshUpdated.removeAll()
                 self.initialMap=source == nil ? nil : try await self.spatial.loadMap()
@@ -528,6 +570,7 @@ enum WallMeasureMode { case none, outline, opening }
         desktop.close(recordChange:false,preserveAnchor:true)
         roomWall.clear(preserveAnchor:true)
         liveWall.clear()
+        portal.clear(recordChange:false,preserveAnchor:true)
         spatial.stop()
         materials.removeAll(); occluders.removeAll(); planes.removeAll()
     }
@@ -620,6 +663,8 @@ enum WallMeasureMode { case none, outline, opening }
     func apply(_ command: WallARCommand) {
         guard !recoveryBusy else { return }
         switch command {
+        case .portal: beginPortal()
+        case .closePortal: liveWall.onSurface=nil;portal.clear();feedback("Portal fechado.")
         case .calibrate: calibrateCurrentRoom()
         case .effects: panel.openEffectsRadial(tracking:interactionReady)
         case .roomSetup:
@@ -660,7 +705,7 @@ enum WallMeasureMode { case none, outline, opening }
             comparing = false; setVisible(tracking); status = "Voltei para \(previous.title)."; feedback(status)
         case .clear: clear(); feedback("Pintura removida.")
         case .compare: comparing.toggle(); setVisible(tracking && !comparing); status = comparing ? "Parede original." : "Pintura AR." 
-        case .panel(let module): panel.open(module,tracking:tracking)
+        case .panel(let module): panel.open(module,tracking:interactionReady && spatial.restoredPanel == nil)
         case .navigate(let text): panel.interpret(text)
         case .measure: beginOutline()
         case .point: addPoint()
@@ -672,7 +717,9 @@ enum WallMeasureMode { case none, outline, opening }
         case .model(let id): measureMode = .none;endManualWallInput();cancelLiveWallCapture();spatial.setModel(id);prepareObjectPlacement()
         case .resizeObject(let factor): spatial.resizeSelected(factor)
         case .moveObject(let x,let z): spatial.moveSelected(x:x,z:z)
-        case .saveMap: spatial.saveMap()
+        case .saveMap:
+            if savedMapSuspended { spatial.approveLiveMapReplacement();savedMapSuspended=false;feedback("Vou salvar este ambiente como o mapa atual.") }
+            spatial.saveMap()
         case .room(let name): spatial.chooseRoom(name)
         case .desktop: desktop.open(tracking:interactionReady && spatial.restoredDesktop == nil)
         case .character(let action):
@@ -748,6 +795,7 @@ enum WallMeasureMode { case none, outline, opening }
         desktop.setTracking(readiness.desktopReady)
         roomWall.setTracking(good)
         liveWall.setTracking(good)
+        portal.frame(frame,stable:interactionReady)
         // Vision's 2D skeleton does not need a mapped room or an active module.
         // Spatial actions remain gated in onSample above, separately from drawing.
         if headset { onHeadsetFrame?(frame) }
@@ -818,6 +866,10 @@ enum WallMeasureMode { case none, outline, opening }
             panel.update(anchor)
             desktop.update(anchor)
             liveWall.update(anchor)
+            portal.update(anchor)
+            if let saved=spatial.restoredPortal,saved.anchor==anchor.identifier {
+                portal.restore(saved,anchor:anchor);spatial.restoredPortal=nil
+            }
             roomWall.update(anchor)
             if let saved=spatial.restoredScannedRoom,saved.anchor==anchor.identifier {
                 if !roomWall.restore(saved,anchor:anchor) { notice=roomWall.status }

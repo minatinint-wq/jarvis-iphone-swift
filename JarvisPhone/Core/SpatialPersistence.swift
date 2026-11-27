@@ -112,6 +112,7 @@ struct SpatialArchive: Codable {
     var saved: Date
     var location:SpatialMapLocation? = nil
     var scannedRoom:SpatialScannedRoomRecord? = nil
+    var portal:SpatialPortalRecord? = nil
 
     func validate() throws {
         guard version == 1, !rooms.isEmpty, rooms.count <= 32, objects.count <= 6,
@@ -136,6 +137,7 @@ struct SpatialArchive: Codable {
         if let desktop {
             guard desktop.scale.isFinite,(0.25...2).contains(desktop.scale) else { throw CocoaError(.fileReadCorruptFile) }
         }
+        if let portal,!portal.valid { throw CocoaError(.fileReadCorruptFile) }
         if let location,!location.valid { throw CocoaError(.fileReadCorruptFile) }
         if let scannedRoom {
             guard Self.matrix(scannedRoom.transform) != nil,scannedRoom.sourceSHA256.count==64,

@@ -30,6 +30,7 @@ enum LiveWallRegion {
     private var gesture=SpatialAimSelection()
     private var ticket=UUID()
     var onFeedback:((String)->Void)?
+    var onSurface:((ARRaycastResult,[ARMeshAnchor])->Bool)?
     init(view:ARSCNView) { self.view=view }
     func beginCalibration() {
         ticket=UUID();meshes=[:];completed=false;capturing=true;armed=false;busy=false;gesture.reset()
@@ -73,6 +74,10 @@ enum LiveWallRegion {
     }
     private func apply(_ hit:ARRaycastResult) {
         guard !meshes.isEmpty,let plane=hit.anchor as? ARPlaneAnchor,let frame=view.session.currentFrame else { return }
+        if let onSurface {
+            if onSurface(hit,Array(meshes.values)) { armed=false;self.onSurface=nil;gesture.reset() }
+            return
+        }
         let p=hit.worldTransform.columns.3,origin=SIMD3(p.x,p.y,p.z)
         var normal=simd_normalize(SIMD3(plane.transform.columns.1.x,plane.transform.columns.1.y,plane.transform.columns.1.z))
         let camera=frame.camera.transform.columns.3
@@ -134,7 +139,7 @@ enum LiveWallRegion {
     }
     func update(_ updated:ARAnchor) { if updated.identifier==anchor?.identifier { anchor=updated;root?.simdTransform=updated.transform } }
     func setTracking(_ good:Bool) { guard trackingGood != good else { return };trackingGood=good;root?.isHidden = !good }
-    func cancel() { if capturing { completed=false };ticket=UUID();armed=false;capturing=false;busy=false;gesture.reset() }
+    func cancel() { onSurface=nil;if capturing { completed=false };ticket=UUID();armed=false;capturing=false;busy=false;gesture.reset() }
     func removePaint() {
         if let anchor { view.session.remove(anchor:anchor) };anchor=nil
         root?.removeFromParentNode();root=nil;depthNodes.forEach{$0.removeFromParentNode()};depthNodes=[]
