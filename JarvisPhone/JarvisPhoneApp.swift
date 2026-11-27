@@ -68,10 +68,7 @@ import SwiftUI
             AssistantView(model:remote,openSettings:{settingsPresented=true})
             .preferredColorScheme(.dark).tint(.cyan)
             .sheet(isPresented:$settingsPresented) {
-                DashboardView(controller:controller)
-                    .safeAreaInset(edge:.top) {
-                        HStack { Text("Ajustes do Jarvis").font(.headline);Spacer();Button("Fechar") { settingsPresented=false } }.padding()
-                    }
+                DashboardView(controller:controller,onClose:{settingsPresented=false})
             }
             .overlay { ArtworkOverlay(model: remote) }
             .fullScreenCover(isPresented: $remote.showingFace) {

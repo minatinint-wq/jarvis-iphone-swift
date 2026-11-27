@@ -4,6 +4,7 @@ import UIKit
 
 struct DashboardView: View {
     @ObservedObject var controller: PhoneController
+    var onClose:(()->Void)? = nil
     private let columns = [GridItem(.flexible()), GridItem(.flexible())]
 
     var body: some View {
@@ -72,9 +73,10 @@ struct DashboardView: View {
                 }.padding(18)
             }
             .background(Color(red: 0.018, green: 0.035, blue: 0.055))
-            .navigationTitle("J.A.R.V.I.S.")
+            .navigationTitle("Ajustes do Jarvis")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                if let onClose { ToolbarItem(placement:.cancellationAction) { Button("Fechar",action:onClose) } }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { controller.sheet = .notes } label: { Image(systemName: "note.text") }
                         .accessibilityLabel("Minhas notas")

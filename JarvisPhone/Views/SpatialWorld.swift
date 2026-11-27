@@ -27,9 +27,9 @@ enum SpatialTheme: String, CaseIterable {
 /// are native and local; neither generation credits nor a web viewer are required.
 @MainActor enum SpatialAssets {
     struct Entry:Identifiable { let id:String;let title:String }
-    static var bundled:[[String:Any]] {
+    static let bundled:[[String:Any]] = {
         guard let url=Bundle.main.url(forResource:"SPATIAL_ASSETS",withExtension:"json"),let bytes=try? Data(contentsOf:url),let entries=try? JSONSerialization.jsonObject(with:bytes) as? [[String:Any]] else { return [] };return entries
-    }
+    }()
     static func isBundled(_ id:String)->Bool { bundled.contains{$0["id"] as? String==id} }
     static var specifications:[[String:Any]] {
         let local=bundled,ids=Set(local.compactMap{$0["id"] as? String})

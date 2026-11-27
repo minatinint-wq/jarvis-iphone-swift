@@ -1054,7 +1054,7 @@ struct WallCameraView: UIViewRepresentable {
     @State private var help = false
     @State private var surfaceTools = false
     @State private var mapTools = false
-    @AppStorage("jarvis.ar.toolsExpanded.v31") private var toolsExpanded = false
+    @State private var toolsExpanded = false
     @State private var immersive=false
     @State private var panelVisible = false
     @State private var webModule: SpatialModule?
@@ -1073,47 +1073,42 @@ struct WallCameraView: UIViewRepresentable {
                 SpatialWebWindow(module:webModule) { self.webModule=nil;controller.panel.open(.dashboard,tracking:controller.tracking) }.id(webModule.rawValue)
             } else if !controller.headset && !immersive {
             VStack(spacing:10) {
-                HStack {
-                    Button { model.studioMode=nil } label: { Image(systemName:"xmark") }.accessibilityLabel("Fechar Espaço AR")
-                    Label(controller.tracking ? "MAPA LOCALIZADO" : controller.spatial.recovering ? "RECUPERANDO MAPA" : "MAPEANDO",systemImage:controller.tracking ? "viewfinder" : "viewfinder.circle")
-                    Spacer()
-                    Button { controller.panel.open(.dashboard,tracking:controller.tracking) } label: { Image(systemName:"square.grid.2x2") }
-                    Button { controller.desktop.open(tracking:controller.tracking) } label: { Image(systemName:"desktopcomputer") }.accessibilityLabel("Abrir tela do PC em AR")
-                    Button { controller.panel.reposition() } label: { Image(systemName:"scope") }.accessibilityLabel("Trazer painel para frente")
-                    Menu(controller.lensLabel) {
-                        Button("0,5× · ultra-angular") { controller.selectLens(ultra:true) }
-                        Button("1× · principal") { controller.selectLens(ultra:false) }
+                HStack(spacing:12) {
+                    Button { model.studioMode=nil } label: { Image(systemName:"xmark").frame(width:36,height:36) }.accessibilityLabel("Fechar Cenário 3D")
+                    VStack(alignment:.leading,spacing:2) {
+                        Text("Cenário 3D").font(.subheadline.weight(.semibold))
+                        Text(controller.tracking ? "Mapa localizado" : controller.spatial.recovering ? "Recuperando mapa" : "Mapeando")
+                            .font(.caption2).foregroundStyle(controller.tracking ? .cyan : .secondary)
                     }
-                    Button { controller.localizationTimedOut.toggle();controller.refreshSavedMaps() } label: { Image(systemName:"map") }.accessibilityLabel("Recuperar mapa")
-                    Button { controller.setHeadset(true) } label: { Image(systemName:"visionpro") }.accessibilityLabel("Ativar VR Box horizontal")
-                    Button { controller.panel.open(.dashboard,tracking:controller.tracking);controller.panel.cleanInterface() } label: { Image(systemName:"eye.slash") }.accessibilityLabel("Modo limpo com menu projetado").disabled(!controller.tracking)
-                }.font(.caption.monospaced()).padding(12).background(.black.opacity(0.72),in:RoundedRectangle(cornerRadius:14))
-                HStack {
-                    Text(controller.metrics).font(.caption2.monospaced()).foregroundStyle(.secondary)
-                    if let location=controller.spatial.locationHint {
-                        Text("GPS ±\(Int(location.accuracy)) m").font(.caption2).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Button(controller.scanning ? "Parar leitura" : "Escanear 8 s") { controller.toggleScan() }
-                        .font(.caption).buttonStyle(.bordered).controlSize(.small)
-                }
-                Text(controller.handStatus).font(.caption2).foregroundStyle(.cyan).lineLimit(1)
+                    Spacer(minLength:0)
+                    Button { controller.panel.open(.dashboard,tracking:controller.tracking) } label: {
+                        Image(systemName:"square.grid.2x2").frame(width:36,height:36)
+                    }.accessibilityLabel("Abrir menu projetado")
+                    Menu {
+                        Button("Tela do PC",systemImage:"desktopcomputer") { controller.desktop.open(tracking:controller.tracking) }
+                        Button("Centralizar painel",systemImage:"scope") { controller.panel.reposition() }
+                        Button("Modo óculos",systemImage:"visionpro") { controller.setHeadset(true) }
+                        Button("Modo limpo",systemImage:"eye.slash") { controller.panel.open(.dashboard,tracking:controller.tracking);controller.panel.cleanInterface() }.disabled(!controller.tracking)
+                        Divider()
+                        Button(controller.scanning ? "Parar leitura" : "Escanear por 8 segundos",systemImage:"viewfinder") { controller.toggleScan() }
+                        Button("Recuperar mapa",systemImage:"map") { controller.localizationTimedOut.toggle();controller.refreshSavedMaps() }
+                        Menu("Câmera · \(controller.lensLabel)") {
+                            Button("0,5× · ultra-angular") { controller.selectLens(ultra:true) }
+                            Button("1× · principal") { controller.selectLens(ultra:false) }
+                        }
+                    } label: { Image(systemName:"ellipsis").frame(width:36,height:36) }.accessibilityLabel("Mais opções do Cenário 3D")
+                }.padding(10).background(.black.opacity(0.72),in:RoundedRectangle(cornerRadius:16))
                 if controller.localizationTimedOut || controller.recoveryBusy {
                     SpatialRecoveryControls(controller:controller)
                 }
                 Spacer()
                 SpatialDesktopControls(desktop:controller.desktop)
                 if panelVisible {
-                    VStack(alignment:.leading,spacing:6) {
-                        Text(panelStatus).font(.caption).lineLimit(3)
-                        Text(controller.handStatus).font(.caption2).foregroundStyle(.cyan)
-                        Text("Indicador por 2 s clica. Só a pinça altera tamanho e posição. Palma aberta não redimensiona; fora do painel por 1 s traz uma janela desenquadrada.").font(.caption2).foregroundStyle(.secondary)
-                        HStack {
-                            Button("Todos os módulos",systemImage:"list.bullet") { search="";menuSheet = .directory }
-                            Button("Menor",systemImage:"minus.magnifyingglass") { controller.panel.resize(0.82) }
-                            Button("Centralizar",systemImage:"scope") { controller.panel.reposition() }
-                        }.buttonStyle(.bordered).controlSize(.small)
-                    }.padding(12).frame(maxWidth:.infinity,alignment:.leading).background(.black.opacity(0.8),in:RoundedRectangle(cornerRadius:14))
+                    HStack(spacing:10) {
+                        Text(panelStatus).font(.caption).lineLimit(1)
+                        Spacer(minLength:0)
+                        Button { search="";menuSheet = .directory } label: { Image(systemName:"list.bullet").frame(width:36,height:36) }.accessibilityLabel("Todos os módulos")
+                    }.padding(10).background(.black.opacity(0.75),in:RoundedRectangle(cornerRadius:14))
                 } else if toolsExpanded {
                     sceneTools
                 } else {
