@@ -11,8 +11,7 @@ import AVFoundation
     private var root:SCNNode?
     private var targets:[String:SCNNode]=[:]
     private var spots:[SIMD3<Float>]=[]
-    private var guardianSpots:[SIMD3<Float>]=[]
-    private var guardianScale:Float=1
+    private var guardianSites:[(scale:Float,spots:[SIMD3<Float>])]=[]
     private var score=0,collected=0,bossHealth=0
     private var remaining:Double=90,lastTime:Double?,lastSpawn = -Double.infinity
     private var trigger=SpatialPortalTrigger(),pinched=false
@@ -23,9 +22,8 @@ import AVFoundation
     func start(room:ScannedRoomWall) {
         guard let pose=room.pose else { return };stop();self.room=room;enabled=true;remaining=90
         let root=SCNNode();root.name="RoomForest-game";root.simdTransform=pose;self.root=root;view.scene.rootNode.addChildNode(root)
-        spots=room.gameSpots();guardianSpots=room.gameSpots(radius:1.1);guardianScale=1
-        if guardianSpots.isEmpty { guardianSpots=room.gameSpots(radius:0.65);guardianScale=0.6 }
-        if guardianSpots.isEmpty { guardianSpots=room.gameSpots(radius:0.36);guardianScale=0.33 }
+        spots=room.gameSpots()
+        guardianSites=[(1,room.gameSpots(radius:1.1)),(0.6,room.gameSpots(radius:0.65)),(0.33,room.gameSpots(radius:0.36))]
         makeScoreboard();refreshLabel()
         if let url=Bundle.main.url(forResource:"RoomForest_pickup",withExtension:"wav") { sound=try? AVAudioPlayer(contentsOf:url);sound?.volume=0.35;sound?.prepareToPlay() }
         onFeedback?("Caçada da Floresta. Acerte seis cristais com o gesto de arma para chamar o guardião. Pode pegar cristais próximos com a pinça. Diga pausar jogo ou sair do jogo quando quiser.")
@@ -58,10 +56,10 @@ import AVFoundation
         if remaining==0 { finished=true;targets.values.forEach{$0.removeFromParentNode()};targets=[:];refreshLabel();onFeedback?("Tempo encerrado. Você fez \(score) pontos. Diga jogar novamente para recomeçar.");return }
         if time-lastSpawn>1.2 { spawn();lastSpawn=time }
     }
-    private func candidate(guardian:Bool=false)->SIMD3<Float>? {
+    private func candidate(sites:[SIMD3<Float>]?=nil)->SIMD3<Float>? {
         guard let root,let frame=view.session.currentFrame else { return nil }
         let eye=SIMD3(frame.camera.transform.columns.3.x,frame.camera.transform.columns.3.y,frame.camera.transform.columns.3.z)
-        for p in (guardian ? guardianSpots : spots).shuffled() {
+        for p in (sites ?? spots).shuffled() {
             guard targets.values.allSatisfy({simd_distance($0.simdPosition,p)>0.65}) else { continue }
             let q=root.simdTransform*SIMD4(p+SIMD3(0,0.65,0),1),world=SIMD3(q.x,q.y,q.z),distance=simd_distance(eye,world)
             guard distance>0.75,distance<3.4 else { continue }
@@ -75,8 +73,15 @@ import AVFoundation
     private func spawn() {
         guard let root else { return }
         if collected>=6 {
-            guard targets.isEmpty,bossHealth==0,let p=candidate(guardian:true),let model=try? SpatialAssets.load("animated_dragon") else { return }
-            let id="game-guardian";model.name=id;model.simdPosition=p;model.simdScale=SIMD3(repeating:guardianScale);model.enumerateChildNodes{n,_ in n.categoryBitMask=64;n.name=id};model.categoryBitMask=64
+            guard targets.isEmpty,bossHealth==0 else { return }
+            // A large free area in another room must not prevent the boss from
+            // appearing in the smaller, visible space where the player is.
+            var placement:(point:SIMD3<Float>,scale:Float)?
+            for group in guardianSites {
+                if let point=candidate(sites:group.spots) { placement=(point,group.scale);break }
+            }
+            guard let placement,let model=try? SpatialAssets.load("animated_dragon") else { return }
+            let id="game-guardian";model.name=id;model.simdPosition=placement.point;model.simdScale=SIMD3(repeating:placement.scale);model.enumerateChildNodes{n,_ in n.categoryBitMask=64;n.name=id};model.categoryBitMask=64
             root.addChildNode(model);targets[id]=model;bossHealth=3;refreshLabel();onFeedback?("O guardião apareceu. Três acertos para concluir a caçada.");return
         }
         guard targets.count<3,let p=candidate() else { return }
