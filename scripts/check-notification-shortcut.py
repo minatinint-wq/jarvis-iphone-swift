@@ -18,8 +18,12 @@ if len(sys.argv)>1:
         for k in changed:
             if k!='WFWorkflowActions':print(k,repr(expected.get(k))[:240],'->',repr(actual.get(k))[:240])
         assert actual['WFWorkflowActions']==expected['WFWorkflowActions'],'Signed actions differ'
-        for k in ['WFWorkflowName','WFWorkflowInputContentItemClasses','WFWorkflowImportQuestions','WFAssociatedAppBundleIdentifiers']:
+        for k in ['WFWorkflowInputContentItemClasses','WFWorkflowImportQuestions']:
             assert actual.get(k)==expected.get(k),k
+        # Apple removes the optional workflow name/app list; import uses the
+        # delivered filename, while the signed action retains its exact target.
+        assert actual.get('WFWorkflowName') in (None,expected['WFWorkflowName'])
+        assert actual.get('WFAssociatedAppBundleIdentifiers') in (None,expected['WFAssociatedAppBundleIdentifiers'])
 
     print('Apple signature verified; signed workflow exactly matches the reviewed native actions.')
 else:
