@@ -243,3 +243,8 @@ Guardião da floresta / Dragon — Quaternius, Animated Monster Pack, CC0. https
 GLB conversion: CAIRNFALL contributors. Changes: metric normalization to 1.65m and native skeletal animation sampling.
 RoomForest_sky.jpg: tone-mapped forest_slope HDR, Andreas Mischok / Poly Haven, CC0.
 RoomForest_pickup.wav: original procedural tone for Jarvis.
+
+TREANT, STONE GOLEM, BOG MONSTER — vinish.dev
+Source and license: https://vinish.dev/free-3d-models/monsters
+CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
+Modified: converted to native SceneKit mesh/skinning, scaled to 1.8m; original texture and normal maps retained.

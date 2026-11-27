@@ -4351,5 +4351,546 @@
       }
     ],
     "animationSkinErrorMeters": 2.699743350147223e-07
+  },
+  {
+    "id": "animated_treant",
+    "title": "Guardião de madeira · animado",
+    "author": "vinish.dev",
+    "license": "CC-BY-4.0",
+    "source": "https://vinish-models.pages.dev/monsters/treant.glb",
+    "sourceSHA256": "f648e6c8eae824867363ffd6fdbd6751ff1bf3d2827f399ad8a06915ce4be4fe",
+    "rig": "Spatial_animated_treant_rig.json",
+    "heightMeters": 1.8,
+    "triangles": 79241,
+    "parts": [
+      {
+        "mesh": "Spatial_animated_treant_0.mesh",
+        "skin": "Spatial_animated_treant_0.skin",
+        "roughness": 0.8500000238418579,
+        "metalness": 0.0,
+        "baseColor": [
+          0.800000011920929,
+          0.800000011920929,
+          0.800000011920929,
+          1.0
+        ],
+        "doubleSided": false,
+        "sourceMaterial": "Bark_Skin",
+        "NormalGL": "Spatial_animated_treant_0_NormalGL.texture"
+      },
+      {
+        "mesh": "Spatial_animated_treant_1.mesh",
+        "skin": "Spatial_animated_treant_1.skin",
+        "roughness": 0.8999999761581421,
+        "metalness": 0.0,
+        "baseColor": [
+          0.800000011920929,
+          0.800000011920929,
+          0.800000011920929,
+          1.0
+        ],
+        "doubleSided": false,
+        "sourceMaterial": "Root",
+        "NormalGL": "Spatial_animated_treant_1_NormalGL.texture"
+      },
+      {
+        "mesh": "Spatial_animated_treant_2.mesh",
+        "skin": "Spatial_animated_treant_2.skin",
+        "roughness": 0.800000011920929,
+        "metalness": 0.0,
+        "baseColor": [
+          0.800000011920929,
+          0.800000011920929,
+          0.800000011920929,
+          1.0
+        ],
+        "doubleSided": false,
+        "sourceMaterial": "Fur",
+        "NormalGL": "Spatial_animated_treant_2_NormalGL.texture"
+      },
+      {
+        "mesh": "Spatial_animated_treant_3.mesh",
+        "skin": "Spatial_animated_treant_3.skin",
+        "roughness": 0.75,
+        "metalness": 0.0,
+        "baseColor": [
+          0.800000011920929,
+          0.800000011920929,
+          0.800000011920929,
+          1.0
+        ],
+        "doubleSided": true,
+        "sourceMaterial": "Leaf"
+      },
+      {
+        "mesh": "Spatial_animated_treant_4.mesh",
+        "skin": "Spatial_animated_treant_4.skin",
+        "roughness": 0.05999999865889549,
+        "metalness": 0.0,
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "Color": "Spatial_animated_treant_4_Color.texture",
+        "doubleSided": false,
+        "emissionFactor": [
+          0.14412847085805777,
+          0.10224173308810132,
+          0.005181516702338386
+        ],
+        "sourceMaterial": "Eye_Wood",
+        "Emission": "Spatial_animated_treant_4_Emission.texture",
+        "emissionIntensity": 0.14412847085805777
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_animated_treant_0.mesh",
+        "bytes": 5448612,
+        "sha256": "c3d2031cd2e02f00aa3e5a84a9b7ca9e741d131e2a264862910a76ac59388adb"
+      },
+      {
+        "file": "Spatial_animated_treant_0.skin",
+        "bytes": 3027000,
+        "sha256": "e1c48df30fb74bd4f76207e35de4a3186d5553d79e3c92887c34fac475e880af"
+      },
+      {
+        "file": "Spatial_animated_treant_0_NormalGL.texture",
+        "bytes": 57171,
+        "sha256": "4d15df6d9c940a44cd9842fc756f0ce240606108c746d7299552e8577cde99a1"
+      },
+      {
+        "file": "Spatial_animated_treant_1.mesh",
+        "bytes": 2192952,
+        "sha256": "fcd77cfa45547ab3f32c5c5a674163fa8a15157661de71d7bf7731c5be2512e8"
+      },
+      {
+        "file": "Spatial_animated_treant_1.skin",
+        "bytes": 1218300,
+        "sha256": "3fe2a0076a2845b3074406014ef23f6402d31df065688566403666977be6340c"
+      },
+      {
+        "file": "Spatial_animated_treant_1_NormalGL.texture",
+        "bytes": 57171,
+        "sha256": "4d15df6d9c940a44cd9842fc756f0ce240606108c746d7299552e8577cde99a1"
+      },
+      {
+        "file": "Spatial_animated_treant_2.mesh",
+        "bytes": 451020,
+        "sha256": "91942c52913bfe4810e86fe2fd7419c8ae4ca2398868581763f4cee055b68db9"
+      },
+      {
+        "file": "Spatial_animated_treant_2.skin",
+        "bytes": 250560,
+        "sha256": "8a1b4d06d6d8ffb31dacc25348c5719d8b00236823feb8784d0b048d74fbf8c5"
+      },
+      {
+        "file": "Spatial_animated_treant_2_NormalGL.texture",
+        "bytes": 64261,
+        "sha256": "e5ab9c36738fd35c4c8ffaa0ab400ca5987f79e32b50d081361c028804d1c14b"
+      },
+      {
+        "file": "Spatial_animated_treant_3.mesh",
+        "bytes": 219252,
+        "sha256": "c2378e317aca83197442e5b09c8a214b973435bc929fa0c215dab9b5826e5e59"
+      },
+      {
+        "file": "Spatial_animated_treant_3.skin",
+        "bytes": 121800,
+        "sha256": "48cf0ae78e7787ef4475771791ef30329f54ac63e7b89e57fdec80db52693dea"
+      },
+      {
+        "file": "Spatial_animated_treant_4.mesh",
+        "bytes": 246252,
+        "sha256": "8950127a6d85f28085b36db9328e91917b7edf3b50c526bca3913e4aeb056551"
+      },
+      {
+        "file": "Spatial_animated_treant_4.skin",
+        "bytes": 136800,
+        "sha256": "182d80ea9a728f3f3272da8a6b8814c0bb80222af4753de1d82c64b67b8b2cf6"
+      },
+      {
+        "file": "Spatial_animated_treant_4_Color.texture",
+        "bytes": 7364,
+        "sha256": "c42bf4de6f6e01f4c9e2ea8ce2af4e63a542fedd1d634de21f047b6efae53ca3"
+      },
+      {
+        "file": "Spatial_animated_treant_4_Emission.texture",
+        "bytes": 8652,
+        "sha256": "3593a71a52a2400980a7bc17456d7dd9e171d8612b006fcd55a86b336b37360f"
+      },
+      {
+        "file": "Spatial_animated_treant_rig.json",
+        "bytes": 1450716,
+        "sha256": "ce8daab6b8bd88b27b1877e3006e7f5fdbf98ede0e44a3a95af520767b1bd73a"
+      }
+    ],
+    "animationSkinErrorMeters": 4.77825663829564e-07
+  },
+  {
+    "id": "animated_stone_golem",
+    "title": "Golem de pedra · animado",
+    "author": "vinish.dev",
+    "license": "CC-BY-4.0",
+    "source": "https://vinish-models.pages.dev/monsters/stone-golem.glb",
+    "sourceSHA256": "72a1baebed199b3399cae83268f904f51f22b2f47107202599b160c36f286097",
+    "rig": "Spatial_animated_stone_golem_rig.json",
+    "heightMeters": 1.8,
+    "triangles": 64092,
+    "parts": [
+      {
+        "mesh": "Spatial_animated_stone_golem_0.mesh",
+        "skin": "Spatial_animated_stone_golem_0.skin",
+        "roughness": 0.8999999761581421,
+        "metalness": 0.0,
+        "baseColor": [
+          0.800000011920929,
+          0.800000011920929,
+          0.800000011920929,
+          1.0
+        ],
+        "doubleSided": false,
+        "sourceMaterial": "Rock",
+        "NormalGL": "Spatial_animated_stone_golem_0_NormalGL.texture"
+      },
+      {
+        "mesh": "Spatial_animated_stone_golem_1.mesh",
+        "skin": "Spatial_animated_stone_golem_1.skin",
+        "roughness": 0.800000011920929,
+        "metalness": 0.0,
+        "baseColor": [
+          0.800000011920929,
+          0.800000011920929,
+          0.800000011920929,
+          1.0
+        ],
+        "doubleSided": false,
+        "sourceMaterial": "Fur",
+        "NormalGL": "Spatial_animated_stone_golem_1_NormalGL.texture"
+      },
+      {
+        "mesh": "Spatial_animated_stone_golem_2.mesh",
+        "skin": "Spatial_animated_stone_golem_2.skin",
+        "roughness": 0.4000000059604645,
+        "metalness": 0.0,
+        "baseColor": [
+          0.014443843625485897,
+          0.03189603239297867,
+          0.0423114113509655,
+          1.0
+        ],
+        "doubleSided": false,
+        "emissionFactor": [
+          0.028426039504420793,
+          0.6307571363461468,
+          0.8069522576692516
+        ],
+        "sourceMaterial": "Glow_Core"
+      },
+      {
+        "mesh": "Spatial_animated_stone_golem_3.mesh",
+        "skin": "Spatial_animated_stone_golem_3.skin",
+        "roughness": 0.07999999821186066,
+        "metalness": 0.0,
+        "baseColor": [
+          0.11443537473678589,
+          0.48514994978904724,
+          0.6038273572921753,
+          1.0
+        ],
+        "doubleSided": false,
+        "emissionFactor": [
+          0.003676507324047436,
+          0.06847816984440017,
+          0.09758734714186246
+        ],
+        "sourceMaterial": "Crystal"
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_animated_stone_golem_0.mesh",
+        "bytes": 4998252,
+        "sha256": "fe2bcc9c9e4b7c96c27b8541fc375a0fbdbc0100b49c1b8e9174a3ba793df1d9"
+      },
+      {
+        "file": "Spatial_animated_stone_golem_0.skin",
+        "bytes": 2776800,
+        "sha256": "35d518d3807dc648639923be9c908f0c7a2376158f7d3d7cd7a7c2bd61467103"
+      },
+      {
+        "file": "Spatial_animated_stone_golem_0_NormalGL.texture",
+        "bytes": 47920,
+        "sha256": "77df48d145d87767bb595826554e3547717c041e7749ad84f17b4b62d54179fc"
+      },
+      {
+        "file": "Spatial_animated_stone_golem_1.mesh",
+        "bytes": 1415244,
+        "sha256": "1395e92a49907c16aed7120c39638857eb42e732746b9b6955f5e7de2f28cda0"
+      },
+      {
+        "file": "Spatial_animated_stone_golem_1.skin",
+        "bytes": 786240,
+        "sha256": "04af9686f23b27bd8ec333aa5d520cd1a4a7fd2bc37d7cb8ddb7d5df984bd26b"
+      },
+      {
+        "file": "Spatial_animated_stone_golem_1_NormalGL.texture",
+        "bytes": 64261,
+        "sha256": "e5ab9c36738fd35c4c8ffaa0ab400ca5987f79e32b50d081361c028804d1c14b"
+      },
+      {
+        "file": "Spatial_animated_stone_golem_2.mesh",
+        "bytes": 485148,
+        "sha256": "a970820ebde6053b8fcba044ba04160b072e90404218a22b0b63bf6e4eef507c"
+      },
+      {
+        "file": "Spatial_animated_stone_golem_2.skin",
+        "bytes": 269520,
+        "sha256": "21ed0e3075c74a2ae0e83f5f58bcf823efc025735a0403d937a87d6627b636d3"
+      },
+      {
+        "file": "Spatial_animated_stone_golem_3.mesh",
+        "bytes": 23340,
+        "sha256": "3003b7d76ee2e55c8365a6f24e9528d26e5c92144fd0be0719617157acec3315"
+      },
+      {
+        "file": "Spatial_animated_stone_golem_3.skin",
+        "bytes": 12960,
+        "sha256": "b6ae6c630cd37f729229840efc71c28240e456a3325226c02ba8304fa6cdb2a4"
+      },
+      {
+        "file": "Spatial_animated_stone_golem_rig.json",
+        "bytes": 1236079,
+        "sha256": "d731b4fbd6abde77eb705250366ea6353a5c601ee7c92bfa3b5a64d9bb8f75dc"
+      }
+    ],
+    "animationSkinErrorMeters": 2.4671436384019926e-07
+  },
+  {
+    "id": "animated_bog_monster",
+    "title": "Monstro de musgo · animado",
+    "author": "vinish.dev",
+    "license": "CC-BY-4.0",
+    "source": "https://vinish-models.pages.dev/monsters/bog-monster.glb",
+    "sourceSHA256": "b6cee1e1fce1e37e3b58fabddd427de09a79cc93739452068bc1bdb87bcea644",
+    "rig": "Spatial_animated_bog_monster_rig.json",
+    "heightMeters": 1.8,
+    "triangles": 93499,
+    "parts": [
+      {
+        "mesh": "Spatial_animated_bog_monster_0.mesh",
+        "skin": "Spatial_animated_bog_monster_0.skin",
+        "roughness": 0.30000001192092896,
+        "metalness": 0.0,
+        "baseColor": [
+          0.01032982300966978,
+          0.00802319310605526,
+          0.006512090563774109,
+          1.0
+        ],
+        "doubleSided": false,
+        "sourceMaterial": "Claw"
+      },
+      {
+        "mesh": "Spatial_animated_bog_monster_1.mesh",
+        "skin": "Spatial_animated_bog_monster_1.skin",
+        "roughness": 0.8999999761581421,
+        "metalness": 0.0,
+        "baseColor": [
+          0.800000011920929,
+          0.800000011920929,
+          0.800000011920929,
+          1.0
+        ],
+        "doubleSided": false,
+        "sourceMaterial": "Root",
+        "NormalGL": "Spatial_animated_bog_monster_1_NormalGL.texture"
+      },
+      {
+        "mesh": "Spatial_animated_bog_monster_2.mesh",
+        "skin": "Spatial_animated_bog_monster_2.skin",
+        "roughness": 0.800000011920929,
+        "metalness": 0.0,
+        "baseColor": [
+          0.800000011920929,
+          0.800000011920929,
+          0.800000011920929,
+          1.0
+        ],
+        "doubleSided": false,
+        "sourceMaterial": "Fur",
+        "NormalGL": "Spatial_animated_bog_monster_2_NormalGL.texture"
+      },
+      {
+        "mesh": "Spatial_animated_bog_monster_3.mesh",
+        "skin": "Spatial_animated_bog_monster_3.skin",
+        "roughness": 0.6000000238418579,
+        "metalness": 0.0,
+        "baseColor": [
+          0.800000011920929,
+          0.800000011920929,
+          0.800000011920929,
+          1.0
+        ],
+        "doubleSided": false,
+        "sourceMaterial": "Mushroom"
+      },
+      {
+        "mesh": "Spatial_animated_bog_monster_4.mesh",
+        "skin": "Spatial_animated_bog_monster_4.skin",
+        "roughness": 0.5,
+        "metalness": 0.0,
+        "baseColor": [
+          0.35153260827064514,
+          0.2541520893573761,
+          0.10224173218011856,
+          1.0
+        ],
+        "doubleSided": false,
+        "sourceMaterial": "Tooth_Old"
+      },
+      {
+        "mesh": "Spatial_animated_bog_monster_5.mesh",
+        "skin": "Spatial_animated_bog_monster_5.skin",
+        "roughness": 0.05999999865889549,
+        "metalness": 0.0,
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "Color": "Spatial_animated_bog_monster_5_Color.texture",
+        "doubleSided": false,
+        "emissionFactor": [
+          0.10224173308810132,
+          0.10224173308810132,
+          0.005181516702338386
+        ],
+        "sourceMaterial": "Eye_Swamp",
+        "Emission": "Spatial_animated_bog_monster_5_Emission.texture",
+        "emissionIntensity": 0.10224173308810132
+      },
+      {
+        "mesh": "Spatial_animated_bog_monster_6.mesh",
+        "skin": "Spatial_animated_bog_monster_6.skin",
+        "roughness": 0.8500000238418579,
+        "metalness": 0.0,
+        "baseColor": [
+          0.800000011920929,
+          0.800000011920929,
+          0.800000011920929,
+          1.0
+        ],
+        "doubleSided": false,
+        "sourceMaterial": "Hide",
+        "NormalGL": "Spatial_animated_bog_monster_6_NormalGL.texture"
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_animated_bog_monster_0.mesh",
+        "bytes": 247980,
+        "sha256": "942a63515166faab0814cf1cedb6caa6707ba03f08ff828b452cd4536c367a33"
+      },
+      {
+        "file": "Spatial_animated_bog_monster_0.skin",
+        "bytes": 137760,
+        "sha256": "57b76da79326096adae582c88323be01fb629480d37102fe289b46d9538b7466"
+      },
+      {
+        "file": "Spatial_animated_bog_monster_1.mesh",
+        "bytes": 249708,
+        "sha256": "0076e4f747707d028dfeeb1afb028e877f1f356075e2f3f4867ad9d828ba84f5"
+      },
+      {
+        "file": "Spatial_animated_bog_monster_1.skin",
+        "bytes": 138720,
+        "sha256": "dba38722e83592c737da97d476e87c16b1596ecac32b2172cda36727a12a2e5b"
+      },
+      {
+        "file": "Spatial_animated_bog_monster_1_NormalGL.texture",
+        "bytes": 57171,
+        "sha256": "4d15df6d9c940a44cd9842fc756f0ce240606108c746d7299552e8577cde99a1"
+      },
+      {
+        "file": "Spatial_animated_bog_monster_2.mesh",
+        "bytes": 4388592,
+        "sha256": "5ce3b913565f72dac4491c96be5b57302512f98d19db6b0b48e2af543be5cc77"
+      },
+      {
+        "file": "Spatial_animated_bog_monster_2.skin",
+        "bytes": 2438100,
+        "sha256": "066f5d20b6cecfc26c3227a13bf9718389b89e39efcef53584a6991f5b9d08dc"
+      },
+      {
+        "file": "Spatial_animated_bog_monster_2_NormalGL.texture",
+        "bytes": 64261,
+        "sha256": "e5ab9c36738fd35c4c8ffaa0ab400ca5987f79e32b50d081361c028804d1c14b"
+      },
+      {
+        "file": "Spatial_animated_bog_monster_3.mesh",
+        "bytes": 136092,
+        "sha256": "e0d70885cccb1fde784e564c2390f1b29fa895325f9d46bf72dd67bcc6443de2"
+      },
+      {
+        "file": "Spatial_animated_bog_monster_3.skin",
+        "bytes": 75600,
+        "sha256": "4a8a8eae3e0991fc367beaf0b421ddc2d17c47ac5953ff60119d95ae168eb7e0"
+      },
+      {
+        "file": "Spatial_animated_bog_monster_4.mesh",
+        "bytes": 207372,
+        "sha256": "615324403aaf4c807b0079bf45714a4679f1addaf514a1032c941f3fa944ac19"
+      },
+      {
+        "file": "Spatial_animated_bog_monster_4.skin",
+        "bytes": 115200,
+        "sha256": "a3cb130f6044e188e5d8b2b5eed95307eef2fab7901859086618a734f5cdff7b"
+      },
+      {
+        "file": "Spatial_animated_bog_monster_5.mesh",
+        "bytes": 246252,
+        "sha256": "530f92f35a306e4f7f7c4073aa7431cb057f87e5d269ab396f940081dd032920"
+      },
+      {
+        "file": "Spatial_animated_bog_monster_5.skin",
+        "bytes": 136800,
+        "sha256": "182d80ea9a728f3f3272da8a6b8814c0bb80222af4753de1d82c64b67b8b2cf6"
+      },
+      {
+        "file": "Spatial_animated_bog_monster_5_Color.texture",
+        "bytes": 7342,
+        "sha256": "a0b878a77b9ff2cc094c3742eb063cb407959b45b8f69de311ea5adbc13b4f38"
+      },
+      {
+        "file": "Spatial_animated_bog_monster_5_Emission.texture",
+        "bytes": 8491,
+        "sha256": "5a3ae9a4734e77e845d777383872dc0ca0d262521fa8a777467de8cef56561a6"
+      },
+      {
+        "file": "Spatial_animated_bog_monster_6.mesh",
+        "bytes": 4621980,
+        "sha256": "83e7c9c2854f367bffb80b167b1d1f06805f8d2beafb0f6fa014ca18487e63a6"
+      },
+      {
+        "file": "Spatial_animated_bog_monster_6.skin",
+        "bytes": 2567760,
+        "sha256": "a924d7400dff60fc4131c3208f5e483b26dd058ee2316ec1d036d40624cfb383"
+      },
+      {
+        "file": "Spatial_animated_bog_monster_6_NormalGL.texture",
+        "bytes": 89359,
+        "sha256": "36a86f1e4a19d2dcbd4368b4a4eae8c7ecc00e581c3cfa88646362cfc1195074"
+      },
+      {
+        "file": "Spatial_animated_bog_monster_rig.json",
+        "bytes": 1199711,
+        "sha256": "7095283f284883025c8e193ea77804f54093648e8855bdc6efa53b72b2fde58f"
+      }
+    ],
+    "animationSkinErrorMeters": 3.5886748369909214e-07
   }
 ]

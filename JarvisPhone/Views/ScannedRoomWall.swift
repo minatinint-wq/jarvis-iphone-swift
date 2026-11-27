@@ -4,10 +4,12 @@ import SceneKit
 import CryptoKit
 
 struct ScannedRoomManifest:Decodable {
-    struct Plane:Decodable { let id:Int;let kind:String;let normal:[Float];let center:[Float];let indices:String }
+    struct Plane:Decodable { let id:Int;let kind:String;let normal:[Float];let center:[Float];let indices:String;var sourcePlaneIDs:[Int]?=nil }
     struct File:Decodable { let file:String;let bytes:Int;let sha256:String }
     let sourceSHA256:String;let mesh:String;let texture:String;let previewIndices:String;let facePlanes:String
     let floorY:Float;let lower:[Float];let upper:[Float];let planes:[Plane];let files:[File]
+    var cleanScene:String?=nil
+    var sceneProfile:String?=nil
 }
 
 /// Personal capture stays in the installed bundle, outside the public repository.
@@ -27,15 +29,41 @@ struct ScannedRoomManifest:Decodable {
     private var doorway:RoomDoorwayOpening?
     private var hitFaces:Data?
     private var gameFloors:[Int:[SIMD3<Float>]]=[:]
+    private var cleanCapture:(base:SCNGeometry,manifest:ScannedRoomManifest,faces:Data)?
+    private func forestCapture()->(base:SCNGeometry,manifest:ScannedRoomManifest,faces:Data)? {
+        if let cleanCapture { return cleanCapture }
+        guard let manifest,let base,let faces else { return nil }
+        if let name=manifest.cleanScene {
+            do {
+                let clean=try JSONDecoder().decode(ScannedRoomManifest.self,from:data(name))
+                guard clean.sourceSHA256==manifest.sourceSHA256,clean.sceneProfile=="clean-game-v1" else { throw CocoaError(.fileReadCorruptFile) }
+                let model=try SpatialAssets.partNode(["baseColor":[1.0,1.0,1.0,1.0]],mesh:clean.mesh)
+                let labels=try data(clean.facePlanes)
+                guard let geometry=model.geometry,labels.count==(geometry.elements.first?.primitiveCount ?? -1)*4 else { throw CocoaError(.fileReadCorruptFile) }
+                cleanCapture=(geometry,clean,labels);return cleanCapture
+            } catch { status="A reconstrução limpa falhou na verificação. A captura original foi preservada.";return nil }
+        }
+        return (base,manifest,faces)
+    }
+    private func buildForest()->SCNNode? {
+        guard let capture=forestCapture() else { return nil }
+        return RoomForestScene.make(base:capture.base,manifest:capture.manifest,assignments:capture.faces,opening:doorway)
+    }
+    private func updateCollision(forest:Bool) {
+        guard let root,let base,let faces else { return }
+        var geometry=base,labels=faces
+        if forest,let clean=forestCapture() { geometry=clean.base;labels=clean.faces }
+        if let doorway { (geometry,labels)=RoomForestScene.cut(base:geometry,assignments:labels,opening:doorway) }
+        let collider=SCNGeometry(sources:geometry.sources,elements:geometry.elements)
+        let material=SCNMaterial();material.colorBufferWriteMask=[];material.readsFromDepthBuffer=true;material.isDoubleSided=true
+        collider.materials=[material];RoomForestScene.setCapturedDepth(collider,forest:forest)
+        root.geometry=collider;hitFaces=labels
+    }
     func setDoorway(_ opening:RoomDoorwayOpening) {
         guard let pose else { return }
         let active=forestActive
         _ = setForest(false);doorway=RoomDoorwayOpening(pose:simd_inverse(pose)*opening.pose,width:opening.width,height:opening.height);forestModel=nil
-        if let base,let faces,let doorway,let m=manifest,let root {
-            let (geometry,labels)=RoomForestScene.cut(base:base,assignments:faces,opening:doorway)
-            let occluder=SCNGeometry(sources:geometry.sources,elements:geometry.elements);occluder.materials=root.geometry?.materials ?? [];root.geometry=occluder;hitFaces=labels
-            forestModel=RoomForestScene.make(base:geometry,manifest:m,assignments:labels)
-        }
+        forestModel=buildForest();updateCollision(forest:false)
         if active { _ = setForest(true) }
     }
     var pose:simd_float4x4? { aligned ? root?.simdTransform : nil }
@@ -65,9 +93,12 @@ struct ScannedRoomManifest:Decodable {
     }
     func forestPreview(excludingWall:Int?=nil)->SCNNode? {
         guard prepare(),let base,let m=manifest,let faces else { return nil }
-        if forestModel==nil { forestModel=RoomForestScene.make(base:base,manifest:m,assignments:faces,opening:doorway) }
+        if forestModel==nil { forestModel=buildForest() }
         guard let node=forestModel?.clone() else { return nil }
-        if let excludingWall { node.childNode(withName:"RoomForest-plane-\(excludingWall)",recursively:true)?.removeFromParentNode() }
+        if let excludingWall {
+            let mapped=forestCapture()?.manifest.planes.first{($0.sourcePlaneIDs ?? [$0.id]).contains(excludingWall)}?.id ?? excludingWall
+            node.childNode(withName:"RoomForest-plane-\(mapped)",recursively:true)?.removeFromParentNode()
+        }
         return node
     }
     @discardableResult func setForest(_ value:Bool)->Bool {
@@ -76,6 +107,12 @@ struct ScannedRoomManifest:Decodable {
             guard aligned,let root,let node=forestPreview() else { status="Primeiro preciso reconhecer o quarto capturado.";return false }
             node.categoryBitMask=1;root.addChildNode(node);forestNode=node
         } else { forestNode?.removeFromParentNode();forestNode=nil }
+        // The raw scan remains a hit-test collider, but must not punch noisy
+        // depth holes through its reconstructed visible replacement.
+        updateCollision(forest:value)
+        if value,let environment=Bundle.main.url(forResource:"Portal_forest_slope_2k",withExtension:"hdr") {
+            view.scene.lightingEnvironment.contents=environment;view.scene.lightingEnvironment.intensity=0.65
+        } else { view.scene.lightingEnvironment.contents=nil }
         forestActive=value;onChange?();return true
     }
     func wallID(at point:CGPoint)->Int? {

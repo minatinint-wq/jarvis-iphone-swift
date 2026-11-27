@@ -775,7 +775,7 @@ enum WallMeasureMode { case none, outline, opening }
         switch command {
         case .forestGame(let action):
             switch action {
-            case "start": gameRequested=true;portalGunArmed=false;setRoomForest(true);if roomWall.aligned { forestGame.start(room:roomWall);run() }
+            case "start": panel.close();gameRequested=true;portalGunArmed=false;setRoomForest(true);if roomWall.aligned { forestGame.start(room:roomWall);run() }
             case "pause": forestGame.pause(true);feedback("Jogo pausado.")
             case "resume": portalGunArmed=false;portalTrigger.reset();forestGame.pause(false);feedback("Jogo retomado.")
             case "score": forestGame.showScore()

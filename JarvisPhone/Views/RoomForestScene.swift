@@ -2,8 +2,11 @@ import ARKit
 import SceneKit
 import SwiftUI
 
-/// Reuses the captured triangles; furniture is never replaced by guessed boxes.
+/// Renders the cleaned private game level when present; raw capture stays available for registration.
 @MainActor enum RoomForestScene {
+    static func setCapturedDepth(_ geometry:SCNGeometry,forest:Bool) {
+        geometry.materials.forEach{$0.writesToDepthBuffer = !forest}
+    }
     static func points(_ geometry:SCNGeometry)->[SIMD3<Float>] {
         guard let s=geometry.sources(for:.vertex).first else { return [] }
         return s.data.withUnsafeBytes { b in (0..<s.vectorCount).map { i in
@@ -143,7 +146,11 @@ import SwiftUI
             }
             let g=SCNGeometry(sources:sources,elements:[SCNGeometryElement(data:indices.withUnsafeBytes{Data($0)},primitiveType:.triangles,primitiveCount:indices.count/3,bytesPerIndex:4)])
             let material:SCNMaterial
-            if kind=="furniture" { material=base.firstMaterial?.copy() as? SCNMaterial ?? SCNMaterial();material.multiply.contents=UIColor(red:0.82,green:0.94,blue:0.80,alpha:1) }
+            if kind=="furniture",m.sceneProfile=="clean-game-v1" {
+                material=WallMaterials.make(.wood);material.isDoubleSided=true
+                material.multiply.contents=UIColor(red:0.62,green:0.75,blue:0.50,alpha:1)
+            }
+            else if kind=="furniture" { material=base.firstMaterial?.copy() as? SCNMaterial ?? SCNMaterial();material.multiply.contents=UIColor(red:0.82,green:0.94,blue:0.80,alpha:1) }
             else {
                 material=SCNMaterial();material.lightingModel = .physicallyBased;material.isDoubleSided=true
                 let floor=kind=="floor",prefix=floor ? "Portal_forest_floor_" : "RoomForest_moss_",suffix=floor ? "_2k" : ""
@@ -188,7 +195,9 @@ import SwiftUI
         }
         let sky=SCNNode(geometry:SCNSphere(radius:12));sky.name="RoomForest-sky";sky.simdPosition=center+SIMD3(0,1.3,0);sky.renderingOrder = -100
         let panorama=SCNMaterial();panorama.lightingModel = .constant;panorama.isDoubleSided=true;panorama.writesToDepthBuffer=false
-        panorama.diffuse.contents=UIImage(named:"RoomForest_sky.jpg");sky.geometry?.materials=[panorama];root.addChildNode(sky)
+        // A quiet sky fills uncaptured exterior space; the room itself is real
+        // geometry, rather than a stretched forest photograph around the head.
+        panorama.diffuse.contents=UIColor(red:0.18,green:0.29,blue:0.23,alpha:1);sky.geometry?.materials=[panorama];root.addChildNode(sky)
         let sun=SCNNode();sun.light=SCNLight();sun.light?.type = .directional;sun.light?.color=UIColor(red:1,green:0.91,blue:0.72,alpha:1);sun.light?.intensity=450;sun.eulerAngles=SCNVector3(-0.7,-0.5,0);root.addChildNode(sun)
         return root
     }

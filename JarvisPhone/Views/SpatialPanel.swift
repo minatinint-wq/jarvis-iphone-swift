@@ -515,7 +515,7 @@ enum SpatialPanelGeometry {
     }
     private var radialItems:[(String,String,SpatialPanelAction)] {
         if effectsCatalog {
-            return [("Caçada da Floresta","scope",.wall(.forestGame("start"))),("Guardião","pawprint.fill",.model("animated_dragon")),("Portal na porta","door.left.hand.open",.wall(.doorPortal)),("Quarto floresta","leaf.fill",.wall(.roomForest(true))),("Quarto real","house",.wall(.roomForest(false))), ("Portal na parede","door.left.hand.open",.wall(.portal)),("Fechar portal","xmark",.wall(.closePortal)),("Branco","paintbrush.fill",.wall(.roomWall("white"))),
+            return [("Caçada da Floresta","scope",.wall(.forestGame("start"))),("Guardião","pawprint.fill",.model("animated_treant")),("Portal na porta","door.left.hand.open",.wall(.doorPortal)),("Quarto floresta","leaf.fill",.wall(.roomForest(true))),("Quarto real","house",.wall(.roomForest(false))), ("Portal na parede","door.left.hand.open",.wall(.portal)),("Fechar portal","xmark",.wall(.closePortal)),("Branco","paintbrush.fill",.wall(.roomWall("white"))),
                     ("Tijolos","square.grid.3x3.fill",.wall(.roomWall("brick"))),
                     ("Robô","figure.wave",.model("animated_robot")),
                     ("Raposa","pawprint.fill",.model("animated_fox")),

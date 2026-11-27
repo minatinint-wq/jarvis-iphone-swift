@@ -27,5 +27,59 @@
       "DragonArmature|DragonArmature|Dragon_Hit",
       "Idle"
     ]
+  },
+  {
+    "id": "treant",
+    "source": "https://vinish-models.pages.dev/monsters/treant.glb",
+    "author": "vinish.dev",
+    "license": "CC-BY-4.0",
+    "licenseURL": "https://vinish.dev/free-3d-models/monsters",
+    "sha256": "f648e6c8eae824867363ffd6fdbd6751ff1bf3d2827f399ad8a06915ce4be4fe",
+    "bytes": 3968924,
+    "copyright": "\"Treant\" by vinish.dev (https://vinish.dev/free-3d-models/), CC BY 4.0",
+    "animationClips": [
+      "Idle",
+      "Walk",
+      "Run",
+      "Attack",
+      "Roar",
+      "Die"
+    ]
+  },
+  {
+    "id": "stone_golem",
+    "source": "https://vinish-models.pages.dev/monsters/stone-golem.glb",
+    "author": "vinish.dev",
+    "license": "CC-BY-4.0",
+    "licenseURL": "https://vinish.dev/free-3d-models/monsters",
+    "sha256": "72a1baebed199b3399cae83268f904f51f22b2f47107202599b160c36f286097",
+    "bytes": 3507308,
+    "copyright": "\"Stone Golem\" by vinish.dev (https://vinish.dev/free-3d-models/), CC BY 4.0",
+    "animationClips": [
+      "Idle",
+      "Walk",
+      "Run",
+      "Attack",
+      "Roar",
+      "Die"
+    ]
+  },
+  {
+    "id": "bog_monster",
+    "source": "https://vinish-models.pages.dev/monsters/bog-monster.glb",
+    "author": "vinish.dev",
+    "license": "CC-BY-4.0",
+    "licenseURL": "https://vinish.dev/free-3d-models/monsters",
+    "sha256": "b6cee1e1fce1e37e3b58fabddd427de09a79cc93739452068bc1bdb87bcea644",
+    "bytes": 5037348,
+    "copyright": "\"Bog Monster\" by vinish.dev (https://vinish.dev/free-3d-models/), CC BY 4.0",
+    "animationClips": [
+      "Idle",
+      "Walk",
+      "Run",
+      "Attack",
+      "Roar",
+      "Die"
+    ]
   }
 ]

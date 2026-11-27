@@ -1,0 +1,20 @@
+JARVIS 41 — CENÁRIO RECONSTRUÍDO E PERSONAGENS
+Mapa privado: Scaniverse 2026-11-27 185731.glb; original preservado.
+Cena visível: 2147 triângulos reconstruídos, superfícies planas e volumes de apoio dos móveis.
+A captura bruta continua sendo a referência para reconhecer o quarto. Em floresta, as colisões usam a cena limpa.
+Os volumes dos móveis são aproximações medidas, sem afirmar identificação semântica exata de todos os objetos.
+
+Oi Jarvis, modo floresta. Se precisar: calibrar floresta e mostrar piso, três paredes e um móvel durante oito segundos.
+Oi Jarvis, iniciar jogo da floresta. Modo VR Box para a visualização dupla.
+Indicador estendido e demais dedos dobrados: levante e abaixe o polegar para atirar. Pinça coleta cristais próximos.
+Seis cristais chamam o guardião de madeira; três acertos vencem. Pausar jogo, continuar jogo, mostrar placar, sair do jogo.
+Mão fechada abre o catálogo. O jogo aguarda enquanto o catálogo estiver aberto.
+
+Coloca um guardião: árvore animada. Coloca um golem: criatura de pedra. Coloca um monstro: criatura de musgo.
+Guardião ataque, guardião ruja, guardião ande e guardião pare controlam o personagem selecionado.
+Texturas, normais, esqueletos e seis animações reais de vinish.dev, CC BY 4.0.
+O dragão anterior permanece opcional, mas deixou de ser o personagem principal.
+
+Portal na porta: dentro do cômodo, mostre a porta aberta por inteiro e dispare com o gesto de arma.
+Saia pela porta e retorne para entrar na versão florestada. Teste o alinhamento fora do suporte antes da travessia.
+O teste físico de alinhamento, FPS e precisão das mãos depende deste iPhone; os testes automáticos usam cenas de verificação.

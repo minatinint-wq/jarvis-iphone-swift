@@ -85,6 +85,7 @@ enum SpatialTheme: String, CaseIterable {
         }
         if let c=spec["emissionFactor"] as? [Double],c.count==3,spec["Emission"] == nil { mat.emission.contents=UIColor(red:c[0],green:c[1],blue:c[2],alpha:1) }
         if spec["glass"] as? Bool == true { mat.transparency=0.28;mat.isDoubleSided=true;mat.writesToDepthBuffer=false }
+        mat.emission.intensity=CGFloat(spec["emissionIntensity"] as? Double ?? 1)
         mat.normal.intensity=0.7; geometry.materials=[mat]
         return SCNNode(geometry:geometry)
     }
@@ -602,6 +603,9 @@ enum SpatialTheme: String, CaseIterable {
         if model == "animated_robot" { return 0.42 }
         if model == "animated_fox" { return 0.32 }
         if model == "animated_dragon" { return 1.1 }
+        if model == "animated_treant" { return 0.62 }
+        if model == "animated_stone_golem" { return 0.85 }
+        if model == "animated_bog_monster" { return 0.85 }
         return model.flatMap { SpatialDemo(rawValue:$0)?.radius } ?? (model == nil || model?.hasPrefix("theme:") == true ? 0.48 : 0.24)
     }
     private func triangles(_ node:SCNNode)->Int {
@@ -772,8 +776,8 @@ enum SpatialTheme: String, CaseIterable {
         UIImpactFeedbackGenerator(style:.medium).impactOccurred()
         if let (_,model)=SpatialRig.character(in:root) {
             stopMoving()
-            let clip=model == "animated_robot" ? "Wave" : "Survey"
-            if SpatialRig.play(root,clip:clip) { status=model == "animated_robot" ? "Robô acenando. Use os controles de animação." : "Raposa observando o ambiente." }
+            let clip=model == "animated_robot" ? "Wave" : model == "animated_fox" ? "Survey" : model == "animated_dragon" ? "DragonArmature|DragonArmature|Dragon_Attack2" : "Roar"
+            if SpatialRig.play(root,clip:clip) { status="Personagem reagindo. Diga guardião ataque, guardião ande ou guardião pare." }
         } else if let car=root.childNode(withName:"movingCar",recursively:true) {
             if car.action(forKey:"drive") != nil { car.removeAction(forKey:"drive");car.position=SCNVector3(0,0.005,0);status="Carro parado." }
             else { car.runAction(.repeatForever(.sequence([.moveBy(x:0,y:0,z:0.12,duration:1.2),.moveBy(x:0,y:0,z:-0.12,duration:1.2)])),forKey:"drive");status="Carro em movimento dentro da base." }
@@ -915,6 +919,11 @@ enum SpatialTheme: String, CaseIterable {
                     if world.selectedCharacterID == "animated_robot" {
                         Button("Acenar") { world.animate("Wave") };Button("Dançar") { world.animate("Dance") }
                         Button("Impacto na parede") { world.onAttackRequest?() }
+                    } else if SpatialRig.forestIdentifiers.contains(world.selectedCharacterID ?? "") {
+                        Button("Observar") { world.animate("Idle") }
+                        Button("Atacar") { world.animate("Attack") }
+                        Button("Rugir") { world.animate("Roar") }
+                        Button("Correr") { world.walk(running:true) }
                     } else if world.selectedCharacterID == "animated_dragon" {
                         Button("Observar") { world.animate("Idle") }
                         Button("Atacar") { world.animate("DragonArmature|DragonArmature|Dragon_Attack2") }

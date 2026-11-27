@@ -20,7 +20,8 @@ import SwiftUI
         let bones: [Bone]
         let animations: [Clip]
     }
-    static let identifiers=["animated_robot","animated_fox","animated_dragon"]
+    static let forestIdentifiers=["animated_treant","animated_stone_golem","animated_bog_monster"]
+    static let identifiers=["animated_robot","animated_fox","animated_dragon"]+forestIdentifiers
     private static var specs: [String:Spec]=[:]
 
     static func matrix(_ values: [Float]) throws -> simd_float4x4 {
@@ -110,7 +111,7 @@ import SwiftUI
             animation.fadeInDuration=0.12;animation.fadeOutDuration=0.12
             joint.addAnimation(animation,forKey:"rig-motion")
         }
-        if !looping {
+        if !looping && !["Die","Death_A"].contains(clip.name) {
             root.runAction(.sequence([.wait(duration:clip.duration),.run { [weak root] _ in
                 Task { @MainActor in if let root { play(root,clip:id == "animated_fox" ? "Survey" : "Idle") } }
             }]),forKey:"rig-return")

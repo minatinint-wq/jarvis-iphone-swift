@@ -64,7 +64,9 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertEqual(WallARCommand.parse("iniciar jogo da floresta",inStudio:false),.forestGame("start"))
         XCTAssertEqual(WallARCommand.parse("pausar jogo",inStudio:true),.forestGame("pause"))
         XCTAssertEqual(WallARCommand.parse("sair do jogo",inStudio:true),.forestGame("stop"))
-        XCTAssertEqual(WallARCommand.parse("coloca um monstro",inStudio:true),.model("animated_dragon"))
+        XCTAssertEqual(WallARCommand.parse("coloca um monstro",inStudio:true),.model("animated_bog_monster"))
+        XCTAssertEqual(WallARCommand.parse("guardiao ataque",inStudio:true),.character("Attack"))
+        XCTAssertEqual(WallARCommand.parse("coloca um golem",inStudio:true),.model("animated_stone_golem"))
         XCTAssertNil(WallARCommand.parse("não abrir portal",inStudio:true))
         XCTAssertNil(WallARCommand.parse("não iniciar jogo da floresta",inStudio:true))
         var record=SpatialPortalRecord(anchor:UUID(),width:0.8,height:2.15);record.doorway=true
@@ -95,19 +97,66 @@ final class PhoneCommandTests: XCTestCase {
         guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
         let (g,manifest,labels)=forestFixture(),scene=SCNScene();scene.rootNode.addChildNode(RoomForestScene.make(base:g,manifest:manifest,assignments:labels))
         let model=try RoomForestGame.guardian(scale:1);model.position=SCNVector3(-0.45,0,1.1);scene.rootNode.addChildNode(model)
-        XCTAssertTrue(SpatialRig.play(model,clip:"DragonArmature|DragonArmature|Dragon_Hit"))
-        XCTAssertTrue(SpatialRig.play(model,clip:"Death_A"))
+        XCTAssertTrue(SpatialRig.play(model,clip:"Roar"))
+        XCTAssertTrue(SpatialRig.play(model,clip:"Die"))
         let camera=SCNNode();camera.camera=SCNCamera();camera.camera?.zNear=0.01;camera.camera?.zFar=20;camera.position=SCNVector3(2.5,2.0,4.5);camera.look(at:SCNVector3(0,0.9,0));scene.rootNode.addChildNode(camera)
         let ambient=SCNNode();ambient.light=SCNLight();ambient.light?.type = .ambient;ambient.light?.intensity=350;scene.rootNode.addChildNode(ambient)
+        scene.lightingEnvironment.contents=Bundle.main.url(forResource:"Portal_forest_slope_2k",withExtension:"hdr")
+        scene.lightingEnvironment.intensity=0.65
         let renderer=SCNRenderer(device:device,options:nil);renderer.scene=scene;renderer.pointOfView=camera
         var images:[Data]=[]
         for fraction in [0.0,0.6] {
-            try SpatialRig.previewPose(model,clip:"DragonArmature|DragonArmature|Dragon_Attack2",fraction:fraction)
+            try SpatialRig.previewPose(model,clip:"Attack",fraction:fraction)
             let image=renderer.snapshot(atTime:0,with:CGSize(width:1000,height:800),antialiasingMode:.multisampling4X)
             images.append(try XCTUnwrap(image.pngData()))
             let attachment=XCTAttachment(image:image);attachment.name="Forest-guardian-native-\(fraction)";attachment.lifetime = .keepAlways;add(attachment)
         }
         XCTAssertNotEqual(images[0],images[1]);XCTAssertNotNil(SpatialRig.character(in:model))
+    }
+
+    @MainActor func testDetailedForestCreaturesKeepTheirMapsAndNativeClips() throws {
+        guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
+        for id in SpatialRig.forestIdentifiers {
+            let spec=try XCTUnwrap(SpatialAssets.bundled.first{$0["id"] as? String==id})
+            XCTAssertGreaterThan(spec["triangles"] as? Int ?? 0,50000)
+            let parts=try XCTUnwrap(spec["parts"] as? [[String:Any]])
+            XCTAssertTrue(parts.contains{$0["NormalGL"] != nil})
+            let model=try SpatialAssets.load(id)
+            for clip in ["Idle","Walk","Run","Attack","Roar","Die"] { XCTAssertTrue(SpatialRig.play(model,clip:clip)) }
+            try SpatialRig.previewPose(model,clip:"Idle",fraction:0.25)
+            let scene=SCNScene();scene.background.contents=UIColor(red:0.07,green:0.10,blue:0.09,alpha:1);scene.rootNode.addChildNode(model)
+            scene.lightingEnvironment.contents=Bundle.main.url(forResource:"Portal_forest_slope_2k",withExtension:"hdr");scene.lightingEnvironment.intensity=0.85
+            let camera=SCNNode();camera.camera=SCNCamera();camera.position=SCNVector3(2.6,1.7,3.3);camera.look(at:SCNVector3(0,0.95,0));scene.rootNode.addChildNode(camera)
+            let light=SCNNode();light.light=SCNLight();light.light?.type = .omni;light.light?.intensity=900;light.position=SCNVector3(2,4,3);scene.rootNode.addChildNode(light)
+            let renderer=SCNRenderer(device:device,options:nil);renderer.scene=scene;renderer.pointOfView=camera
+            let image=renderer.snapshot(atTime:0,with:CGSize(width:900,height:1000),antialiasingMode:.multisampling4X)
+            let attachment=XCTAttachment(image:image);attachment.name="DETAILED-"+id;attachment.lifetime = .keepAlways;add(attachment)
+        }
+        let game=try RoomForestGame.guardian(scale:1)
+        game.enumerateChildNodes { n,_ in if n.geometry != nil { XCTAssertNotEqual(n.categoryBitMask & 1,0);XCTAssertNotEqual(n.categoryBitMask & 64,0) } }
+    }
+
+    @MainActor func testCleanForestIsNotPunchedThroughByCapturedDepth() throws {
+        guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
+        let scene=SCNScene();scene.background.contents=UIColor.black
+        let clean=SCNNode(geometry:SCNPlane(width:2,height:2));clean.geometry?.firstMaterial?.lightingModel = .constant;clean.geometry?.firstMaterial?.diffuse.contents=UIColor.green;scene.rootNode.addChildNode(clean)
+        let raw=SCNNode(geometry:SCNPlane(width:2,height:2));raw.position.z=0.08;raw.renderingOrder = -50
+        raw.geometry?.firstMaterial?.colorBufferWriteMask=[];scene.rootNode.addChildNode(raw)
+        let camera=SCNNode();camera.camera=SCNCamera();camera.position=SCNVector3(0,0,3);scene.rootNode.addChildNode(camera)
+        let renderer=SCNRenderer(device:device,options:nil);renderer.scene=scene;renderer.pointOfView=camera
+        var values:[UInt8]=[]
+        for forest in [false,true] {
+            RoomForestScene.setCapturedDepth(try XCTUnwrap(raw.geometry),forest:forest)
+            let image=renderer.snapshot(atTime:0,with:CGSize(width:400,height:400),antialiasingMode:.none)
+            let cg=try XCTUnwrap(image.cgImage);var pixel=[UInt8](repeating:0,count:4)
+            pixel.withUnsafeMutableBytes { bytes in
+                let ctx=CGContext(data:bytes.baseAddress,width:1,height:1,bitsPerComponent:8,bytesPerRow:4,space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.premultipliedLast.rawValue)!
+                ctx.translateBy(x:-200,y:-200);ctx.draw(cg,in:CGRect(x:0,y:0,width:400,height:400))
+            }
+            values.append(pixel[1])
+            let attachment=XCTAttachment(image:image);attachment.name=forest ? "CLEAN-DEPTH-FIX" : "RAW-DEPTH-REPRO";attachment.lifetime = .keepAlways;add(attachment)
+        }
+        XCTAssertLessThan(values[0],30);XCTAssertGreaterThan(values[1],180)
     }
 
     func testPortalProjectionKeepsTheWallFixedAndChangesDepthWithViewpoint() throws {

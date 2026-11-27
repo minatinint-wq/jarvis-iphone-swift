@@ -453,3 +453,97 @@ resources:
 - JarvisPhone/Resources/Spatial_animated_dragon_3.skin
 
 - JarvisPhone/Resources/Spatial_animated_dragon_rig.json
+
+- JarvisPhone/Resources/Spatial_animated_bog_monster_0.mesh
+
+- JarvisPhone/Resources/Spatial_animated_bog_monster_0.skin
+
+- JarvisPhone/Resources/Spatial_animated_bog_monster_1.mesh
+
+- JarvisPhone/Resources/Spatial_animated_bog_monster_1.skin
+
+- JarvisPhone/Resources/Spatial_animated_bog_monster_1_NormalGL.texture
+
+- JarvisPhone/Resources/Spatial_animated_bog_monster_2.mesh
+
+- JarvisPhone/Resources/Spatial_animated_bog_monster_2.skin
+
+- JarvisPhone/Resources/Spatial_animated_bog_monster_2_NormalGL.texture
+
+- JarvisPhone/Resources/Spatial_animated_bog_monster_3.mesh
+
+- JarvisPhone/Resources/Spatial_animated_bog_monster_3.skin
+
+- JarvisPhone/Resources/Spatial_animated_bog_monster_4.mesh
+
+- JarvisPhone/Resources/Spatial_animated_bog_monster_4.skin
+
+- JarvisPhone/Resources/Spatial_animated_bog_monster_5.mesh
+
+- JarvisPhone/Resources/Spatial_animated_bog_monster_5.skin
+
+- JarvisPhone/Resources/Spatial_animated_bog_monster_5_Color.texture
+
+- JarvisPhone/Resources/Spatial_animated_bog_monster_5_Emission.texture
+
+- JarvisPhone/Resources/Spatial_animated_bog_monster_6.mesh
+
+- JarvisPhone/Resources/Spatial_animated_bog_monster_6.skin
+
+- JarvisPhone/Resources/Spatial_animated_bog_monster_6_NormalGL.texture
+
+- JarvisPhone/Resources/Spatial_animated_bog_monster_rig.json
+
+- JarvisPhone/Resources/Spatial_animated_stone_golem_0.mesh
+
+- JarvisPhone/Resources/Spatial_animated_stone_golem_0.skin
+
+- JarvisPhone/Resources/Spatial_animated_stone_golem_0_NormalGL.texture
+
+- JarvisPhone/Resources/Spatial_animated_stone_golem_1.mesh
+
+- JarvisPhone/Resources/Spatial_animated_stone_golem_1.skin
+
+- JarvisPhone/Resources/Spatial_animated_stone_golem_1_NormalGL.texture
+
+- JarvisPhone/Resources/Spatial_animated_stone_golem_2.mesh
+
+- JarvisPhone/Resources/Spatial_animated_stone_golem_2.skin
+
+- JarvisPhone/Resources/Spatial_animated_stone_golem_3.mesh
+
+- JarvisPhone/Resources/Spatial_animated_stone_golem_3.skin
+
+- JarvisPhone/Resources/Spatial_animated_stone_golem_rig.json
+
+- JarvisPhone/Resources/Spatial_animated_treant_0.mesh
+
+- JarvisPhone/Resources/Spatial_animated_treant_0.skin
+
+- JarvisPhone/Resources/Spatial_animated_treant_0_NormalGL.texture
+
+- JarvisPhone/Resources/Spatial_animated_treant_1.mesh
+
+- JarvisPhone/Resources/Spatial_animated_treant_1.skin
+
+- JarvisPhone/Resources/Spatial_animated_treant_1_NormalGL.texture
+
+- JarvisPhone/Resources/Spatial_animated_treant_2.mesh
+
+- JarvisPhone/Resources/Spatial_animated_treant_2.skin
+
+- JarvisPhone/Resources/Spatial_animated_treant_2_NormalGL.texture
+
+- JarvisPhone/Resources/Spatial_animated_treant_3.mesh
+
+- JarvisPhone/Resources/Spatial_animated_treant_3.skin
+
+- JarvisPhone/Resources/Spatial_animated_treant_4.mesh
+
+- JarvisPhone/Resources/Spatial_animated_treant_4.skin
+
+- JarvisPhone/Resources/Spatial_animated_treant_4_Color.texture
+
+- JarvisPhone/Resources/Spatial_animated_treant_4_Emission.texture
+
+- JarvisPhone/Resources/Spatial_animated_treant_rig.json

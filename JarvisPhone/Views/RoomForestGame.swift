@@ -21,11 +21,11 @@ import AVFoundation
     init(view:ARSCNView) { self.view=view }
     static func guardian(scale:Float)throws->SCNNode {
         let wrapper=SCNNode();wrapper.name="game-guardian";wrapper.simdScale=SIMD3(repeating:scale)
-        let model=try SpatialAssets.load("animated_dragon")
+        let model=try SpatialAssets.load("animated_treant")
         // Hit surfaces carry the game ID; skeleton and joint names remain intact
         // so the real reaction/death clips can still find their bones.
         model.enumerateChildNodes { node,_ in
-            if node.geometry != nil { node.categoryBitMask=64;node.name="game-guardian" }
+            if node.geometry != nil { node.categoryBitMask |= 64;node.name="game-guardian" }
         }
         wrapper.addChildNode(model);return wrapper
     }
@@ -96,8 +96,8 @@ import AVFoundation
         }
         guard targets.count<3,let p=candidate() else { return }
         let id="crystal-"+UUID().uuidString,node=SCNNode();node.name=id;node.simdPosition=p+SIMD3(0,0.65,0)
-        let seed=SCNNode(geometry:SCNOctahedron.make(radius:0.12)),material=SCNMaterial();material.lightingModel = .physicallyBased;material.diffuse.contents=UIColor(red:0.16,green:0.83,blue:0.70,alpha:1);material.metalness.contents=0.65;material.roughness.contents=0.18;material.emission.contents=UIColor(red:0.01,green:0.20,blue:0.11,alpha:1);seed.geometry?.materials=[material];seed.name=id;seed.categoryBitMask=64;node.addChildNode(seed)
-        let ring=SCNNode(geometry:SCNTorus(ringRadius:0.16,pipeRadius:0.008));ring.eulerAngles.x = .pi/3;ring.geometry?.materials=[material];ring.name=id;ring.categoryBitMask=64;node.addChildNode(ring)
+        let seed=SCNNode(geometry:SCNOctahedron.make(radius:0.12)),material=SCNMaterial();material.lightingModel = .physicallyBased;material.diffuse.contents=UIColor(red:0.16,green:0.83,blue:0.70,alpha:1);material.metalness.contents=0.65;material.roughness.contents=0.18;material.emission.contents=UIColor(red:0.01,green:0.20,blue:0.11,alpha:1);seed.geometry?.materials=[material];seed.name=id;seed.categoryBitMask=65;node.addChildNode(seed)
+        let ring=SCNNode(geometry:SCNTorus(ringRadius:0.16,pipeRadius:0.008));ring.eulerAngles.x = .pi/3;ring.geometry?.materials=[material];ring.name=id;ring.categoryBitMask=65;node.addChildNode(ring)
         node.runAction(.repeatForever(.rotateBy(x:0,y:.pi*2,z:0,duration:5)),forKey:"spin");root.addChildNode(node);targets[id]=node
     }
     @discardableResult func hand(_ sample:SpatialHandSample?)->Bool {
@@ -127,7 +127,7 @@ import AVFoundation
         guard let node=targets[id] else { return };sound?.currentTime=0;sound?.play()
         if id=="game-guardian" {
             bossHealth-=1;score+=25
-            _=SpatialRig.play(node,clip:bossHealth==0 ? "Death_A" : "DragonArmature|DragonArmature|Dragon_Hit")
+            _=SpatialRig.play(node,clip:bossHealth==0 ? "Die" : "Roar")
             if bossHealth==0 { node.runAction(.sequence([.wait(duration:2.5),.fadeOut(duration:0.4),.removeFromParentNode()]));finished=true;score+=100;onFeedback?("Caçada concluída. Você fez \(score) pontos.") }
         } else { score+=points;collected+=1;node.runAction(.sequence([.group([.scale(to:0.01,duration:0.2),.fadeOut(duration:0.2)]),.removeFromParentNode()]));targets.removeValue(forKey:id) }
         if collected>=6 { for (key,value) in targets where key != "game-guardian" { value.removeFromParentNode();targets.removeValue(forKey:key) } }
