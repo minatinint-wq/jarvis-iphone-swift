@@ -1,0 +1,37 @@
+name: Sign native JARVIS notification shortcut
+on:
+  workflow_dispatch:
+    inputs:
+      bundle_id:
+        description: Installed JARVIS application identifier
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  sign:
+    runs-on: macos-26
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate the native intent action
+        env:
+          JARVIS_TARGET_BUNDLE: ${{ inputs.bundle_id }}
+        run: python3 scripts/build-notification-shortcut.py --bundle-id "$JARVIS_TARGET_BUNDLE" --output "$RUNNER_TEMP/JARVIS+Notificacoes.plist"
+      - name: Sign with Apple Shortcuts
+        run: |
+          shortcuts sign --mode anyone --input "$RUNNER_TEMP/JARVIS+Notificacoes.plist" --output "$RUNNER_TEMP/JARVIS+Notificacoes.shortcut"
+          python3 - <<'PY'
+          import os,hashlib,json
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/'JARVIS+Notificacoes.shortcut'
+          assert p.read_bytes().startswith(b'AEA1')
+          (p.parent/'notification-shortcut-verification.json').write_text(json.dumps({'signed':True,'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'network_requests':0}))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-Notificacoes-Nativo
+          path: |
+            ${{ runner.temp }}/JARVIS+Notificacoes.shortcut
+            ${{ runner.temp }}/JARVIS+Notificacoes.plist
+            ${{ runner.temp }}/notification-shortcut-verification.json
