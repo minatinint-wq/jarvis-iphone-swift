@@ -19,7 +19,7 @@ enum WallMaterials {
         for (prop,key) in [(m.diffuse,"Color"),(m.normal,"NormalGL"),(m.roughness,"Roughness")] {
             let name="RoomFX_brick_"+key
             if images[name]==nil,let path=Bundle.main.path(forResource:name,ofType:"jpg") { images[name]=UIImage(contentsOfFile:path) }
-            prop.contents=images[name];prop.contentsTransform=SCNMatrix4MakeScale(1/3,1/3,1)
+            prop.contents=images[name];prop.contentsTransform=SCNMatrix4MakeScale(1/0.75,1/0.75,1)
         }
         m.normal.intensity=0.5;return m
     }
@@ -671,6 +671,20 @@ enum WallMeasureMode { case none, outline, opening }
         return edges
     }
 
+    private var modelSelectionTask:Task<Void,Never>?
+    private func chooseModel(_ id:String) {
+        modelSelectionTask?.cancel()
+        if SpatialAssets.isBundled(id) { spatial.setModel(id);prepareObjectPlacement();return }
+        modelSelectionTask=Task { @MainActor in
+            do {
+                status="Carregando modelo da biblioteca…"
+                try await SpatialCloudLibrary.shared.ensure(id)
+                try Task.checkCancellation()
+                guard !stopped else { return }
+                spatial.setModel(id);prepareObjectPlacement()
+            } catch is CancellationError {} catch { status="Não consegui baixar este modelo. Os modelos locais continuam disponíveis." }
+        }
+    }
     func apply(_ command: WallARCommand) {
         guard !recoveryBusy else { return }
         switch command {
@@ -723,10 +737,10 @@ enum WallMeasureMode { case none, outline, opening }
         case .point: addPoint()
         case .opening: beginOpening()
         case .approve: confirm()
-        case .theme(let theme): measureMode = .none;endManualWallInput();cancelLiveWallCapture();spatial.setTheme(theme);prepareObjectPlacement()
+        case .theme(let theme): modelSelectionTask?.cancel();measureMode = .none;endManualWallInput();cancelLiveWallCapture();spatial.setTheme(theme);prepareObjectPlacement()
         case .interact: spatial.interact()
         case .removeObject: spatial.removeSelected()
-        case .model(let id): measureMode = .none;endManualWallInput();cancelLiveWallCapture();spatial.setModel(id);prepareObjectPlacement()
+        case .model(let id): measureMode = .none;endManualWallInput();cancelLiveWallCapture();chooseModel(id)
         case .resizeObject(let factor): spatial.resizeSelected(factor)
         case .moveObject(let x,let z): spatial.moveSelected(x:x,z:z)
         case .saveMap:
@@ -1038,7 +1052,8 @@ struct WallCameraView: UIViewRepresentable {
     @StateObject private var controller = WallARController()
     @Environment(\.scenePhase) private var scenePhase
     @State private var help = false
-    @State private var objectsTab = false
+    @State private var surfaceTools = false
+    @State private var mapTools = false
     @AppStorage("jarvis.ar.toolsExpanded.v31") private var toolsExpanded = false
     @State private var immersive=false
     @State private var panelVisible = false
@@ -1100,68 +1115,13 @@ struct WallCameraView: UIViewRepresentable {
                         }.buttonStyle(.bordered).controlSize(.small)
                     }.padding(12).frame(maxWidth:.infinity,alignment:.leading).background(.black.opacity(0.8),in:RoundedRectangle(cornerRadius:14))
                 } else if toolsExpanded {
-                VStack(alignment:.leading,spacing:12) {
-                    HStack(spacing:8) {
-                    Picker("Ferramenta",selection:$objectsTab) {
-                        Text("Medir e pintar").tag(false)
-                        Text("Cenários 3D").tag(true)
-                    }.pickerStyle(.segmented)
-                    Button { toolsExpanded=false } label: {
-                        Image(systemName:"xmark").frame(minWidth:36,minHeight:36)
-                    }.buttonStyle(.plain).accessibilityLabel("Recolher ferramentas AR")
-                    }
-                    if objectsTab {
-                        SpatialControls(world:controller.spatial)
-                    } else {
-                    Text(controller.status).font(.subheadline.weight(.medium)).fixedSize(horizontal:false,vertical:true)
-                    HStack {
-                        Button("Alinhar captura",systemImage:"scope") { controller.apply(.roomSetup) }
-                        Button("Parede branca") { controller.apply(.roomWall("white")) }
-                        Button("Tijolos") { controller.apply(.roomWall("brick")) }
-                    }.buttonStyle(.bordered).controlSize(.small)
-                    ScrollView(.horizontal,showsIndicators:false) {
-                        HStack(spacing:10) {
-                            ForEach(WallFinish.allCases) { finish in
-                                Button { controller.apply(.finish(finish)) } label: {
-                                    VStack(spacing:5) {
-                                        swatch(finish).frame(width:42,height:42).clipShape(RoundedRectangle(cornerRadius:10))
-                                            .overlay(RoundedRectangle(cornerRadius:10).stroke(controller.finish == finish ? Color.cyan : Color.white.opacity(0.3),lineWidth:2))
-                                        Text(finish.title).font(.caption2)
-                                    }.frame(minWidth:60)
-                                }.buttonStyle(.plain).disabled(!controller.prepared || controller.fatal)
-                            }
-                        }.padding(2)
-                    }
-                    ScrollView(.horizontal,showsIndicators:false) {
-                        HStack {
-                            Button("Marcar parede",systemImage:"ruler") { controller.beginOutline() }.disabled(!controller.tracking)
-                            Button("Adicionar ponto",systemImage:"plus.circle.fill") { controller.addPoint() }.disabled(controller.measureMode == .none || !controller.tracking)
-                            Button("Excluir área",systemImage:"rectangle.dashed") { controller.beginOpening() }.disabled(!controller.selected)
-                            Button("Desfazer ponto",systemImage:"arrow.uturn.backward") { controller.undoPoint() }
-                            Button("Aplicar",systemImage:"checkmark") { controller.confirm() }.disabled(!controller.tracking || !controller.selected)
-                            Button { controller.apply(.compare) } label: { Image(systemName:controller.comparing ? "eye.slash" : "eye") }.accessibilityLabel("Comparar original")
-                        }.buttonStyle(.bordered).controlSize(.small)
-                    }
-                    Text("\(controller.pointsCount) pontos · \(controller.openingsCount) exclusões · \(controller.measurement)").font(.caption2).foregroundStyle(.cyan)
-                    }
-                    Button(help ? "Ocultar ajuda" : "Como marcar e interagir") { help.toggle() }.font(.caption)
-                    if !model.wakeEnabled {
-                        Button("Ativar pedidos por voz") { model.setWakeEnabled(true) }.buttonStyle(.borderedProminent)
-                    } else {
-                        Text(model.followUp ? "Ouvindo · pode pedir outra cor" : "Diga: Oi Jarvis, deixa essa parede branca")
-                            .font(.caption).foregroundStyle(.cyan)
-                    }
-                    if help {
-                        Text("Marcar parede → aponte a mira para cada canto → Adicionar ponto. Siga o contorno em ordem. Excluir área: marque dois cantos opostos de cada porta, janela ou armário. Confira as linhas e toque em Aplicar.\n\nA pintura só aparece onde duas leituras de profundidade confirmam a parede. Áreas desconhecidas ficam vazias: mostre de outro ângulo. Coplanaridade não identifica uma porta fechada; marque a exclusão.\n\nCenários: escolha um dos seis cenários ou abra o catálogo de 20 objetos, toque no piso/mesa mapeados. Toque no objeto para selecionar e novamente para interagir. Arraste, use pinça e gire com dois dedos.\n\nUse Remover para liberar uma passagem. As medidas são estimativas. Não detecta automaticamente todos os armários ou batentes.\n\nModelos: Poly Haven e autores do catálogo Khronos. Créditos e licenças CC0/CC BY incluídos. Meta de 60 FPS, redução térmica para 30. \(controller.notice)")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                }.padding(14).background(.ultraThinMaterial,in:RoundedRectangle(cornerRadius:20))
+                    sceneTools
                 } else {
                     HStack {
                         Button { toolsExpanded=true } label: {
-                            Label("Ferramentas",systemImage:"slider.horizontal.3").font(.subheadline.weight(.medium)).padding(12)
+                            Label("Cenário 3D",systemImage:"slider.horizontal.3").font(.subheadline.weight(.medium)).padding(12)
                         }.buttonStyle(.plain).background(.black.opacity(0.75),in:Capsule())
-                            .accessibilityLabel("Abrir ferramentas de cenários 3D, medir e pintar")
+                            .accessibilityLabel("Abrir ferramentas do Cenário 3D")
                         Spacer()
                     }
                 }
@@ -1201,13 +1161,13 @@ struct WallCameraView: UIViewRepresentable {
                         if model.openStudio("music",instrument:instrument) { controller.panel.close() }
                     case .wall(let command):
                         if command == .saveMap { controller.apply(command);return }
-                        objectsTab=false;if controller.panel.immersive { controller.panel.cleanInterface() } else { controller.panel.close() };controller.apply(command)
+                        if controller.panel.immersive { controller.panel.cleanInterface() } else { controller.panel.close() };controller.apply(command)
                     case .systemAction(let action):
                         if [.wifiOff,.bluetoothOff,.cellularOff,.lock].contains(action) { confirmAction=action }
                         else { runPhoneAction(action) }
                     case .activateSpotify: model.showSpotify()
-                    case .model(let id): objectsTab=true;controller.apply(.model(id));if controller.panel.immersive { controller.panel.cleanInterface() } else { controller.panel.close() }
-                    case .scene(let theme): objectsTab=true;controller.apply(.theme(theme));if controller.panel.immersive { controller.panel.cleanInterface() } else { controller.panel.close() }
+                    case .model(let id): controller.apply(.model(id));if controller.panel.immersive { controller.panel.cleanInterface() } else { controller.panel.close() }
+                    case .scene(let theme): controller.apply(.theme(theme));if controller.panel.immersive { controller.panel.cleanInterface() } else { controller.panel.close() }
                     case .studio(let mode): controller.panel.close();model.openStudio(mode)
                     case .command(let text): Task { await model.runSpatialCommand(text) }
                     default: break
@@ -1260,10 +1220,6 @@ struct WallCameraView: UIViewRepresentable {
             }
             .onChange(of:menuSheet) { _,_ in syncOverlay() }
             .onChange(of:confirmAction) { _,_ in syncOverlay() }
-            .onChange(of:objectsTab) { _,active in
-                controller.spatial.active=active
-                if active { controller.measureMode = .none }
-            }
             .onChange(of:model.wallARRequest) { _,_ in consume() }
             .onChange(of:webModule) { _,target in
                 syncOverlay()
@@ -1279,6 +1235,66 @@ struct WallCameraView: UIViewRepresentable {
             .onChange(of:model.message) { _,text in controller.panel.showResult(text) }
             .onChange(of:scenePhase) { _,phase in controller.setForeground(phase == .active) }
             .onDisappear { controller.stop() }
+    }
+    private var sceneTools: some View {
+        VStack(spacing:10) {
+            HStack {
+                Label("Cenário 3D",systemImage:"cube.transparent").font(.headline)
+                Spacer()
+                Button { toolsExpanded=false } label: { Image(systemName:"xmark").frame(width:44,height:44) }
+                    .accessibilityLabel("Recolher ferramentas")
+            }
+            ScrollView {
+                VStack(alignment:.leading,spacing:14) {
+                    Text(controller.status).font(.caption).foregroundStyle(.secondary)
+                    HStack {
+                        Button("Portal",systemImage:"door.left.hand.open") { controller.apply(.portal);toolsExpanded=false }
+                        Button("Catálogo projetado",systemImage:"circle.grid.2x2") {
+                            controller.panel.openEffectsRadial(tracking:controller.tracking);toolsExpanded=false
+                        }
+                    }.buttonStyle(.bordered).controlSize(.small)
+                    SpatialControls(world:controller.spatial,onCommand:{ controller.apply($0) })
+                    DisclosureGroup("Paredes e medidas",isExpanded:$surfaceTools) {
+                        VStack(alignment:.leading,spacing:10) {
+                            HStack {
+                                Button("Branco") { controller.apply(.roomWall("white"));toolsExpanded=false }
+                                Button("Tijolos") { controller.apply(.roomWall("brick"));toolsExpanded=false }
+                                Button("Limpar") { controller.apply(.roomClear) }
+                            }.buttonStyle(.bordered).controlSize(.small)
+                            ScrollView(.horizontal,showsIndicators:false) {
+                                HStack { ForEach(WallFinish.allCases) { finish in
+                                    Button(finish.title) { controller.apply(.finish(finish)) }.buttonStyle(.bordered)
+                                } }.font(.caption)
+                            }
+                            LazyVGrid(columns:[GridItem(.flexible()),GridItem(.flexible())],alignment:.leading) {
+                                Button("Marcar parede",systemImage:"ruler") { controller.beginOutline() }.disabled(!controller.tracking)
+                                Button("Adicionar ponto",systemImage:"plus.circle") { controller.addPoint() }.disabled(controller.measureMode == .none || !controller.tracking)
+                                Button("Excluir área",systemImage:"rectangle.dashed") { controller.beginOpening() }.disabled(!controller.selected)
+                                Button("Desfazer ponto",systemImage:"arrow.uturn.backward") { controller.undoPoint() }
+                                Button("Aplicar",systemImage:"checkmark") { controller.confirm() }.disabled(!controller.tracking || !controller.selected)
+                                Button("Comparar",systemImage:"eye") { controller.apply(.compare) }
+                            }.font(.caption).buttonStyle(.bordered)
+                            Text("\(controller.pointsCount) pontos · \(controller.openingsCount) exclusões · \(controller.measurement)").font(.caption2).foregroundStyle(.cyan)
+                        }.padding(.top,8)
+                    }
+                    DisclosureGroup("Mapa e alinhamento",isExpanded:$mapTools) {
+                        VStack(alignment:.leading,spacing:8) {
+                            Button("Alinhar captura do quarto",systemImage:"scope") { controller.apply(.roomSetup) }
+                            Button("Salvar mapa",systemImage:"square.and.arrow.down") { controller.spatial.saveMap() }
+                            Text(controller.spatial.persistenceStatus).font(.caption2).foregroundStyle(.secondary)
+                            ShareLink("Compartilhar diagnóstico",item:SpatialArchive.file.deletingLastPathComponent().appendingPathComponent("diagnostics.json"))
+                        }.font(.caption).buttonStyle(.bordered).padding(.top,8)
+                    }
+                    DisclosureGroup("Como usar",isExpanded:$help) {
+                        Text("Escolha um objeto ou ambiente e aponte para uma superfície mapeada. Indicador por 2 segundos clica; pinça arrasta. Feche a mão para abrir o catálogo projetado. Para pintura manual, marque o contorno e exclua portas, janelas e móveis antes de aplicar. As medidas são estimativas; o scanner não identifica todos os batentes automaticamente.")
+                            .font(.caption).foregroundStyle(.secondary).padding(.top,8)
+                    }
+                    if !model.wakeEnabled {
+                        Button("Ativar pedidos por voz") { model.setWakeEnabled(true) }.buttonStyle(.bordered)
+                    }
+                }
+            }.frame(maxHeight:300)
+        }.padding(14).background(.ultraThinMaterial,in:RoundedRectangle(cornerRadius:20))
     }
     private var overlayVisible: Bool { webModule != nil || menuSheet != nil || confirmAction != nil }
     private func syncOverlay() {
@@ -1300,8 +1316,6 @@ struct WallCameraView: UIViewRepresentable {
             if target == .youtube || target == .browser { controller.panel.open(target,tracking:controller.tracking);return }
             webModule=nil
         }
-        if case .theme = request.command { objectsTab=true }
-        if case .model = request.command { objectsTab=true }
         if case .panel = request.command, !controller.tracking {
             // Opening a panel by voice must wait for AR tracking, not consume the request.
             Task { @MainActor in

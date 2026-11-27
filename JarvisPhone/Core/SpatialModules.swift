@@ -2,13 +2,16 @@ import Foundation
 
 enum SpatialModule: String, CaseIterable {
     case dashboard, spotify, youtube, browser, commands, phone, home, camera, creation, scenes, instruments, libras, translation, personal, network, system, notebook, apps, walls
+    /// Keep the old route readable in saved maps, but show a single workspace.
+    var canonical: Self { self == .walls ? .scenes : self }
+    static var navigationCases: [Self] { allCases.filter { $0 != .walls } }
     var title: String {
         switch self {
         case .network: return "Rede e conexões"
         case .system: return "Sistema e foco"
         case .notebook: return "Notas e lembretes"
         case .apps: return "Carteira e apps"
-        case .walls: return "Medir e pintar"
+        case .walls: return "Cenário 3D"
         case .dashboard: return "Central JARVIS"
         case .youtube: return "YouTube"
         case .browser: return "Navegador"
@@ -18,7 +21,7 @@ enum SpatialModule: String, CaseIterable {
         case .home: return "Casa · Tuya"
         case .camera: return "Visão e câmera"
         case .creation: return "Criação"
-        case .scenes: return "Cenários AR"
+        case .scenes: return "Cenário 3D"
         case .instruments: return "Instrumentos"
         case .libras: return "Libras"
         case .translation: return "Tradução"
@@ -64,9 +67,9 @@ enum SpatialModule: String, CaseIterable {
             .phone:["controles","controle","iphone","celular","telefone","controles do iphone"],
             .home:["casa","tuya","casa inteligente","luzes","lampadas","dispositivos"],
             .camera:["camera","visao","visao artificial"],.creation:["criacao","desenho","imagens"],
-            .scenes:["cenarios","cenario","ambientes","objetos 3d"],.instruments:["instrumentos","harpa","guitarra","violao"],
+            .scenes:["cenarios","cenario","cenario 3d","cenarios 3d","espaco ar","ambientes","objetos 3d"],.instruments:["instrumentos","harpa","guitarra","violao"],
             .libras:["libras"],.translation:["traducao","tradutor"],.personal:["dia","meu dia","agenda","email","e mail","resumo"]]
-        return aliases.first(where:{$0.value.contains(subject)})?.key
+        return aliases.first(where:{$0.value.contains(subject)})?.key.canonical
     }
 }
 

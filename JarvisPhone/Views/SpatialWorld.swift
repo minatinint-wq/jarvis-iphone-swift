@@ -27,16 +27,22 @@ enum SpatialTheme: String, CaseIterable {
 /// are native and local; neither generation credits nor a web viewer are required.
 @MainActor enum SpatialAssets {
     struct Entry:Identifiable { let id:String;let title:String }
-    static var catalog:[Entry] {
-        guard let url=Bundle.main.url(forResource:"SPATIAL_ASSETS",withExtension:"json"),let bytes=try? Data(contentsOf:url),let entries=try? JSONSerialization.jsonObject(with:bytes) as? [[String:Any]] else { return [] }
-        return entries.compactMap { spec in guard let id=spec["id"] as? String,let title=spec["title"] as? String else { return nil };return Entry(id:id,title:title) }
+    static var bundled:[[String:Any]] {
+        guard let url=Bundle.main.url(forResource:"SPATIAL_ASSETS",withExtension:"json"),let bytes=try? Data(contentsOf:url),let entries=try? JSONSerialization.jsonObject(with:bytes) as? [[String:Any]] else { return [] };return entries
     }
+    static func isBundled(_ id:String)->Bool { bundled.contains{$0["id"] as? String==id} }
+    static var specifications:[[String:Any]] {
+        let local=bundled,ids=Set(local.compactMap{$0["id"] as? String})
+        return local+SpatialCloudLibrary.shared.models.filter{!ids.contains($0["id"] as? String ?? "")}
+    }
+    static var catalog:[Entry] {
+        specifications.compactMap { spec in guard let id=spec["id"] as? String,let title=spec["title"] as? String else { return nil };return Entry(id:id,title:title) }
+    }
+    static func file(_ name:String)->URL? { Bundle.main.url(forResource:name,withExtension:nil) ?? SpatialCloudLibrary.shared.file(name) }
     private static var cache: [String:SCNNode]=[:]
     static func load(_ id: String) throws -> SCNNode {
         if let node=cache[id] { return node.clone() }
-        guard let manifest=Bundle.main.url(forResource:"SPATIAL_ASSETS",withExtension:"json"),
-              let all=try JSONSerialization.jsonObject(with:Data(contentsOf:manifest)) as? [[String:Any]],
-              let spec=all.first(where:{$0["id"] as? String == id}) else { throw CocoaError(.fileNoSuchFile) }
+        guard let spec=specifications.first(where:{$0["id"] as? String == id}) else { throw CocoaError(.fileNoSuchFile) }
         let node:SCNNode
         if spec["rig"] != nil { return try SpatialRig.load(id:id,entry:spec) }
         if let parts=spec["parts"] as? [[String:Any]] {
@@ -47,13 +53,14 @@ enum SpatialTheme: String, CaseIterable {
         cache[id]=node;return node.clone()
     }
     static func partNode(_ spec:[String:Any],mesh:String) throws -> SCNNode {
-        guard let url=Bundle.main.url(forResource:mesh,withExtension:nil) else { throw CocoaError(.fileNoSuchFile) }
+        guard let url=file(mesh) else { throw CocoaError(.fileNoSuchFile) }
         let data=try Data(contentsOf:url)
         guard data.count>=12, String(data:data.prefix(4),encoding:.ascii)=="JSP1" else { throw CocoaError(.fileReadCorruptFile) }
         let count=Int(data.withUnsafeBytes { $0.loadUnaligned(fromByteOffset:4,as:UInt32.self) })
         let faces=Int(data.withUnsafeBytes { $0.loadUnaligned(fromByteOffset:8,as:UInt32.self) })
         guard count>0, count<300000, faces>0, faces<300000, data.count==12+count*32+faces*12 else { throw CocoaError(.fileReadCorruptFile) }
         let buffer=data.subdata(in:12..<(12+count*32)), indices=data.suffix(faces*12)
+        guard indices.withUnsafeBytes({ raw in (0..<(faces*3)).allSatisfy { raw.loadUnaligned(fromByteOffset:$0*4,as:UInt32.self)<UInt32(count) } }) else { throw CocoaError(.fileReadCorruptFile) }
         let sources=[SCNGeometrySource(data:buffer,semantic:.vertex,vectorCount:count,usesFloatComponents:true,componentsPerVector:3,bytesPerComponent:4,dataOffset:0,dataStride:32),
                      SCNGeometrySource(data:buffer,semantic:.normal,vectorCount:count,usesFloatComponents:true,componentsPerVector:3,bytesPerComponent:4,dataOffset:12,dataStride:32),
                      SCNGeometrySource(data:buffer,semantic:.texcoord,vectorCount:count,usesFloatComponents:true,componentsPerVector:2,bytesPerComponent:4,dataOffset:24,dataStride:32)]
@@ -62,12 +69,12 @@ enum SpatialTheme: String, CaseIterable {
         mat.metalness.contents=spec["metalness"] as? Double ?? 0
         mat.roughness.contents=spec["roughness"] as? Double ?? 1
         for (property,key) in [(mat.diffuse,"Color"),(mat.normal,"NormalGL"),(mat.roughness,"Roughness"),(mat.emission,"Emission")] {
-            if let file=spec[key] as? String, let path=Bundle.main.path(forResource:file,ofType:nil), let bytes=try? Data(contentsOf:URL(fileURLWithPath:path)), let image=UIImage(data:bytes) {
+            if let file=spec[key] as? String, let path=Self.file(file), let bytes=try? Data(contentsOf:path), let image=UIImage(data:bytes) {
                 property.contents=image; property.mipFilter = .linear; property.minificationFilter = .linear; property.magnificationFilter = .linear; property.maxAnisotropy=4
             }
         }
         if (spec["metalness"] as? Double ?? 0)>0, let file=spec["Metalness"] as? String,
-           let path=Bundle.main.path(forResource:file,ofType:nil) { mat.metalness.contents=UIImage(contentsOfFile:path) }
+           let path=Self.file(file) { mat.metalness.contents=UIImage(contentsOfFile:path.path) }
         if spec["alphaMode"] as? String == "MASK" {
             mat.shaderModifiers=[.surface:"if (_surface.diffuse.a < 0.5) { discard_fragment(); }"]
             mat.transparencyMode = .aOne
@@ -859,67 +866,58 @@ enum SpatialTheme: String, CaseIterable {
     }
 }
 
-struct SpatialControls: View {
+@MainActor struct SpatialControls: View {
     @ObservedObject var world: SpatialWorld
+    var onCommand: (WallARCommand)->Void
+    @ObservedObject private var library=SpatialCloudLibrary.shared
     @State private var catalogPage=0
     @State private var catalogOpen=false
+    @State private var environmentsOpen=false
     var body: some View {
-        VStack(alignment:.leading,spacing:10) {
-            ScrollView(.horizontal,showsIndicators:false) { HStack {
-                ForEach(SpatialTheme.allCases,id:\.rawValue) { theme in
-                    Button { world.setTheme(theme) } label: { Label(theme.title,systemImage:theme.symbol).font(.caption) }
-                        .buttonStyle(.bordered).tint(world.theme == theme ? .cyan : .gray)
-                }
-            }
-            }
-            Button(catalogOpen ? "Fechar catálogo" : "\(SpatialAssets.catalog.count) modelos · abrir catálogo",systemImage:"cube.transparent") { catalogOpen.toggle() }.font(.caption)
-            if catalogOpen {
-                LazyVGrid(columns:[GridItem(.flexible()),GridItem(.flexible())],spacing:6) {
-                    ForEach(Array(SpatialAssets.catalog.dropFirst(catalogPage*4).prefix(4))) { item in
-                        Button(item.title) { world.setModel(item.id);catalogOpen=false }.font(.caption).buttonStyle(.bordered)
+        VStack(alignment:.leading,spacing:14) {
+            DisclosureGroup("Ambientes",isExpanded:$environmentsOpen) {
+                LazyVGrid(columns:[GridItem(.flexible()),GridItem(.flexible())],alignment:.leading) {
+                    ForEach(SpatialTheme.allCases,id:\.rawValue) { theme in
+                        Button { onCommand(.theme(theme)) } label: { Label(theme.title,systemImage:theme.symbol).font(.caption) }
+                            .buttonStyle(.bordered).tint(world.theme == theme ? .cyan : .gray)
                     }
-                }
-                HStack {
-                    Button("Anterior") { catalogPage=max(0,catalogPage-1) }.disabled(catalogPage==0)
-                    Text("\(catalogPage+1)/\(max(1,(SpatialAssets.catalog.count+3)/4))").font(.caption.monospacedDigit())
-                    Button("Próxima") { catalogPage+=1 }.disabled((catalogPage+1)*4>=SpatialAssets.catalog.count)
-                }.font(.caption)
+                }.padding(.top,8)
             }
-            Text(world.status).font(.caption).fixedSize(horizontal:false,vertical:true)
-            HStack {
-                Button("Robô animado") { world.setModel("animated_robot") }
-                Button("Raposa animada") { world.setModel("animated_fox") }
-            }.font(.caption).buttonStyle(.bordered)
-            HStack {
-                Button("Adicionar",systemImage:"plus") { world.addAnother() }.disabled(world.objectCount>=6)
-                Button("Interagir",systemImage:"hand.tap") { world.interact() }.disabled(!world.hasSelection)
-                Button("Remover",systemImage:"trash") { world.removeSelected() }.disabled(!world.hasSelection)
-            }.buttonStyle(.bordered).controlSize(.small)
+            DisclosureGroup("Objetos · \(SpatialAssets.catalog.count) modelos",isExpanded:$catalogOpen) {
+                VStack(alignment:.leading,spacing:10) {
+                    LazyVGrid(columns:[GridItem(.flexible()),GridItem(.flexible())],spacing:6) {
+                        ForEach(Array(SpatialAssets.catalog.dropFirst(catalogPage*6).prefix(6))) { item in
+                            Button(item.title) { onCommand(.model(item.id)) }.font(.caption).buttonStyle(.bordered)
+                        }
+                    }
+                    HStack {
+                        Button("Anterior") { catalogPage=max(0,catalogPage-1) }.disabled(catalogPage==0)
+                        Spacer()
+                        Text("\(catalogPage+1)/\(max(1,(SpatialAssets.catalog.count+5)/6))").monospacedDigit()
+                        Spacer()
+                        Button("Próxima") { catalogPage+=1 }.disabled((catalogPage+1)*6>=SpatialAssets.catalog.count)
+                    }.font(.caption)
+                    Button("Atualizar biblioteca",systemImage:"arrow.clockwise") { Task { await library.refresh(force:true) } }.font(.caption)
+                    Text(library.status).font(.caption2).foregroundStyle(.secondary)
+                }.padding(.top,8)
+            }
+            if world.placing || world.hasSelection {
+                Text(world.status).font(.caption).foregroundStyle(.cyan)
+                HStack {
+                    Button("Adicionar",systemImage:"plus") { world.addAnother() }.disabled(world.objectCount>=6)
+                    Button("Interagir",systemImage:"hand.tap") { world.interact() }.disabled(!world.hasSelection)
+                    Button("Remover",systemImage:"trash") { world.removeSelected() }.disabled(!world.hasSelection)
+                }.buttonStyle(.bordered).controlSize(.small)
+            }
             if world.characterSelected {
                 ScrollView(.horizontal,showsIndicators:false) { HStack {
                     if world.selectedCharacterID == "animated_robot" {
-                        Button("Acenar") { world.animate("Wave") }
-                        Button("Dançar") { world.animate("Dance") }
+                        Button("Acenar") { world.animate("Wave") };Button("Dançar") { world.animate("Dance") }
                         Button("Impacto na parede") { world.onAttackRequest?() }
-                    } else {
-                        Button("Observar") { world.animate("Survey") }
-                        Button("Correr") { world.walk(running:true) }
-                    }
-                    Button("Andar") { world.walk() }
-                    Button("Parar") { world.stopMoving() }
+                    } else { Button("Observar") { world.animate("Survey") };Button("Correr") { world.walk(running:true) } }
+                    Button("Andar") { world.walk() };Button("Parar") { world.stopMoving() }
                 }}.font(.caption).buttonStyle(.bordered)
             }
-            HStack {
-                Button("Quarto") { world.chooseRoom("Quarto") }
-                Button("Sala") { world.chooseRoom("Sala") }
-                Text(world.roomName).font(.caption)
-                Button("Salvar mapa") { world.saveMap() }
-            }.font(.caption).buttonStyle(.bordered)
-            ScrollView(.horizontal) { HStack {
-                ForEach(SpatialDemo.allCases,id:\.rawValue) { demo in Button(demo.title) { world.setModel(demo.rawValue) }.buttonStyle(.bordered) }
-            }}.font(.caption)
-            Text(world.persistenceStatus).font(.caption2).foregroundStyle(.secondary)
-            ShareLink("Compartilhar diagnóstico",item:SpatialArchive.file.deletingLastPathComponent().appendingPathComponent("diagnostics.json")).font(.caption)
-        }
+        }.task { await library.refresh() }
     }
 }

@@ -405,3 +405,29 @@ resources:
 - JarvisPhone/Resources/Spatial_animated_robot_9.mesh
 - JarvisPhone/Resources/Spatial_animated_robot_9.skin
 - JarvisPhone/Resources/Spatial_animated_robot_rig.json
+
+- JarvisPhone/Resources/RoomForest_moss_diff.jpg
+
+- JarvisPhone/Resources/RoomForest_moss_nor_gl.jpg
+
+- JarvisPhone/Resources/RoomForest_moss_rough.jpg
+
+- JarvisPhone/Resources/Spatial_rubberduck_0.mesh
+
+- JarvisPhone/Resources/Spatial_rubberduck_0_Color.jpg
+
+- JarvisPhone/Resources/Spatial_rubberduck_0_Metalness.jpg
+
+- JarvisPhone/Resources/Spatial_rubberduck_0_NormalGL.jpg
+
+- JarvisPhone/Resources/Spatial_rubberduck_0_Roughness.jpg
+
+- JarvisPhone/Resources/Spatial_treestump_0.mesh
+
+- JarvisPhone/Resources/Spatial_treestump_0_Color.jpg
+
+- JarvisPhone/Resources/Spatial_treestump_0_Metalness.jpg
+
+- JarvisPhone/Resources/Spatial_treestump_0_NormalGL.jpg
+
+- JarvisPhone/Resources/Spatial_treestump_0_Roughness.jpg

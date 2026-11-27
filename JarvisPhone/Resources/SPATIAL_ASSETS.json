@@ -4128,5 +4128,119 @@
       }
     ],
     "animationSkinErrorMeters": 7.450580596923828e-08
+  },
+  {
+    "id": "treestump",
+    "title": "Tronco com raízes",
+    "author": "Rob Tuytel",
+    "license": "CC0-1.0",
+    "source": "https://polyhaven.com/a/tree_stump_01",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/2k/tree_stump_01/tree_stump_01_2k.gltf",
+    "sourceSHA256": "9fd1a672738ce1023318b9af829ccc725bb05ddcf38ff2de905a66f42d8f5143",
+    "files": [
+      {
+        "file": "Spatial_treestump_0.mesh",
+        "sha256": "ff1c815e26fed33cc01823cd7de7eb29e9d9ea9d60423e98516c93df771f557f",
+        "bytes": 1211668
+      },
+      {
+        "file": "Spatial_treestump_0_Color.jpg",
+        "sha256": "dcbf71d99e459dd1d21985bee001eee9c41c7760c9d1edb349a90e5e8f3b7680",
+        "bytes": 400953
+      },
+      {
+        "file": "Spatial_treestump_0_NormalGL.jpg",
+        "sha256": "b946d4ba22d02964524bd3f739a706baa0c17155026167c09a7a922cd4f2c02a",
+        "bytes": 571326
+      },
+      {
+        "file": "Spatial_treestump_0_Roughness.jpg",
+        "sha256": "4f327c89e4cc6dd7883caf43bc915972b4a34d53be9b81cf451ddbf7f5aece60",
+        "bytes": 181743
+      },
+      {
+        "file": "Spatial_treestump_0_Metalness.jpg",
+        "sha256": "386a1a2eb3b4c58c36b19813a8adf2e9b0a4fc2799c5deb5ed8a11fc229078f0",
+        "bytes": 56387
+      }
+    ],
+    "parts": [
+      {
+        "mesh": "Spatial_treestump_0.mesh",
+        "doubleSided": true,
+        "alphaMode": "OPAQUE",
+        "metalness": 0.0,
+        "roughness": 1.0,
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "Color": "Spatial_treestump_0_Color.jpg",
+        "NormalGL": "Spatial_treestump_0_NormalGL.jpg",
+        "Roughness": "Spatial_treestump_0_Roughness.jpg",
+        "Metalness": "Spatial_treestump_0_Metalness.jpg"
+      }
+    ],
+    "triangles": 41046,
+    "vertices": 22472
+  },
+  {
+    "id": "rubberduck",
+    "title": "Pato de borracha",
+    "author": "Plat251",
+    "license": "CC0-1.0",
+    "source": "https://polyhaven.com/a/rubber_duck_toy",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/2k/rubber_duck_toy/rubber_duck_toy_2k.gltf",
+    "sourceSHA256": "d10f8a5f4d7416c62d67cb5d8cd480d93d5750c5cc911128729ae47c5ee05466",
+    "files": [
+      {
+        "file": "Spatial_rubberduck_0.mesh",
+        "sha256": "47d21bfdb0c569342d30fcf665ac25f4b06fbdfc5e5edacc4bd702d65d27f401",
+        "bytes": 131116
+      },
+      {
+        "file": "Spatial_rubberduck_0_Color.jpg",
+        "sha256": "d66796d1330a102929a32033f3de68648429cc18f190263989341c60a9f5b2e2",
+        "bytes": 72046
+      },
+      {
+        "file": "Spatial_rubberduck_0_NormalGL.jpg",
+        "sha256": "fcb915ab4138f2d73dd042a33d374d9bd48e5553e7da84cfb9d283c48b204101",
+        "bytes": 24665
+      },
+      {
+        "file": "Spatial_rubberduck_0_Roughness.jpg",
+        "sha256": "21f2f9073b12b4db2ed90dbb7dd3914846078d2db94ac9c45c4ee616ef5841ed",
+        "bytes": 91686
+      },
+      {
+        "file": "Spatial_rubberduck_0_Metalness.jpg",
+        "sha256": "0f9a6be7ed48d9009078a50f41e8fc2de9443c3b7dfcdacd505028e61aeea92c",
+        "bytes": 32054
+      }
+    ],
+    "parts": [
+      {
+        "mesh": "Spatial_rubberduck_0.mesh",
+        "doubleSided": true,
+        "alphaMode": "OPAQUE",
+        "metalness": 0.0,
+        "roughness": 1.0,
+        "baseColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "Color": "Spatial_rubberduck_0_Color.jpg",
+        "NormalGL": "Spatial_rubberduck_0_NormalGL.jpg",
+        "Roughness": "Spatial_rubberduck_0_Roughness.jpg",
+        "Metalness": "Spatial_rubberduck_0_Metalness.jpg"
+      }
+    ],
+    "triangles": 4288,
+    "vertices": 2489
   }
 ]

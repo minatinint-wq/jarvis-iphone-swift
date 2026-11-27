@@ -61,26 +61,31 @@ import SwiftUI
     }
     @StateObject private var controller=PhoneController.shared
     @StateObject private var remote=RemoteAssistant.shared
-    @State private var tab=0
+    @State private var settingsPresented=false
     @Environment(\.scenePhase) private var scenePhase
     var body: some Scene {
         WindowGroup {
-            TabView(selection:$tab){
-                AssistantView(model:remote).tag(0).tabItem{Label("Assistente",systemImage:"waveform.circle")}
-                DashboardView(controller:controller).tag(1).tabItem{Label("Meu iPhone",systemImage:"iphone")}
-            }.preferredColorScheme(.dark).tint(.cyan)
+            AssistantView(model:remote,openSettings:{settingsPresented=true})
+            .preferredColorScheme(.dark).tint(.cyan)
+            .sheet(isPresented:$settingsPresented) {
+                DashboardView(controller:controller)
+                    .safeAreaInset(edge:.top) {
+                        HStack { Text("Ajustes do Jarvis").font(.headline);Spacer();Button("Fechar") { settingsPresented=false } }.padding()
+                    }
+            }
             .overlay { ArtworkOverlay(model: remote) }
             .fullScreenCover(isPresented: $remote.showingFace) {
                 WakeFace(model:remote).overlay { ArtworkOverlay(model: remote) }
             }
             .onAppear{if scenePhase == .active {remote.foreground(true)}}
             .onOpenURL{url in
-                if url.scheme == "jarvisiphone", url.host == "shortcut-receipt" {tab=1; _ = controller.acceptShortcutReceipt(url)}
-                else if url.scheme == "jarvisiphone", url.host == "automacoes" {tab=1;controller.sheet = .setup}
-                else if url.scheme?.lowercased()=="jarvisiphone",url.host?.lowercased()=="rosto" {tab=0;remote.showingFace=true}
-                else if url.scheme?.lowercased()=="jarvisiphone",url.host?.lowercased()=="conversar" {tab=0;remote.showingFace=true;remote.activate()}
-                else if url.scheme=="jarvisiphone",url.host=="parear" {tab=0;if !remote.paired {Task{await remote.pair(url.absoluteString)}}}
-                else {tab=1;Task{await controller.handle(url:url)}}
+                if url.scheme == "jarvisiphone",url.host == "biblioteca" { settingsPresented=false;Task { await remote.openSpatialLibrary(url) } }
+                else if url.scheme == "jarvisiphone", url.host == "shortcut-receipt" {_ = controller.acceptShortcutReceipt(url)}
+                else if url.scheme == "jarvisiphone", url.host == "automacoes" {settingsPresented=true;controller.sheet = .setup}
+                else if url.scheme?.lowercased()=="jarvisiphone",url.host?.lowercased()=="rosto" {settingsPresented=false;remote.showingFace=true}
+                else if url.scheme?.lowercased()=="jarvisiphone",url.host?.lowercased()=="conversar" {settingsPresented=false;remote.showingFace=true;remote.activate()}
+                else if url.scheme=="jarvisiphone",url.host=="parear" {settingsPresented=false;if !remote.paired {Task{await remote.pair(url.absoluteString)}}}
+                else {settingsPresented=true;Task{await controller.handle(url:url)}}
             }
             .onChange(of:scenePhase){_,phase in
                 if phase == .active {controller.refreshBattery();remote.foreground(true)}

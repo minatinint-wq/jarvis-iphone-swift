@@ -236,3 +236,5 @@ Changes: unit normalization, native geometry/rig conversion and animation sampli
 Portal forest environment: Forest Slope by Andreas Mischok, Poly Haven, CC0-1.0. https://polyhaven.com/a/forest_slope
 Portal ground: Forest Floor by eye-candy.xyz, Poly Haven, CC0-1.0. https://polyhaven.com/a/forest_floor
 Ground color/normal/roughness derived from 2K originals, resized to 1K for mobile. HDRI remains original 2K. See AR_MATERIALS.json hashes.
+
+Tree Stump 01 by Rob Tuytel; Rubber Duck Toy by Plat251; Concrete Moss by Rob Tuytel. Poly Haven, CC0-1.0. See SPATIAL_ASSETS.json and AR_MATERIALS.json for original URLs and file hashes.

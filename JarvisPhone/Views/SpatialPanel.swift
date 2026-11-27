@@ -129,6 +129,7 @@ enum SpatialPanelGeometry {
     init(view: ARSCNView) { self.view=view }
 
     func open(_ destination: SpatialModule, tracking: Bool, page: Int = 0) {
+        let destination=destination.canonical
         if destination == .youtube || destination == .browser { close(); onWeb?(destination); return }
         contextRevision += 1
         trackingGood=tracking
@@ -433,7 +434,7 @@ enum SpatialPanelGeometry {
     func directory(_ query:String) -> [SpatialDirectoryEntry] {
         let text=PhoneIntentPhrases.normalized(query)
         var results:[SpatialDirectoryEntry]=[]
-        for destination in SpatialModule.allCases where destination != .dashboard {
+        for destination in SpatialModule.navigationCases where destination != .dashboard {
             if text.isEmpty || PhoneIntentPhrases.normalized(destination.title).contains(text) {
                 results.append(.init(module:destination,title:destination.title,index:nil))
             }
@@ -448,7 +449,7 @@ enum SpatialPanelGeometry {
     private func items(for destination: SpatialModule) -> [(String,String,SpatialPanelAction)] {
         switch destination {
         case .dashboard:
-            return SpatialModule.allCases.filter{$0 != .dashboard}.map { ($0.title,$0.symbol,.module($0)) }
+            return SpatialModule.navigationCases.filter{$0 != .dashboard}.map { ($0.title,$0.symbol,.module($0)) }
         case .browser,.youtube:return []
         case .network, .system, .apps:
             let controls:[PhoneAction]
@@ -460,9 +461,6 @@ enum SpatialPanelGeometry {
             return controls.map { ($0.title,$0.symbol,.systemAction($0)) }
         case .notebook:
             return [("Nova nota","square.and.pencil",.editor(.note)),("Minhas notas","note.text",.editor(.notes)),("Criar lembrete","checklist",.editor(.reminder))]
-        case .walls:
-            return [("Marcar parede","ruler",.wall(.measure)),("Adicionar ponto","plus.circle",.wall(.point)),("Excluir porta ou móvel","rectangle.dashed",.wall(.opening)),("Aplicar recorte","checkmark",.wall(.approve)),("Comparar pintura","eye",.wall(.compare))]
-                + WallFinish.allCases.map { ($0.title,"paintbrush",.wall(.finish($0))) }
         case .commands:
             return [("Hora","clock",.command("que horas são")),("Passos hoje","figure.walk",.command("quantos passos hoje")),("Ligar lanterna","flashlight.on.fill",.command("ligue a lanterna do iPhone")),("Desligar lanterna","flashlight.off.fill",.command("desligue a lanterna do iPhone"))]
         case .spotify:
@@ -482,8 +480,14 @@ enum SpatialPanelGeometry {
             return [("O que estou vendo?","viewfinder",.command("o que estou vendo")),("Visão contínua","video",.command("ativar visão ao vivo")),("Traduzir câmera","character.bubble",.studio("translate"))]
         case .creation:
             return [("Desenhar","pencil.tip",.studio("sketch")),("Gerar imagem por voz","photo",.command("gere uma imagem")),("Objetos e cenários","cube",.module(.scenes))]
-        case .scenes:
-            return [("Tela do PC ao vivo","desktopcomputer",.wall(.desktop)),("Salvar ambiente","square.and.arrow.down",.wall(.saveMap))]
+        case .scenes,.walls:
+            return [("Portal na parede","door.left.hand.open",.wall(.portal)),("Fechar portal","xmark",.wall(.closePortal)),
+                    ("Parede branca","paintbrush",.wall(.roomWall("white"))),("Tijolos","square.grid.3x3",.wall(.roomWall("brick"))),
+                    ("Marcar parede","ruler",.wall(.measure)),("Adicionar ponto","plus.circle",.wall(.point)),
+                    ("Excluir porta ou móvel","rectangle.dashed",.wall(.opening)),("Aplicar recorte","checkmark",.wall(.approve)),
+                    ("Comparar pintura","eye",.wall(.compare)),("Limpar parede","eraser",.wall(.roomClear)),
+                    ("Tela do PC ao vivo","desktopcomputer",.wall(.desktop)),("Salvar ambiente","square.and.arrow.down",.wall(.saveMap))]
+                + WallFinish.allCases.map { ($0.title,"paintbrush",.wall(.finish($0))) }
                 + SpatialTheme.allCases.map { ($0.title,$0.symbol,.scene($0)) } + SpatialAssets.catalog.map { ($0.title,"cube",.model($0.id)) }
         case .instruments:
             return StudioInstrument.allCases.map { ($0.rawValue,"music.note",.instrument($0)) }
@@ -524,7 +528,7 @@ enum SpatialPanelGeometry {
                     ("Limpar parede","eraser.fill",.wall(.roomClear)),
                     ("Módulos","square.grid.2x2",.showInterface)] + SpatialAssets.catalog.filter{!$0.id.hasPrefix("demo_") && !["animated_robot","animated_fox"].contains($0.id)}.map { ($0.title,"cube",.model($0.id)) }
         }
-        return SpatialModule.allCases.filter { $0 != .dashboard }.map { ($0.title,$0.symbol,.module($0)) }
+        return SpatialModule.navigationCases.filter { $0 != .dashboard }.map { ($0.title,$0.symbol,.module($0)) }
             + [("Tela do PC","desktopcomputer",.wall(.desktop)),("Mostrar interface","eye",.showInterface)]
     }
     private var radialPageCount:Int { max(1,(radialItems.count+5)/6) }

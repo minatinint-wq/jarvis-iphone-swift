@@ -802,6 +802,21 @@ import ActivityKit
         return true
     }
 
+    func openSpatialLibrary(_ url:URL) async {
+        guard url.scheme == "jarvisiphone",url.host == "biblioteca",
+              let components=URLComponents(url:url,resolvingAgainstBaseURL:false) else { return }
+        let items=components.queryItems ?? []
+        let command:WallARCommand
+        if let id=items.first(where:{$0.name == "modelo"})?.value {
+            await SpatialCloudLibrary.shared.refresh()
+            guard SpatialAssets.catalog.contains(where:{$0.id==id}) else { message="Este modelo não está no catálogo do Jarvis.";return }
+            command = .model(id)
+        } else if let id=items.first(where:{$0.name == "ambiente"})?.value,let theme=SpatialTheme(rawValue:id) {
+            command = .theme(theme)
+        } else { message="Este ambiente ainda não está disponível nesta versão.";return }
+        guard openStudio("wallAR") else { message="Termine o pedido em andamento e abra o modelo novamente.";return }
+        wallARRequest=WallARRequest(command:command)
+    }
     func wallARFeedback(_ text: String) {
         message = text
         guard studioMode == "wallAR", !quietUntilCalled, !busy, !isSpeaking else { return }

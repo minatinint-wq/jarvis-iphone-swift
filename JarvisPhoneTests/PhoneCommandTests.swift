@@ -860,14 +860,36 @@ final class PhoneCommandTests: XCTestCase {
     @MainActor func testDirectoryFindsModulesAndActionsOnLaterPages() throws {
         let view=ARSCNView(frame:.zero);view.scene=SCNScene()
         let panel=SpatialPanel(view:view)
-        XCTAssertEqual(panel.directory("").count,SpatialModule.allCases.count-1)
+        XCTAssertEqual(panel.directory("").count,SpatialModule.navigationCases.count-1)
         XCTAssertEqual(panel.directory("desligar dados").first?.page,1)
         XCTAssertEqual(panel.directory("flauta").first?.module,.instruments)
         XCTAssertEqual(panel.directory("criar lembrete").first?.module,.notebook)
-        XCTAssertEqual(panel.directory("madeira").first?.module,.walls)
+        XCTAssertEqual(panel.directory("madeira").first?.module,.scenes)
         XCTAssertTrue(panel.directory("bluetooth").count>=2)
         XCTAssertTrue(panel.directory("xyz123").isEmpty)
         XCTAssertEqual(SpatialModule.opening("abrir sistema e foco"),.system)
+    }
+    @MainActor func testUnifiedSceneDirectoryRetainsPaintAndModelsWithoutDuplicateModules() throws {
+        let view=ARSCNView(frame:CGRect(x:0,y:0,width:390,height:760));view.scene=SCNScene()
+        let panel=SpatialPanel(view:view)
+        let entries=panel.directory("")
+        XCTAssertEqual(entries.filter{$0.module == .scenes}.count,1)
+        XCTAssertFalse(entries.contains{$0.module == .walls})
+        XCTAssertEqual(SpatialModule.walls.canonical,.scenes)
+        for term in ["madeira","Marcar parede","Portal na parede","Raposa","Bosque"] {
+            XCTAssertTrue(panel.directory(term).contains{$0.module == .scenes},term)
+        }
+        for phrase in ["abrir cenário 3d","abrir medir e pintar","abrir ambientes"] {
+            XCTAssertEqual(SpatialModule.opening(phrase),.scenes,phrase)
+        }
+    }
+    @MainActor func testCloudCatalogRejectsPathsOversizedGeometryAndInvalidHashes() {
+        let valid:[String:Any]=["id":"test","title":"Teste","triangles":12,"files":[["file":"Spatial_test.mesh","bytes":200,"sha256":String(repeating:"a",count:64)]]]
+        XCTAssertTrue(SpatialCloudLibrary.valid(valid))
+        var bad=valid;bad["triangles"]=900000;XCTAssertFalse(SpatialCloudLibrary.valid(bad))
+        bad=valid;bad["files"]=[["file":"../Spatial_test.mesh","bytes":200,"sha256":String(repeating:"a",count:64)]];XCTAssertFalse(SpatialCloudLibrary.valid(bad))
+        bad=valid;bad["files"]=[["file":"Spatial_test.mesh","bytes":200,"sha256":"invalid"]];XCTAssertFalse(SpatialCloudLibrary.valid(bad))
+        bad=valid;bad["files"]=[["file":"Spatial_test.mesh","bytes":100*1024*1024,"sha256":String(repeating:"a",count:64)]];XCTAssertFalse(SpatialCloudLibrary.valid(bad))
     }
     func testSpatialAINavigationKeepsOrdinaryToolsOutsideTheInterpreter() {
         for phrase in ["me leva para os controles da casa","voltar às playlists","quero ver os módulos","seleciona a segunda faixa","toca essa","fecha esse painel"] {
@@ -984,7 +1006,7 @@ final class PhoneCommandTests: XCTestCase {
         camera.camera?.zNear=0.01;camera.camera?.zFar=10
         camera.position=SCNVector3(0,0,1);view.scene.rootNode.addChildNode(camera)
         let renderer=SCNRenderer(device:device,options:nil);renderer.scene=view.scene;renderer.pointOfView=camera
-        for module in [SpatialModule.dashboard,.home,.phone] {
+        for module in [SpatialModule.dashboard,.scenes,.home,.phone] {
             panel.preview(module)
             let screenshot=renderer.snapshot(atTime:0,with:CGSize(width:1000,height:900),antialiasingMode:.multisampling4X)
             let attachment=XCTAttachment(image:screenshot);attachment.name="Spatial-panel-\(module.rawValue)";attachment.lifetime = .keepAlways;add(attachment)

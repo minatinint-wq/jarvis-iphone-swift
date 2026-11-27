@@ -127,5 +127,29 @@
     "source": "https://polyhaven.com/a/forest_floor",
     "license": "CC0-1.0",
     "role": "portal ground PBR"
+  },
+  {
+    "file": "RoomForest_moss_diff.jpg",
+    "sha256": "7a3f88bcdf20c2b6b1851549594611c0c24677d4f42c669a21d4367b8f5aeacc",
+    "width": 1024,
+    "height": 1024,
+    "license": "CC0-1.0",
+    "source": "https://polyhaven.com/a/concrete_moss"
+  },
+  {
+    "file": "RoomForest_moss_nor_gl.jpg",
+    "sha256": "ead99715fadfd3b1b037b6219a9ed97342701732bffee5b05084da4c99b7467b",
+    "width": 1024,
+    "height": 1024,
+    "license": "CC0-1.0",
+    "source": "https://polyhaven.com/a/concrete_moss"
+  },
+  {
+    "file": "RoomForest_moss_rough.jpg",
+    "sha256": "ca41216de508cf2afd619e2e617bbb620082b22f20e75dd80c6c415ce1e6d95c",
+    "width": 1024,
+    "height": 1024,
+    "license": "CC0-1.0",
+    "source": "https://polyhaven.com/a/concrete_moss"
   }
 ]

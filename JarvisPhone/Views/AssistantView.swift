@@ -49,6 +49,7 @@ private enum VoiceState {
 
 @MainActor struct AssistantView: View {
     @ObservedObject var model: RemoteAssistant
+    var openSettings: () -> Void = {}
     @State private var scanning = false
     @State private var camera = false
     @State private var pairing = false
@@ -204,6 +205,9 @@ private enum VoiceState {
                 .foregroundStyle(.white)
                 .accessibilityHint("Opções de conexão com o computador")
             }
+            Button(action:openSettings) {
+                Image(systemName:"gearshape").font(.title3).frame(width:44,height:44)
+            }.foregroundStyle(ConsoleColor.muted).accessibilityLabel("Ajustes e controles do iPhone")
         }
         .frame(minHeight: 44)
     }
@@ -380,7 +384,7 @@ private enum VoiceState {
                 tool(model.ready ? "Desenho no ar" : "Desenho na tela", symbol: "pencil.tip", color: ConsoleColor.gold, requiresPC: false) { model.openStudio("sketch") }
                 tool("Traduzir pela câmera", symbol: "character.viewfinder", color: ConsoleColor.cyan, requiresPC: false) { model.openStudio("translate") }
                 tool("Cordas no ar", symbol: "pianokeys", color: ConsoleColor.gold, requiresPC: false) { model.openStudio("music") }
-                tool("Espaço AR", symbol: "viewfinder", color: ConsoleColor.cyan, requiresPC: false) { model.openStudio("wallAR") }
+                tool("Cenário 3D", symbol: "viewfinder", color: ConsoleColor.cyan, requiresPC: false) { model.openStudio("wallAR") }
                 if model.paired {
                     tool("Libras", symbol: "hand.raised.fingers.spread", color: ConsoleColor.cyan) { model.openStudio("libras") }
                 }

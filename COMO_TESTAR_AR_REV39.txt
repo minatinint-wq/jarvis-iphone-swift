@@ -1,0 +1,27 @@
+JARVIS XLV — REVISÃO 39
+
+INTERFACE
+O app abre no Assistente. A engrenagem abre Ajustes e controles do iPhone; Fechar retorna ao Assistente.
+Abra Cenário 3D. Objetos, Ambientes, Portal, Paredes e medidas ficam no mesmo espaço.
+O botão Cenário 3D abre uma gaveta curta; X recolhe. As ferramentas começam recolhidas.
+No catálogo projetado, há um único módulo Cenário 3D. Os nomes antigos continuam reconhecidos por voz.
+Indicador por 2 segundos: selecionar. Pinça: arrastar. Mão fechada: catálogo de efeitos.
+Paredes e medidas contém as ferramentas manuais e exclusões de portas/móveis. Mapa e alinhamento contém a captura privada.
+
+BIBLIOTECA
+https://jarvis-spatial-library.minatinint.workers.dev/
+27 modelos licenciados, incluindo os dois personagens animados, tronco e pato adicionais.
+Abrir no Jarvis carrega o modelo no Cenário 3D. Os arquivos remotos são conferidos por tamanho e SHA-256 antes do uso.
+O app mantém os modelos locais quando não há internet. Só baixa os arquivos escolhidos.
+A captura privada do quarto fica no pacote pessoal e não está publicada na biblioteca.
+
+NOTIFICAÇÕES
+Substitua JARVIS+Notificacoes pelo arquivo desta entrega e selecione JARVIS-iPhone.json na importação.
+Este atalho envia a prévia ao receptor do PC (porta 9887). Depende do PC ligado e acessível na rede.
+Não incorpora chaves nem troca seu pareamento.
+
+LIMITES DESTA ENTREGA
+O portal de parede da revisão 38 continua disponível. A transformação completa do quarto em floresta,
+portal atravessável, rede calibrada à cama e gatilho de arma com a mão ainda precisam de implementação e teste físico.
+O tamanho da textura de tijolos foi corrigido; isso não equivale a reconhecer automaticamente todos os móveis ou portas.
+Não apagar ou reiniciar o mapa só para abrir as ferramentas.
