@@ -363,7 +363,6 @@ enum SpatialTheme: String, CaseIterable {
     func loadMap() async throws -> ARWorldMap? {
         let archive = try await Task.detached(priority:.utility) { try SpatialArchive.load() }.value
         guard let archive else { return nil }
-        preservingSavedMap=false
         let map = try NSKeyedUnarchiver.unarchivedObject(ofClass:ARWorldMap.self,from:archive.map)
         guard let map, archive.objects.allSatisfy({ record in map.anchors.contains { $0.identifier == record.anchor && $0.name == "JarvisObject:" + record.id.uuidString } }),
               archive.panel.map({ panel in map.anchors.contains { $0.identifier == panel.anchor && $0.name == "JarvisControlPanel" } }) ?? true,
@@ -372,6 +371,7 @@ enum SpatialTheme: String, CaseIterable {
               archive.scannedRoom.map({ room in map.anchors.contains { $0.identifier == room.anchor && $0.name == "JarvisScannedRoom" } }) ?? true else {
             throw CocoaError(.fileReadCorruptFile)
         }
+        preservingSavedMap=false
         worldID=archive.world;rooms=archive.rooms;currentRoom=rooms.first?.id;roomName=rooms.first?.name ?? "Ambiente 1"
         savedLocation=archive.location
         records=Dictionary(uniqueKeysWithValues:archive.objects.map { ($0.id,$0) });restored=records

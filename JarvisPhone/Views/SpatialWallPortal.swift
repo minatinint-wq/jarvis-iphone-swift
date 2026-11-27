@@ -116,7 +116,8 @@ import UIKit
         let edge=SpatialPortalMath.outline(width:width,height:height)
         let vertices=[SCNVector3(0,0,0)]+edge.map{SCNVector3($0.x,$0.y,0)}
         let uv=[CGPoint(x:0.5,y:0.5)]+edge.map{CGPoint(x:CGFloat($0.x/width+0.5),y:CGFloat($0.y/height+0.5))}
-        let indices=(0..<edge.count).flatMap { [Int32(0),Int32($0+1),Int32(($0+1)%edge.count+1)] }
+        var indices:[Int32]=[]
+        for i in 0..<edge.count { indices.append(contentsOf:[0,Int32(i+1),Int32((i+1)%edge.count+1)]) }
         return SCNGeometry(sources:[SCNGeometrySource(vertices:vertices),SCNGeometrySource(textureCoordinates:uv)],elements:[SCNGeometryElement(indices:indices,primitiveType:.triangles)])
     }
     func place(_ hit:ARRaycastResult,meshes:[ARMeshAnchor])->Bool {
