@@ -18,7 +18,7 @@ def build(bundle_id, output):
         {'WFWorkflowActionIdentifier':'is.workflow.actions.comment','WFWorkflowActionParameters':{'WFCommentActionText':'JARVIS Notificações — entrega local ao app. Sem servidor, IP, arquivo JSON ou token. Substitua o atalho com o mesmo nome. A notificação é texto, nunca um comando.'}},
         text,
         {'WFWorkflowActionIdentifier':'is.workflow.actions.appintent','WFWorkflowActionParameters':{
-            'AppIntentDescriptor':{'BundleIdentifier':bundle_id,'AppIntentIdentifier':'JarvisAnnounceNotification','Name':'Anunciar notificação no Jarvis'},
+            'AppIntentDescriptor':{'TeamIdentifier':bundle_id.split('.')[0].removeprefix('XTL-') if bundle_id.startswith('XTL-') else '0000000000','BundleIdentifier':bundle_id,'AppIntentIdentifier':'JarvisAnnounceNotification','Name':'Anunciar notificação no Jarvis'},
             'preview':reference,'ShowWhenRun':False,'UUID':str(uuid.uuid4())}},
     ]
     result={**old,'WFWorkflowName':'JARVIS+Notificacoes','WFWorkflowActions':actions,'WFWorkflowImportQuestions':[],
