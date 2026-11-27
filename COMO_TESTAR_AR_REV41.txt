@@ -26,3 +26,10 @@ Indicador estável por dois segundos clica. Pinça arrasta. Dois dedos sobre a t
 Abrir portal ou jogo não monopoliza os gestos sobre a tela do PC. A pinça mantém o dono do arrasto até soltar.
 Pinça sobre a borda do portal permite deslocar: solte num trecho válido da parede; passagem de porta exige outra abertura confirmada.
 O reconhecimento físico da mão, o destino do arrasto e os apoios ainda precisam do teste no iPhone.
+
+COZINHA E DESLOCAMENTO
+A calibração aceita piso, duas paredes em canto e detalhes distintos de móveis; continua rejeitando encaixes ambíguos.
+Os vãos medidos na captura maior ajudam a encontrar uma passagem mesmo sem malha no centro. O LiDAR atual ainda precisa confirmar que está aberta.
+Andar ao menos 1,5m e parar por dois segundos permite ampliar o mapa visual salvo, com intervalo mínimo de 25s entre tentativas. Não religa a reconstrução contínua.
+Gestos de novas superfícies não ficam bloqueados só porque há um objeto antigo aguardando recuperação.
+Validação física da cozinha e do vão escolhido continua pendente: o teste matemático não identifica semanticamente os cômodos.

@@ -11,6 +11,26 @@ enum SpatialHandTarget:Equatable {
     }
 }
 
+/// Save only a settled move to a new area, never a stationary stream of snapshots.
+struct SpatialAreaSaveGate {
+    private var saved:SIMD3<Float>?
+    private var quiet:SIMD3<Float>?
+    private var quietSince:Double=0
+    private var lastAttempt = -Double.infinity
+    mutating func record(position:SIMD3<Float>,time:Double) {
+        saved=position;quiet=position;quietSince=time;lastAttempt=time
+    }
+    mutating func update(position:SIMD3<Float>,time:Double,stable:Bool)->Bool {
+        guard time.isFinite,position.x.isFinite,position.y.isFinite,position.z.isFinite else { quiet=nil;return false }
+        guard stable else { quiet=nil;return false }
+        guard let saved else { record(position:position,time:time);return false }
+        if quiet == nil || simd_distance(quiet!,position)>0.08 { quiet=position;quietSince=time }
+        let delta=SIMD2(position.x-saved.x,position.z-saved.z)
+        guard simd_length(delta)>=1.5,time-quietSince>=2,time-lastAttempt>=25 else { return false }
+        lastAttempt=time;return true
+    }
+}
+
 /// A metric fit is accepted only when geometry, gravity and a distinct solution agree.
 enum RoomForestRegistration {
     struct Point:Sendable { var p:SIMD3<Float>;var n:SIMD3<Float>;var kind:Int }
@@ -32,7 +52,7 @@ enum RoomForestRegistration {
         init(_ x:Int,_ y:Int,_ z:Int) { self.x=x;self.y=y;self.z=z }
     }
     static func fit(source:Capture,live:Capture)->Match? {
-        guard source.floor.isFinite,live.floor.isFinite,source.walls.count>=3,live.walls.count>=3,
+        guard source.floor.isFinite,live.floor.isFinite,source.walls.count>=2,live.walls.count>=2,
               source.points.count>=100,live.points.count>=100 else { return nil }
         let walls=Array(live.walls.prefix(8))
         var candidates:[(simd_float4x4,Float)]=[]
@@ -57,13 +77,13 @@ enum RoomForestRegistration {
                         let e=source.walls.map{$0.error(SIMD3(p.x,p.y,p.z),SIMD3(n.x,n.y,n.z))}.min() ?? 10
                         if e<0.18 { matched+=1 };error+=min(0.5,e)
                     }
-                    guard matched>=3,matched*4>=walls.count*3 else { continue }
+                    guard matched>=min(3,walls.count),matched*4>=walls.count*3 else { continue }
                     if candidates.contains(where:{simd_distance($0.0.columns.3,pose.columns.3)<0.12 && simd_dot($0.0.columns.0,pose.columns.0)>0.999}) { continue }
                     candidates.append((pose,error/Float(walls.count)))
                 }
             }}
         }}
-        candidates.sort{$0.1<$1.1};candidates=Array(candidates.prefix(32))
+        candidates.sort{$0.1<$1.1};candidates=Array(candidates.prefix(walls.count==2 ? 96 : 32))
         var grid:[Cell:[Point]]=[:]
         for point in source.points { grid[Cell(point.p),default:[]].append(point) }
         let step=max(1,live.points.count/1600),sample=stride(from:0,to:live.points.count,by:step).map{live.points[$0]}

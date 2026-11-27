@@ -25,6 +25,11 @@ struct RoomDoorwayOpening { var pose:simd_float4x4;var width:Float;var height:Fl
             // before letting the effect conceal the physical doorway.
             if clear(candidate,frame:frame,orientation:orientation,size:view.bounds.size) { return candidate }
         }
+        // A real opening has no mesh at its centre. Use the measured floor
+        // connections from the whole-house capture, then verify live clearance.
+        for candidate in room.doorwayCandidates(at:point) {
+            if clear(candidate,frame:frame,orientation:orientation,size:view.bounds.size) { return candidate }
+        }
         // An open doorway can be absent from the mesh. Confirm free depth beyond
         // the old wall, rather than drawing a rectangle over an arbitrary wall.
         guard let hit=view.hitTest(point,options:[.categoryBitMask:16,.backFaceCulling:false]).first,
@@ -48,7 +53,7 @@ struct RoomDoorwayOpening { var pose:simd_float4x4;var width:Float;var height:Fl
         let w=CVPixelBufferGetWidth(map),h=CVPixelBufferGetHeight(map),transform=frame.displayTransform(for:orientation,viewportSize:size).inverted(),inverse=simd_inverse(frame.camera.transform)
         var beyond=0,blocked=0,bands=Set<Int>(),columns=Set<Int>()
         for row in 0..<9 { for col in 0..<7 {
-            let p=opening.pose*SIMD4((Float(col)/6-0.5)*opening.width,(Float(row)/8-0.5)*(opening.height-0.15),0,1)
+            let p=opening.pose*SIMD4((Float(col)/6-0.5)*opening.width*0.8,(Float(row)/8-0.5)*(opening.height-0.25),0,1)
             let screen=frame.camera.projectPoint(SIMD3(p.x,p.y,p.z),orientation:orientation,viewportSize:size)
             let uv=CGPoint(x:screen.x/size.width,y:screen.y/size.height).applying(transform)
             let x=Int(uv.x*Double(w)),y=Int(uv.y*Double(h));guard x>=0,y>=0,x<w,y<h else { continue }

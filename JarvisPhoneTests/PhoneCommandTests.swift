@@ -50,6 +50,35 @@ final class PhoneCommandTests: XCTestCase {
         let symmetric=roomFixture(detail:false)
         XCTAssertNil(RoomForestRegistration.fit(source:symmetric,live:live(symmetric)))
     }
+    func testKitchenCornerCanRegisterWithoutSeeingThreeWalls() throws {
+        let source=roomFixture()
+        var pose=simd_float4x4(simd_quatf(angle:-0.47,axis:SIMD3(0,1,0)));pose.columns.3=SIMD4(-1.3,0.2,2.1,1)
+        let walls=[source.walls[0],source.walls[2]].map { w -> RoomForestRegistration.Wall in
+            let c=pose*SIMD4(w.center,1),n=pose*SIMD4(w.normal,0)
+            return .init(center:SIMD3(c.x,c.y,c.z),normal:SIMD3(n.x,n.y,n.z),low:0,high:0,bottom:0,top:3)
+        }
+        let points=source.points.filter{$0.p.x<3.95 && $0.p.z<2.95}.map { x -> RoomForestRegistration.Point in
+            let p=pose*SIMD4(x.p,1),n=pose*SIMD4(x.n,0)
+            return .init(p:SIMD3(p.x,p.y,p.z),n:SIMD3(n.x,n.y,n.z),kind:x.kind)
+        }
+        let fit=try XCTUnwrap(RoomForestRegistration.fit(source:source,live:.init(floor:0.2,walls:walls,points:points)))
+        XCTAssertLessThan(simd_distance(fit.pose.columns.3,pose.columns.3),0.02)
+        XCTAssertGreaterThan(simd_dot(fit.pose.columns.0,pose.columns.0),0.999)
+        var ambiguous=source;ambiguous.points=ambiguous.points.filter{$0.kind != 0}
+        let noDetail=points.filter{$0.kind != 0}
+        XCTAssertNil(RoomForestRegistration.fit(source:ambiguous,live:.init(floor:0.2,walls:walls,points:noDetail)))
+    }
+    func testWalkingIntoKitchenSavesOnceAfterSettlingWithoutContinuousScanning() {
+        var gate=SpatialAreaSaveGate()
+        for t in 0...40 { XCTAssertFalse(gate.update(position:.zero,time:Double(t),stable:true)) }
+        XCTAssertFalse(gate.update(position:SIMD3(3,0,0),time:41,stable:true))
+        XCTAssertFalse(gate.update(position:SIMD3(3,0,0),time:42,stable:false))
+        XCTAssertFalse(gate.update(position:SIMD3(3,0,0),time:43,stable:true))
+        XCTAssertTrue(gate.update(position:SIMD3(3,0,0),time:45,stable:true))
+        gate.record(position:SIMD3(3,0,0),time:45)
+        for t in 46...100 { XCTAssertFalse(gate.update(position:SIMD3(3,0,0),time:Double(t),stable:true)) }
+    }
+
     func testForestShotsStopAtCapturedWallsAndFurniture() {
         XCTAssertTrue(RoomForestShot.visible(target:1,obstacle:2))
         XCTAssertFalse(RoomForestShot.visible(target:2,obstacle:1))

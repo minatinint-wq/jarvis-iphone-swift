@@ -173,7 +173,7 @@ enum WallMeasureMode { case none, outline, opening }
         guard started,foreground,!stopped,!recoveryBusy,!fatal else { return }
         guard roomWall.sourceCapture() != nil else { feedback(roomWall.status);return }
         scanTask?.cancel();liveWall.cancel();roomWall.cancelPaint();roomMeshes=[:];roomRegistering=true;scanning=true;run()
-        feedback("Vou reconhecer o quarto em oito segundos. Mostre o piso, três paredes e um móvel. Não precisa marcar pontos.")
+        feedback("Vou reconhecer o quarto em oito segundos. Mostre o piso, duas paredes formando um canto e um móvel. Não precisa marcar pontos.")
         scanTask=Task { @MainActor [weak self] in
             try? await Task.sleep(for:.seconds(8))
             guard !Task.isCancelled,let self,!self.stopped else { return }
@@ -227,7 +227,7 @@ enum WallMeasureMode { case none, outline, opening }
             self.portal.rebindRoom()
             if self.forestWanted { self.setRoomForest(true);if self.gameRequested { self.forestGame.start(room:self.roomWall);self.run() } }
             else if self.portalGunArmed { self.notice="Quarto reconhecido. Mire na porta, levante e abaixe o polegar para disparar.";self.run();self.feedback(self.notice) }
-            else { self.roomWall.arm("white");self.notice=self.roomWall.status }
+            else { self.notice="Captura da casa reconhecida. Escolha um objeto ou efeito." }
         }
         spatial.panelSnapshot = { [weak self] in self?.panel.snapshot() }
         spatial.desktopSnapshot = { [weak self] in self?.desktop.snapshot() }
@@ -257,13 +257,8 @@ enum WallMeasureMode { case none, outline, opening }
                 self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
                 self.hands.showProgress(0);return
             }
-            if self.spatial.recovering {
-                self.spatial.hand(nil);_ = self.portal.hand(nil);_ = self.forestGame.hand(nil)
-                if self.spatial.restoredDesktop == nil,self.desktop.hand(sample) { self.hands.showProgress(self.desktop.progress) }
-                else { self.hands.showProgress(0) }
-                self.panel.hand(self.spatial.restoredPanel == nil ? sample : nil)
-                return
-            }
+            // Each restored window keeps its own anchor gate. A missing old
+            // object must not swallow gestures on a newly measured doorway.
             let factor=self.dualScale.update(points:sample?.dualPinch,time:sample?.time ?? ProcessInfo.processInfo.systemUptime)
             if self.dualScale.active {
                 if self.dualScaleTarget==nil,let points=sample?.dualPinch,points.count==2 {
@@ -290,7 +285,7 @@ enum WallMeasureMode { case none, outline, opening }
             }
             let point=sample?.point ?? CGPoint(x:-1,y:-1)
             let held:SpatialHandTarget?=self.panel.isDragging ? .panel : self.desktop.isDragging ? .desktop : self.portal.isDragging ? .portal : self.spatial.isDragging ? .object : nil
-            let target=SpatialHandTarget.choose(held:held,panel:self.panel.visible && self.panel.contains(point),desktop:!self.desktop.inputBlocked && self.desktop.contains(point),object:self.spatial.contains(point),portal:self.portal.contains(point),placing:self.spatial.active && self.spatial.placing,gun:self.portalGunArmed,liveWall:self.liveWall.armed,capturedWall:self.roomWall.armed,game:self.forestGame.enabled)
+            let target=SpatialHandTarget.choose(held:held,panel:self.panel.visible && self.panel.contains(point),desktop:!self.desktop.inputBlocked && self.desktop.contains(point),object:!self.spatial.recovering && self.spatial.contains(point),portal:self.portal.contains(point),placing:!self.spatial.recovering && self.spatial.active && self.spatial.placing,gun:self.portalGunArmed,liveWall:self.liveWall.armed,capturedWall:self.roomWall.armed,game:self.forestGame.enabled)
             if target != .panel { self.panel.hand(nil) }
             if target != .desktop { _=self.desktop.hand(nil) }
             if target != .object { self.spatial.hand(nil) }
@@ -914,8 +909,9 @@ enum WallMeasureMode { case none, outline, opening }
         }
         if coaching.isActive == good { coaching.setActive(!good,animated:true) }
         if good && !spatial.recovering { recoveryTimer?.cancel();recoveryTimer=nil;localizationTimedOut=false }
-        // No periodic world-map snapshots or surface updates in the hand mode.
-        if scanning { spatial.persistenceTick(frame) }
+        // Extend the visual map once after walking into another area and stopping.
+        // This does not restart surface reconstruction or update meshes per frame.
+        spatial.persistenceTick(frame,allowExpansion:interactionReady)
         spatial.setVisible(good && !comparing)
         if good && normal && !comparing {
             if scanning { spatial.validateSupports(frame) }

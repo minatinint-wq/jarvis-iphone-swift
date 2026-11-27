@@ -4,12 +4,14 @@ import SceneKit
 import CryptoKit
 
 struct ScannedRoomManifest:Decodable {
+    struct Opening:Decodable { let pose:[Float];let width:Float;let height:Float }
     struct Plane:Decodable { let id:Int;let kind:String;let normal:[Float];let center:[Float];let indices:String;var sourcePlaneIDs:[Int]?=nil }
     struct File:Decodable { let file:String;let bytes:Int;let sha256:String }
     let sourceSHA256:String;let mesh:String;let texture:String;let previewIndices:String;let facePlanes:String
     let floorY:Float;let lower:[Float];let upper:[Float];let planes:[Plane];let files:[File]
     var cleanScene:String?=nil
     var sceneProfile:String?=nil
+    var doorways:[Opening]?=nil
 }
 
 /// Personal capture stays in the installed bundle, outside the public repository.
@@ -89,6 +91,19 @@ struct ScannedRoomManifest:Decodable {
         guard wall.count%3==0,SpatialPortalMath.fitsWall(width:width,height:height,triangles:wall) else { return nil }
         var raised=pose;raised.columns.3 += SIMD4(n*0.025,0);return (raised,id)
     }
+    func doorwayCandidates(at point:CGPoint)->[RoomDoorwayOpening] {
+        guard tracking,let pose,let frame=view.session.currentFrame,let openings=forestCapture()?.manifest.doorways else { return [] }
+        let eye=SIMD3(frame.camera.transform.columns.3.x,frame.camera.transform.columns.3.y,frame.camera.transform.columns.3.z)
+        return openings.compactMap { opening -> (RoomDoorwayOpening,CGFloat)? in
+            guard let local=SpatialArchive.matrix(opening.pose),opening.width>=0.6,opening.height>=1.7 else { return nil }
+            var world=pose*local
+            let p=SIMD3(world.columns.3.x,world.columns.3.y,world.columns.3.z),n=SIMD3(world.columns.2.x,world.columns.2.y,world.columns.2.z)
+            if simd_dot(eye-p,n)<0 { world.columns.0 = -world.columns.0;world.columns.2 = -world.columns.2 }
+            let screen=view.projectPoint(SCNVector3(p)),delta=hypot(CGFloat(screen.x)-point.x,CGFloat(screen.y)-point.y)
+            guard screen.z>0,screen.z<1,delta<170 else { return nil }
+            return (RoomDoorwayOpening(pose:world,width:opening.width,height:opening.height),delta)
+        }.sorted{$0.1<$1.1}.map{$0.0}
+    }
     func setDoorway(_ opening:RoomDoorwayOpening) {
         guard let pose else { return }
         let active=forestActive
@@ -117,7 +132,7 @@ struct ScannedRoomManifest:Decodable {
         guard let source=sourceCapture() else { return false }
         let fit=await Task.detached(priority:.userInitiated) { RoomForestRegistration.fit(source:source,live:live) }.value
         guard !Task.isCancelled else { return false }
-        guard let fit else { status="Não confirmei um encaixe único. Diga calibrar floresta e mostre três paredes, um canto e um móvel.";return false }
+        guard let fit else { status="Não confirmei um encaixe único. Diga calibrar floresta e mostre o piso, duas paredes formando um canto e um móvel.";return false }
         clear();let anchor=ARAnchor(name:"JarvisScannedRoom",transform:fit.pose);install(anchor);view.session.add(anchor:anchor)
         status="Captura reconhecida pela geometria · erro médio \(Int(fit.error*100)) cm."
         onChange?();onRegistered?();return true

@@ -278,6 +278,7 @@ enum SpatialTheme: String, CaseIterable {
     private var changingMap=false
     private var lastSavedRevision = -1
     private var lastSaveAttempt: TimeInterval = -.infinity
+    private var areaSaveGate=SpatialAreaSaveGate()
     private var currentRoom: UUID?
     private var relocalizationBegan: TimeInterval?
     private var diagnostics: [[String:Any]] = []
@@ -459,6 +460,7 @@ enum SpatialTheme: String, CaseIterable {
         }
         guard force || revision != lastSavedRevision else { return }
         lastSaveAttempt=frame.timestamp;saving=true
+        let savedPosition=SIMD3(frame.camera.transform.columns.3.x,frame.camera.transform.columns.3.y,frame.camera.transform.columns.3.z),savedTime=frame.timestamp
         let epoch=persistenceEpoch,savedRevision=revision, snapshot=Array(records.values), roomSnapshot=rooms, world=worldID, panel=panelSnapshot?(),desktop=desktopSnapshot?(),location=locationHint ?? savedLocation,scannedRoom=scannedRoomSnapshot?(),portal=portalSnapshot?()
         view.session.getCurrentWorldMap { [self] map,error in
             Task { @MainActor in
@@ -476,7 +478,7 @@ enum SpatialTheme: String, CaseIterable {
                         let bytes=try NSKeyedArchiver.archivedData(withRootObject:map,requiringSecureCoding:true)
                         let archive=SpatialArchive(world:world,rooms:roomSnapshot,objects:snapshot,panel:panel,desktop:desktop,map:bytes,saved:Date(),location:location,scannedRoom:scannedRoom,portal:portal)
                         try archive.write(singleMap:true)
-                        Task { @MainActor in guard epoch == self.persistenceEpoch else { return };self.saving=false;self.lastSavedRevision=savedRevision;self.persistenceStatus="Salvo no iPhone: \(snapshot.count) objetos e \(roomSnapshot.count) ambientes." }
+                        Task { @MainActor in guard epoch == self.persistenceEpoch else { return };self.saving=false;self.lastSavedRevision=savedRevision;self.areaSaveGate.record(position:savedPosition,time:savedTime);self.persistenceStatus="Salvo no iPhone: \(snapshot.count) objetos e \(roomSnapshot.count) ambientes." }
                     } catch {
                         Task { @MainActor in guard epoch == self.persistenceEpoch else { return };self.saving=false;self.persistenceStatus="Falha ao salvar: \(error.localizedDescription)" }
                     }
@@ -514,17 +516,24 @@ enum SpatialTheme: String, CaseIterable {
         restoredPanel=nil;restoredDesktop=nil;restoredScannedRoom=nil;restoredPortal=nil;savedLocation=nil;unavailableModels.removeAll();selected=nil;hasSelection=false;objectCount=0;placing=false;visibility=false;active=false
         handGesture.reset();handDragging=nil;motions.removeAll();simulationTime=nil
         if newWorld {
+            areaSaveGate=SpatialAreaSaveGate()
             worldID=UUID();rooms=[SpatialRoom(id:UUID(),name:"Ambiente 1",origin:SpatialArchive.values(matrix_identity_float4x4))]
             currentRoom=rooms[0].id;roomName=rooms[0].name;revision=0;lastSavedRevision = -1
             persistenceStatus="Mapa único iniciado. A leitura atual substitui a anterior."
         }
     }
 
-    func persistenceTick(_ frame: ARFrame) {
+    func persistenceTick(_ frame: ARFrame,allowExpansion:Bool=false) {
         if case .limited(.relocalizing)=frame.camera.trackingState,relocalizationBegan == nil {
             relocalizationBegan=ProcessInfo.processInfo.systemUptime
         }
-        if frame.timestamp-lastSaveAttempt>30 { saveMap(force:false);lastSaveAttempt=frame.timestamp }
+        let p=frame.camera.transform.columns.3
+        let ready=allowExpansion && !recovering && !preservingSavedMap && !saving && handDragging == nil && (canSaveWindows?() ?? true)
+        if areaSaveGate.update(position:SIMD3(p.x,p.y,p.z),time:frame.timestamp,stable:ready) {
+            revision+=1;saveMap(force:false)
+        } else if frame.timestamp-lastSaveAttempt>30 {
+            saveMap(force:false);lastSaveAttempt=frame.timestamp
+        }
     }
 
     func recordPerformance(fps: Int, frame: ARFrame,handLatencyMS: Double,handFound: Bool,handDepth: Bool) {
