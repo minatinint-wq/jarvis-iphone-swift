@@ -811,8 +811,10 @@ import ActivityKit
             await SpatialCloudLibrary.shared.refresh()
             guard SpatialAssets.catalog.contains(where:{$0.id==id}) else { message="Este modelo não está no catálogo do Jarvis.";return }
             command = .model(id)
-        } else if let id=items.first(where:{$0.name == "ambiente"})?.value,let theme=SpatialTheme(rawValue:id) {
-            command = .theme(theme)
+        } else if let id=items.first(where:{$0.name == "ambiente"})?.value {
+            if id=="room_forest" { command = .roomForest(true) }
+            else if let theme=SpatialTheme(rawValue:id) { command = .theme(theme) }
+            else { message="Este ambiente ainda não está disponível nesta versão.";return }
         } else { message="Este ambiente ainda não está disponível nesta versão.";return }
         guard openStudio("wallAR") else { message="Termine o pedido em andamento e abra o modelo novamente.";return }
         wallARRequest=WallARRequest(command:command)

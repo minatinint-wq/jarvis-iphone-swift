@@ -63,7 +63,7 @@ enum WallARCommand: Equatable {
         if ["quarto tomado por floresta","modo floresta","ativar floresta do quarto","floresta no meu quarto","entrar no portal","entra no portal","entrar na floresta","cria uma floresta neste quarto","transformar meu quarto em floresta","transforma meu quarto numa floresta","transforma o quarto em floresta","transforme meu quarto em floresta"].contains(s) { return .roomForest(true) }
         if inStudio,["sair da floresta","sair do portal","voltar para o quarto real","volta pro quarto real","desativar floresta","fechar floresta"].contains(s) { return .roomForest(false) }
         if ["abrir portal","abre o portal","portal na porta","abrir portal na porta","coloca o portal na porta","arma de portal","modo arma de portal","ativar arma de portal","portal com a mao","ativar portal com a mao"].contains(s) { return .doorPortal }
-        if inStudio,["calibrar floresta","alinhar floresta","reconhecer meu quarto","reconhecer o quarto","alinhar quarto automaticamente"].contains(s) { return .registerForest }
+        if inStudio,["calibrar floresta","alinhar floresta","alinhar quarto","alinhar captura","alinhar scan","configurar captura do quarto","reconhecer meu quarto","reconhecer o quarto","alinhar quarto automaticamente"].contains(s) { return .registerForest }
         if ["abrir portal","abre o portal","abrir portal na parede","abre um portal na parede","cria um portal","criar portal","portal na parede","portal de parede"].contains(s) { return .portal }
         if inStudio,["fechar portal","fecha o portal","remover portal","apagar portal"].contains(s) { return .closePortal }
         if ["modo vr box","vr box","ativar vr box","abrir vr box","modo oculos","ativar modo oculos"].contains(s) { return .headset(true) }

@@ -1,0 +1,41 @@
+JARVIS XLV — REVISÃO 40 — FLORESTA, PORTAL NA PORTA E CAÇADA
+
+BASE PESSOAL
+Captura: Scaniverse 2026-11-27 185731.glb. 268722 triângulos e textura móvel 4096x4096.
+Original 8K preservado em D:/; a captura anterior também foi guardada.
+O mapa privado é colocado no pacote somente neste PC, depois da compilação. Não é publicado na biblioteca.
+
+TUDO POR VOZ E GESTO
+1. Diga: Oi Jarvis, portal na porta.
+2. Na primeira vez, mostre piso, três paredes, cantos e um móvel durante a leitura de oito segundos.
+   O encaixe usa geometria métrica e rejeita alternativas ambíguas. Se faltar informação, diga calibrar floresta para repetir.
+3. Estando dentro do cômodo que quer transformar, mire na porta real. Mostre a porta por inteiro.
+   Faça uma arma com o indicador estendido e os outros três dedos dobrados.
+   Segure o polegar levantado por um instante e abaixe-o para disparar.
+   A colocação usa a porta reconhecida ou profundidade confirmando uma abertura. Não transforma uma parede arbitrária em passagem.
+4. Saia pela porta e volte para dentro: o quarto passa para a versão florestada.
+   Ao sair novamente, volta ao ambiente real. Fechar e reabrir o app depende do mapa reencontrado ou de uma nova calibração geométrica.
+5. Diga fechar portal para removê-lo. Diga sair da floresta para voltar ao quarto real.
+
+PRÉVIA DIRETA
+Oi Jarvis, modo floresta: aplica ao mapa alinhado sem precisar atravessar o portal.
+Piso com folhas e musgo, paredes com vegetação, volumes dos móveis mantidos, aberturas respeitadas pela geometria.
+O recorte da porta é aplicado à malha, não a um retângulo sobre os móveis.
+
+MINIGAME
+Oi Jarvis, iniciar jogo da floresta.
+Acerte seis cristais com o mesmo gesto de arma. Cristais ao alcance também podem ser pegos com a pinça.
+Depois aparece o guardião animado; três acertos concluem a caçada. Há placar projetado e limite de 90 segundos.
+O mapa bloqueia disparos através de paredes e móveis capturados. O tamanho do guardião é limitado pelo espaço livre.
+Pausar jogo, continuar jogo, mostrar placar, sair do jogo e jogar novamente funcionam por voz.
+Mão fechada continua abrindo o catálogo radial. O jogo pausa a entrada durante os menus projetados.
+
+CRIATURA AVULSA
+Oi Jarvis, coloca um monstro. Aponte para uma área livre do piso por dois segundos.
+Guardião/Dragon: modelo estilizado de Quaternius, com esqueleto e animações reais; tamanho nominal 1,65m.
+Pode selecionar e pedir animações no catálogo. O modelo grande exige uma área livre maior.
+
+VALIDAÇÃO
+As provas automáticas de geometria, animação, corte e passagem usam cenas de teste.
+O alinhamento físico da nova captura, a porta escolhida, FPS e precisão das mãos precisam do teste neste iPhone.
+Uma captura não identifica semanticamente todos os móveis; se a mobília mudar, use uma captura atualizada.

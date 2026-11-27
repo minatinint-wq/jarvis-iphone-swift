@@ -116,6 +116,7 @@ import UIKit
     private var tracking=false
     private var passage=SpatialDoorPassage()
     private var roomInstalled=false
+    private var outsideSince:Double?
     var roomPreview:((Int?)->SCNNode?)?
     var roomPose:(()->simd_float4x4?)?
     var mappedWallID:((CGPoint)->Int?)?
@@ -132,6 +133,7 @@ import UIKit
         onFeedback?("Portal na porta. Saia por ela e volte para entrar no seu quarto florestado.")
         return true
     }
+    func rebindRoom() { roomInstalled=false;passage.reset();configureRoom() }
     private func configureRoom() {
         guard !roomInstalled,let record,let root,let pose=roomPose?() else { return }
         if record.doorway == true { onDoorwayReady?(RoomDoorwayOpening(pose:root.simdTransform,width:record.width,height:record.height)) }
@@ -212,6 +214,10 @@ import UIKit
         if stable { configureRoom() }
         let local=simd_inverse(root.simdTransform)*frame.camera.transform.columns.3,eye=SIMD3(local.x,local.y,local.z)
         if record.doorway == true {
+            if stable,eye.z < -0.3 {
+                if outsideSince==nil { outsideSince=frame.timestamp }
+                if frame.timestamp-(outsideSince ?? frame.timestamp)>0.65,self.record?.hasExited != true { self.record?.hasExited=true;onChange?() }
+            } else { outsideSince=nil }
             if let entered=passage.update(position:eye,time:frame.timestamp,width:record.width,height:record.height,stable:stable) {
                 if !entered { self.record?.hasExited=true;onChange?() }
                 onCross?(entered)
@@ -233,7 +239,7 @@ import UIKit
     }
     func clear(recordChange:Bool=true,preserveAnchor:Bool=false) {
         if !preserveAnchor,let anchor { view.session.remove(anchor:anchor) }
-        anchor=nil;root?.removeFromParentNode();root=nil;record=nil;renderer=nil;roomInstalled=false;passage.reset()
+        anchor=nil;root?.removeFromParentNode();root=nil;record=nil;renderer=nil;roomInstalled=false;outsideSince=nil;passage.reset()
         if recordChange { onChange?() }
     }
 }

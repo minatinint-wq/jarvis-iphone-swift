@@ -164,12 +164,12 @@ enum WallMeasureMode { case none, outline, opening }
         }
     }
     private func armDoorPortal() {
-        portalGunArmed=true;portalTrigger.reset();endManualWallInput();panel.close();registrationRestarted=false
+        portalGunArmed=true;portalTrigger.reset();forestGame.pause(true);endManualWallInput();panel.close();registrationRestarted=false
         if !roomWall.aligned { beginForestRegistration();return }
         if !scanning { toggleScan() } else { run() }
         feedback("Mostre a porta. Faça uma arma com indicador estendido e os outros três dedos dobrados. Segure o polegar levantado e abaixe para disparar.")
     }
-    private func beginForestRegistration() {
+    private func beginForestRegistration(force:Bool=false) {
         guard started,foreground,!stopped,!recoveryBusy,!fatal else { return }
         guard roomWall.sourceCapture() != nil else { feedback(roomWall.status);return }
         scanTask?.cancel();liveWall.cancel();roomWall.cancelPaint();roomMeshes=[:];roomRegistering=true;scanning=true;run()
@@ -180,7 +180,7 @@ enum WallMeasureMode { case none, outline, opening }
             let frame=self.view.session.currentFrame
             let capture=RoomForestScene.live(meshes:Array(self.roomMeshes.values),planes:Array(self.planes.values))
             self.roomRegistering=false;self.scanning=false;self.roomMeshes=[:];self.run()
-            if self.roomWall.aligned {
+            if self.roomWall.aligned,!force {
                 if self.forestWanted { self.setRoomForest(true) };return
             }
             guard let frame,case .normal=frame.camera.trackingState else {
@@ -224,6 +224,7 @@ enum WallMeasureMode { case none, outline, opening }
         roomWall.onRegistered = { [weak self] in
             guard let self else { return }
             self.scanTask?.cancel();self.scanTask=nil;self.scanning=false;self.run()
+            self.portal.rebindRoom()
             if self.forestWanted { self.setRoomForest(true);if self.gameRequested { self.forestGame.start(room:self.roomWall);self.run() } }
             else if self.portalGunArmed { self.notice="Quarto reconhecido. Mire na porta, levante e abaixe o polegar para disparar.";self.run();self.feedback(self.notice) }
             else { self.roomWall.arm("white");self.notice=self.roomWall.status }
@@ -257,7 +258,7 @@ enum WallMeasureMode { case none, outline, opening }
                 self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
                 self.hands.showProgress(0);return
             }
-            if !self.panel.visible,self.forestGame.hand(sample) { self.hands.showProgress(0);return }
+            if !self.panel.visible,self.forestGame.hand(sample) { self.hands.showProgress(0);self.handStatus="Caçada · prepare o polegar e abaixe para disparar; pinça pega cristais próximos";return }
             if self.portalGunArmed {
                 self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
                 let fire=self.portalTrigger.update(gun:sample.map{$0.portalGun},thumbRaised:sample?.thumbRaised ?? false,time:sample?.time ?? ProcessInfo.processInfo.systemUptime)
@@ -776,16 +777,16 @@ enum WallMeasureMode { case none, outline, opening }
             switch action {
             case "start": gameRequested=true;portalGunArmed=false;setRoomForest(true);if roomWall.aligned { forestGame.start(room:roomWall);run() }
             case "pause": forestGame.pause(true);feedback("Jogo pausado.")
-            case "resume": forestGame.pause(false);feedback("Jogo retomado.")
+            case "resume": portalGunArmed=false;portalTrigger.reset();forestGame.pause(false);feedback("Jogo retomado.")
             case "score": forestGame.showScore()
             default: gameRequested=false;forestGame.stop();run();feedback("Jogo encerrado.")
             }
         case .doorPortal: armDoorPortal()
         case .roomForest(let value): setRoomForest(value)
-        case .registerForest: registrationRestarted=false;beginForestRegistration()
+        case .registerForest: registrationRestarted=false;beginForestRegistration(force:true)
         case .portal: beginPortal()
         case .closePortal: portalGunArmed=false;portalTrigger.reset();cancelLiveWallCapture();portal.clear();setRoomForest(false,announce:false);run();feedback("Portal fechado.")
-        case .calibrate: calibrateCurrentRoom()
+        case .calibrate: if forestWanted || portalGunArmed || gameRequested { registrationRestarted=false;beginForestRegistration(force:true) } else { calibrateCurrentRoom() }
         case .effects: panel.openEffectsRadial(tracking:interactionReady)
         case .roomSetup:
             cancelLiveWallCapture();roomWall.cancelPaint()
@@ -1000,7 +1001,7 @@ enum WallMeasureMode { case none, outline, opening }
             }
             roomWall.update(anchor)
             if let saved=spatial.restoredScannedRoom,saved.anchor==anchor.identifier {
-                if !roomWall.restore(saved,anchor:anchor) { notice=roomWall.status }
+                if !roomWall.restore(saved,anchor:anchor) { notice=roomWall.status } else { portal.rebindRoom() }
                 spatial.restoredScannedRoom=nil
             }
             if let saved=spatial.restoredDesktop,saved.anchor==anchor.identifier {
@@ -1377,7 +1378,7 @@ struct WallCameraView: UIViewRepresentable {
                     }
                     DisclosureGroup("Mapa e alinhamento",isExpanded:$mapTools) {
                         VStack(alignment:.leading,spacing:8) {
-                            Button("Alinhar captura do quarto",systemImage:"scope") { controller.apply(.roomSetup) }
+                            Button("Reconhecer captura automaticamente",systemImage:"scope") { controller.apply(.registerForest) }
                             Button("Salvar mapa",systemImage:"square.and.arrow.down") { controller.spatial.saveMap() }
                             Text(controller.spatial.persistenceStatus).font(.caption2).foregroundStyle(.secondary)
                             ShareLink("Compartilhar diagnóstico",item:SpatialArchive.file.deletingLastPathComponent().appendingPathComponent("diagnostics.json"))

@@ -26,7 +26,7 @@ struct ScannedRoomManifest:Decodable {
     private var captureCache:RoomForestRegistration.Capture?
     private var doorway:RoomDoorwayOpening?
     private var hitFaces:Data?
-    private var gameFloor:[SIMD3<Float>]?
+    private var gameFloors:[Int:[SIMD3<Float>]]=[:]
     func setDoorway(_ opening:RoomDoorwayOpening) {
         guard let pose else { return }
         let active=forestActive
@@ -43,10 +43,11 @@ struct ScannedRoomManifest:Decodable {
         guard let m=manifest,let p=m.planes.first(where:{$0.kind=="floor"}),p.center.count==3 else { return nil }
         return SIMD3(p.center[0],m.floorY,p.center[2])
     }
-    func gameSpots()->[SIMD3<Float>] {
-        if let gameFloor { return gameFloor }
+    func gameSpots(radius:Float=0.30)->[SIMD3<Float>] {
+        let key=Int(radius*100)
+        if let cached=gameFloors[key] { return cached }
         guard let base,let manifest,let faces else { return [] }
-        let spots=RoomForestScene.floorSpots(base:base,manifest:manifest,assignments:faces);gameFloor=spots;return spots
+        let spots=RoomForestScene.floorSpots(base:base,manifest:manifest,assignments:faces,radius:radius);gameFloors[key]=spots;return spots
     }
     func sourceCapture()->RoomForestRegistration.Capture? {
         if let captureCache { return captureCache }

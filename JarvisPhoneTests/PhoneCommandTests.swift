@@ -65,8 +65,8 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertEqual(WallARCommand.parse("pausar jogo",inStudio:true),.forestGame("pause"))
         XCTAssertEqual(WallARCommand.parse("sair do jogo",inStudio:true),.forestGame("stop"))
         XCTAssertEqual(WallARCommand.parse("coloca um monstro",inStudio:true),.model("animated_dragon"))
-        XCTAssertNil(WallARCommand.parse("nÃƒÂ£o abrir portal",inStudio:true))
-        XCTAssertNil(WallARCommand.parse("nÃƒÂ£o iniciar jogo da floresta",inStudio:true))
+        XCTAssertNil(WallARCommand.parse("não abrir portal",inStudio:true))
+        XCTAssertNil(WallARCommand.parse("não iniciar jogo da floresta",inStudio:true))
         var record=SpatialPortalRecord(anchor:UUID(),width:0.8,height:2.15);record.doorway=true
         XCTAssertTrue(record.valid);record.doorway=false;XCTAssertFalse(record.valid)
     }
@@ -152,7 +152,7 @@ final class PhoneCommandTests: XCTestCase {
     func testPortalAndCatalogModelsHaveLocalVoiceRoutes() {
         XCTAssertEqual(WallARCommand.parse("abre um portal na parede",inStudio:false),.portal)
         XCTAssertEqual(WallARCommand.parse("fechar portal",inStudio:true),.closePortal)
-        XCTAssertNil(WallARCommand.parse("nÃƒÂ£o abrir portal",inStudio:true))
+        XCTAssertNil(WallARCommand.parse("não abrir portal",inStudio:true))
         for (phrase,id) in [("carro","toycar"),("sofa de couro","sheenwoodleathersofa"),("capacete espacial","scifihelmet"),("vaso de flores","glassvaseflowers"),("raposa","animated_fox")] {
             XCTAssertEqual(WallARCommand.parse("coloca um "+phrase,inStudio:true),.model(id))
         }
@@ -244,7 +244,7 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertNil(SpatialRoomAlignment.fit(source:source,target:source.map{$0*1.4}))
         XCTAssertNil(SpatialRoomAlignment.fit(source:[.zero,SIMD3(1,0,0),SIMD3(2,0,0)],target:target))
         XCTAssertNil(SpatialRoomAlignment.fit(source:source,target:[.zero,SIMD3(2,1,0),SIMD3(0,0,2)]))
-        XCTAssertEqual(WallARCommand.parse("abrir catÃƒÂ¡logo de efeitos",inStudio:true),.effects)
+        XCTAssertEqual(WallARCommand.parse("abrir catálogo de efeitos",inStudio:true),.effects)
         XCTAssertEqual(WallARCommand.parse("testar parede branca",inStudio:true),.roomWall("white"))
     }
     @MainActor func testEffectsCatalogRendersSixRadialSectorsWithRealActions() throws {
@@ -641,9 +641,9 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertEqual(WallARCommand.parse("abrir teclado",inStudio:true),.keyboard(true))
         XCTAssertEqual(WallARCommand.parse("fechar teclado",inStudio:true),.keyboard(false))
         XCTAssertEqual(WallARCommand.parse("Jarvis, ativar VR Box",inStudio:false),.headset(true))
-        XCTAssertEqual(WallARCommand.parse("modo ÃƒÂ³culos",inStudio:false),.headset(true))
+        XCTAssertEqual(WallARCommand.parse("modo óculos",inStudio:false),.headset(true))
         XCTAssertEqual(WallARCommand.parse("sair do VR Box",inStudio:true),.headset(false))
-        XCTAssertNil(WallARCommand.parse("nÃƒÂ£o ativar VR Box",inStudio:true))
+        XCTAssertNil(WallARCommand.parse("não ativar VR Box",inStudio:true))
     }
     @MainActor func testRecoveryOffersExitWhenTrackingOrSavedAnchorsCannotReturn() async throws {
         for tracking in [false,true] {
@@ -688,7 +688,7 @@ final class PhoneCommandTests: XCTestCase {
             for (index,image) in images.enumerated() {
                 let variant=variants[index],x=CGFloat(index%2)*500,y=CGFloat(index/2)*425
                 image.draw(at:CGPoint(x:x,y:y))
-                ((variant.0+" Ã‚Â· "+variant.1+" Ã‚Â· "+String(variant.2)) as NSString).draw(at:CGPoint(x:x+10,y:y+400),withAttributes:[.font:UIFont.systemFont(ofSize:16),.foregroundColor:UIColor.white])
+                ((variant.0+" · "+variant.1+" · "+String(variant.2)) as NSString).draw(at:CGPoint(x:x+10,y:y+400),withAttributes:[.font:UIFont.systemFont(ofSize:16),.foregroundColor:UIColor.white])
             }
         }
         XCTAssertNotEqual(rendered[0],rendered[1]);XCTAssertNotEqual(rendered[2],rendered[3])
@@ -751,9 +751,9 @@ final class PhoneCommandTests: XCTestCase {
             XCTAssertTrue(SpatialRig.play(a,clip:id == "animated_robot" ? "Wave" : "Run"))
             XCTAssertFalse(SpatialRig.play(a,clip:"nonexistent"))
         }
-        XCTAssertEqual(WallARCommand.parse("coloque um robÃƒÂ´ aqui",inStudio:true),.model("animated_robot"))
-        XCTAssertEqual(WallARCommand.parse("robÃƒÂ´ dance",inStudio:true),.character("Dance"))
-        XCTAssertNil(WallARCommand.parse("nÃƒÂ£o socar parede",inStudio:true))
+        XCTAssertEqual(WallARCommand.parse("coloque um robô aqui",inStudio:true),.model("animated_robot"))
+        XCTAssertEqual(WallARCommand.parse("robô dance",inStudio:true),.character("Dance"))
+        XCTAssertNil(WallARCommand.parse("não socar parede",inStudio:true))
     }
     @MainActor func testResumeRetainsMapAndRequiresRepeatedSurfaceEvidence() {
         let controller=WallARController()
@@ -832,7 +832,7 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertNil(gesture.update(target:"box",depth:nil,time:4.1))
         XCTAssertEqual(WallARCommand.parse("puxe a tela do computador",inStudio:true),.desktop)
         XCTAssertEqual(WallARCommand.parse("coloque um personagem aqui",inStudio:true),.model("animated_robot"))
-        XCTAssertNil(WallARCommand.parse("nÃƒÂ£o coloque uma cadeira",inStudio:true))
+        XCTAssertNil(WallARCommand.parse("não coloque uma cadeira",inStudio:true))
     }
     @MainActor func testMetricDemoModelsHaveFloorOriginsAndRealHeights() throws {
         for (demo,height) in [(SpatialDemo.human,Float(1.7)),(.box,0.30),(.chair,0.90),(.table,0.75),(.panel,0.36)] {
@@ -946,12 +946,12 @@ final class PhoneCommandTests: XCTestCase {
         let image=renderer.snapshot(atTime:0,with:viewport,antialiasingMode:.multisampling4X)
         let attachment=XCTAttachment(image:image);attachment.name="Spatial-portrait-real-perspective";attachment.lifetime = .keepAlways;add(attachment)
         var job:[String:Any]=[:];panel.onSpotify={job=$0}
-        panel.interpret("mostrar mais cartÃƒÂµes")
+        panel.interpret("mostrar mais cartões")
         let first=try XCTUnwrap(job["items"] as? [[String:String]])
         XCTAssertEqual(first.first?["title"],"Spotify")
-        let next=try XCTUnwrap(first.firstIndex(where:{$0["title"]=="Mais cartÃƒÂµes"}))
+        let next=try XCTUnwrap(first.firstIndex(where:{$0["title"]=="Mais cartões"}))
         try panel.receive(JSONSerialization.data(withJSONObject:["requestId":job["requestId"]!,"navigation":["operation":"activate","slot":next]]))
-        panel.interpret("mostrar esta pÃƒÂ¡gina")
+        panel.interpret("mostrar esta página")
         let second=try XCTUnwrap(job["items"] as? [[String:String]])
         XCTAssertEqual(second.first?["title"],"Controles do iPhone")
         panel.close()
@@ -978,7 +978,7 @@ final class PhoneCommandTests: XCTestCase {
         for term in ["madeira","Marcar parede","Portal na parede","Raposa","Bosque"] {
             XCTAssertTrue(panel.directory(term).contains{$0.module == .scenes},term)
         }
-        for phrase in ["abrir cenÃƒÂ¡rio 3d","abrir medir e pintar","abrir ambientes"] {
+        for phrase in ["abrir cenário 3d","abrir medir e pintar","abrir ambientes"] {
             XCTAssertEqual(SpatialModule.opening(phrase),.scenes,phrase)
         }
     }
@@ -991,10 +991,10 @@ final class PhoneCommandTests: XCTestCase {
         bad=valid;bad["files"]=[["file":"Spatial_test.mesh","bytes":100*1024*1024,"sha256":String(repeating:"a",count:64)]];XCTAssertFalse(SpatialCloudLibrary.valid(bad))
     }
     func testSpatialAINavigationKeepsOrdinaryToolsOutsideTheInterpreter() {
-        for phrase in ["me leva para os controles da casa","voltar ÃƒÂ s playlists","quero ver os mÃƒÂ³dulos","seleciona a segunda faixa","toca essa","fecha esse painel"] {
+        for phrase in ["me leva para os controles da casa","voltar às playlists","quero ver os módulos","seleciona a segunda faixa","toca essa","fecha esse painel"] {
             XCTAssertTrue(WallARCommand.needsInterpretation(phrase),phrase)
         }
-        for phrase in ["nÃƒÂ£o abre o Spotify","se eu abrir o painel","ligue a luz","brilho do iPhone em 30%","o que estou vendo","qual a previsÃƒÂ£o do tempo"] {
+        for phrase in ["não abre o Spotify","se eu abrir o painel","ligue a luz","brilho do iPhone em 30%","o que estou vendo","qual a previsão do tempo"] {
             XCTAssertFalse(WallARCommand.needsInterpretation(phrase),phrase)
         }
     }
@@ -1054,8 +1054,8 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertEqual(job["action"] as? String,"play")
         XCTAssertEqual(job["playlistId"] as? String,"mix")
         try reply([:])
-        try choose("Faixa Ã‚Â· Artista")
-        try choose("Play: Faixa Ã‚Â· Artista")
+        try choose("Faixa · Artista")
+        try choose("Play: Faixa · Artista")
         XCTAssertEqual(job["action"] as? String,"play_track")
         XCTAssertEqual(job["trackId"] as? String,"song")
         panel.close()
@@ -1120,13 +1120,13 @@ final class PhoneCommandTests: XCTestCase {
         panel.close()
     }
     func testGeneralSpatialModulesAndOrdinaryCommandsRemainSeparate() {
-        for (phrase,target) in [("Jarvis, abrir painel",SpatialModule.dashboard),("abrir mÃƒÂ³dulo Spotify",.spotify),("abrir controles",.phone),("mostrar painel da casa",.home),("abrir mÃƒÂ³dulo cÃƒÂ¢mera",.camera),("abrir mÃƒÂ³dulo criaÃƒÂ§ÃƒÂ£o",.creation),("abrir mÃƒÂ³dulo cenÃƒÂ¡rios",.scenes),("abrir mÃƒÂ³dulo instrumentos",.instruments),("abrir mÃƒÂ³dulo libras",.libras),("abrir mÃƒÂ³dulo traduÃƒÂ§ÃƒÂ£o",.translation),("abrir painel meu dia",.personal)] {
+        for (phrase,target) in [("Jarvis, abrir painel",SpatialModule.dashboard),("abrir módulo Spotify",.spotify),("abrir controles",.phone),("mostrar painel da casa",.home),("abrir módulo câmera",.camera),("abrir módulo criação",.creation),("abrir módulo cenários",.scenes),("abrir módulo instrumentos",.instruments),("abrir módulo libras",.libras),("abrir módulo tradução",.translation),("abrir painel meu dia",.personal)] {
             XCTAssertEqual(WallARCommand.parse(phrase,inStudio:false),.panel(target),phrase)
         }
         XCTAssertEqual(WallARCommand.parse("abrir Spotify",inStudio:true),.panel(.spotify))
         XCTAssertNil(WallARCommand.parse("abrir harpa",inStudio:false))
-        XCTAssertNil(WallARCommand.parse("nÃƒÂ£o abrir painel",inStudio:true))
-        XCTAssertNil(WallARCommand.parse("brilho da lÃƒÂ¢mpada em 30%",inStudio:true))
+        XCTAssertNil(WallARCommand.parse("não abrir painel",inStudio:true))
+        XCTAssertNil(WallARCommand.parse("brilho da lâmpada em 30%",inStudio:true))
         XCTAssertNil(WallARCommand.parse("brilho do iPhone em 30%",inStudio:true))
     }
     func testMeasuredWallSubtractsDoorAndCupboardEvenAcrossLargeTriangles() {
@@ -1170,15 +1170,15 @@ final class PhoneCommandTests: XCTestCase {
         if case .wall = WallDepthEvidence.classify(expected:2,measured:2.02,confidence:2) {} else { XCTFail("Measured coplanar surface") }
     }
     func testSpatialVoiceCommandsAndNegations() {
-        XCTAssertEqual(WallARCommand.parse("Oi Jarvis, cenÃƒÂ¡rio floresta",inStudio:false),.theme(.forest))
+        XCTAssertEqual(WallARCommand.parse("Oi Jarvis, cenário floresta",inStudio:false),.theme(.forest))
         XCTAssertEqual(WallARCommand.parse("bosque noturno",inStudio:true),.theme(.enchanted))
-        XCTAssertEqual(WallARCommand.parse("coloca o rÃƒÂ¡dio",inStudio:true),.theme(.studio))
+        XCTAssertEqual(WallARCommand.parse("coloca o rádio",inStudio:true),.theme(.studio))
         XCTAssertEqual(WallARCommand.parse("marca a parede",inStudio:true),.measure)
         XCTAssertEqual(WallARCommand.parse("adicionar ponto",inStudio:true),.point)
-        XCTAssertEqual(WallARCommand.parse("excluir armÃƒÂ¡rio",inStudio:true),.opening)
+        XCTAssertEqual(WallARCommand.parse("excluir armário",inStudio:true),.opening)
         XCTAssertEqual(WallARCommand.parse("aplica o recorte",inStudio:true),.approve)
-        XCTAssertNil(WallARCommand.parse("nÃƒÂ£o coloca o rÃƒÂ¡dio",inStudio:true))
-        XCTAssertNil(WallARCommand.parse("excluir armÃƒÂ¡rio",inStudio:false))
+        XCTAssertNil(WallARCommand.parse("não coloca o rádio",inStudio:true))
+        XCTAssertNil(WallARCommand.parse("excluir armário",inStudio:false))
     }
     @MainActor func testDownloadedSpatialModelsLoadAndRenderWithRealGeometry() throws {
         for (id,faces) in [("mossrock",5000),("fern",784),("radio",6036)] {
@@ -1249,7 +1249,7 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertEqual(WallARCommand.parse("essa parede",inStudio:true),.select)
         XCTAssertEqual(WallARCommand.parse("desfaz",inStudio:true),.undo)
         XCTAssertEqual(WallARCommand.parse("fecha o modo AR",inStudio:true),.close)
-        for input in ["nÃƒÂ£o pinte essa parede branca","ele disse pinta a parede branca","liga a luz branca","muda a luz da parede para azul","pinta metade da parede de azul","coloca imagem na parede branca","se pintar a parede branca"] {
+        for input in ["não pinte essa parede branca","ele disse pinta a parede branca","liga a luz branca","muda a luz da parede para azul","pinta metade da parede de azul","coloca imagem na parede branca","se pintar a parede branca"] {
             XCTAssertNil(WallARCommand.parse(input,inStudio:true),input)
         }
         XCTAssertNil(WallARCommand.parse("agora azul",inStudio:false))
@@ -1304,13 +1304,13 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertNotNil(image.cgImage)
     }
     func testConversationalAliasesRespectNegationAndDeviceScope() {
-        for text in ["Ah, liga o flash", "Jarvis, acende a lanterna", "Ei Jarvis, pode acender o flash pra mim?", "deixa o flash ligado", "por favor, ligue a luz do celular", "quero que vocÃƒÂª acenda minha lanterna", "entÃƒÂ£o, Jarvis, liga o flash de novo"] {
+        for text in ["Ah, liga o flash", "Jarvis, acende a lanterna", "Ei Jarvis, pode acender o flash pra mim?", "deixa o flash ligado", "por favor, ligue a luz do celular", "quero que você acenda minha lanterna", "então, Jarvis, liga o flash de novo"] {
             XCTAssertEqual(PhoneIntentPhrases.torch(text), .torchOn, text)
         }
         for text in ["apaga o flash", "deixa a lanterna apagada", "ah, apaga a luz do celular", "pode desligar minha lanterna por favor"] {
             XCTAssertEqual(PhoneIntentPhrases.torch(text), .torchOff, text)
         }
-        for text in ["nÃƒÂ£o liga o flash", "nÃƒÂ£o apague a lanterna", "ele disse liga o flash", "acenda a luz do quarto", "liga o flash e a cafeteira", "quero que vocÃƒÂª nÃƒÂ£o ligue a lanterna"] {
+        for text in ["não liga o flash", "não apague a lanterna", "ele disse liga o flash", "acenda a luz do quarto", "liga o flash e a cafeteira", "quero que você não ligue a lanterna"] {
             XCTAssertNil(PhoneIntentPhrases.torch(text), text)
         }
         XCTAssertEqual(PhoneSystemVoice.action("Ah, pode ligar o Wi-Fi do meu celular?"), .wifiOn)
@@ -1351,10 +1351,10 @@ final class PhoneCommandTests: XCTestCase {
     func testLocalAutomationCommandsAreExactAndDoNotExecuteNegations() {
         XCTAssertEqual(PhoneSystemVoice.action("Oi Jarvis, pagar"), .wallet)
         XCTAssertEqual(PhoneSystemVoice.action("Jarvis, ligue o Wi-Fi"), .wifiOn)
-        XCTAssertEqual(PhoneSystemVoice.action("desligue os dados mÃƒÂ³veis"), .cellularOff)
-        XCTAssertEqual(PhoneSystemVoice.action("libere a rotaÃƒÂ§ÃƒÂ£o"), .rotationUnlock)
+        XCTAssertEqual(PhoneSystemVoice.action("desligue os dados móveis"), .cellularOff)
+        XCTAssertEqual(PhoneSystemVoice.action("libere a rotação"), .rotationUnlock)
         XCTAssertEqual(PhoneSystemVoice.action("teste o atalho"), .shortcutCheck)
-        for s in ["nÃƒÂ£o ligue o wifi", "pagar mil reais", "explique como ligar o bluetooth", "ligue o wifi e desligue os dados", "pagar para Ana"] {
+        for s in ["não ligue o wifi", "pagar mil reais", "explique como ligar o bluetooth", "ligue o wifi e desligue os dados", "pagar para Ana"] {
             XCTAssertNil(PhoneSystemVoice.action(s), s)
         }
     }
@@ -1373,34 +1373,34 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertEqual(callback.queryItems?.first?.value, "x&y")
     }
     @MainActor func testLockedSystemActionsDoNotAttemptToOpenAnotherApp() async {
-        for phrase in ["Jarvis pagar", "ligue o bluetooth", "desligue os dados mÃƒÂ³veis"] {
+        for phrase in ["Jarvis pagar", "ligue o bluetooth", "desligue os dados móveis"] {
             let reply = await PhoneLocalKit.resolve(phrase, readOnly: true)
-            XCTAssertEqual(reply, "Desbloqueie e abra o Jarvis para encaminhar esta aÃƒÂ§ÃƒÂ£o ao Atalhos.")
+            XCTAssertEqual(reply, "Desbloqueie e abra o Jarvis para encaminhar esta ação ao Atalhos.")
         }
     }
 
     @MainActor func testPhoneContextCommands() {
         XCTAssertEqual(HandsetContext.parse("Oi, Jarvis, quantos passos hj?"), .steps)
-        XCTAssertEqual(HandsetContext.parse("qual foi a ÃƒÂºltima notificaÃƒÂ§ÃƒÂ£o?"), .notification)
+        XCTAssertEqual(HandsetContext.parse("qual foi a última notificação?"), .notification)
         XCTAssertEqual(HandsetContext.parse("ligue pra Ana"), .call("Ana"))
-        XCTAssertEqual(HandsetContext.parse("mande um SMS para Ana dizendo OlÃƒÂ¡!"), .sms("Ana", "OlÃƒÂ¡!"))
+        XCTAssertEqual(HandsetContext.parse("mande um SMS para Ana dizendo Olá!"), .sms("Ana", "Olá!"))
         XCTAssertNil(HandsetContext.parse("ligue para Ana no WhatsApp"))
         XCTAssertEqual(PhoneLocalKit.torchAction("Ei Jarvis, liga a lanterna de novo"), .torchOn)
     }
     @MainActor func testRelativeBrightnessWhenLocked() async {
         let result = await PhoneLocalKit.resolve("diminui o brilho", readOnly: true)
-        XCTAssertEqual(result, "Abra o Jarvis no iPhone desbloqueado para executar essa aÃƒÂ§ÃƒÂ£o.")
+        XCTAssertEqual(result, "Abra o Jarvis no iPhone desbloqueado para executar essa ação.")
     }
     @MainActor func testVoiceVisionModes() {
         XCTAssertEqual(RemoteAssistant.visionCommand("Jarvis, o que estou vendo?"), .once)
-        XCTAssertEqual(RemoteAssistant.visionCommand("visÃƒÂ£o ao vivo"), .start)
-        XCTAssertEqual(RemoteAssistant.visionCommand("parar visÃƒÂ£o"), .stop)
-        XCTAssertNil(RemoteAssistant.visionCommand("nÃƒÂ£o abra a cÃƒÂ¢mera"))
+        XCTAssertEqual(RemoteAssistant.visionCommand("visão ao vivo"), .start)
+        XCTAssertEqual(RemoteAssistant.visionCommand("parar visão"), .stop)
+        XCTAssertNil(RemoteAssistant.visionCommand("não abra a câmera"))
     }
     @MainActor func testBrightnessPhrasesResolveOnPhone() async {
         for phrase in ["Jarvis, ajusta o brilho pra 40 %", "Coloca o brilho em quarenta por cento"] {
             let reply = await PhoneLocalKit.resolve(phrase, readOnly: true)
-            XCTAssertEqual(reply, "Abra o Jarvis no iPhone desbloqueado para executar essa aÃƒÂ§ÃƒÂ£o.", phrase)
+            XCTAssertEqual(reply, "Abra o Jarvis no iPhone desbloqueado para executar essa ação.", phrase)
         }
     }
     @MainActor func testSpotifyPersistsOnlyAcknowledgedDevice() {
@@ -1484,13 +1484,13 @@ final class PhoneCommandTests: XCTestCase {
         XCTAssertEqual(PhoneLocalKit.studio(for:"traduz o que estou vendo"),"translate")
         XCTAssertEqual(PhoneLocalKit.studio(for:"abre o tradutor"),"translate")
         XCTAssertEqual(PhoneLocalKit.studio(for:"abre o modo libras"),"libras")
-        XCTAssertNil(PhoneLocalKit.studio(for:"nÃƒÂ£o abre a harpa"))
+        XCTAssertNil(PhoneLocalKit.studio(for:"não abre a harpa"))
         XCTAssertNil(PhoneLocalKit.studio(for:"toca harpa no spotify"))
         XCTAssertEqual(StudioInstrument.harp.program,46)
         XCTAssertEqual(StudioInstrument.electricGuitar.program,27)
         XCTAssertEqual(PhoneLocalKit.studio(for:"abre a guitarra"),"music")
         XCTAssertEqual(PhoneLocalKit.instrument(for:"abre a guitarra"),.electricGuitar)
-        XCTAssertEqual(PhoneLocalKit.instrument(for:"abre o violÃƒÂ£o"),.guitar)
+        XCTAssertEqual(PhoneLocalKit.instrument(for:"abre o violão"),.guitar)
         var board=AirStringBoard();board.preset(guitar:true)
         XCTAssertEqual(board.strings.map(\.note),[40,45,50,55,59,64])
     }
@@ -1547,11 +1547,11 @@ final class PhoneCommandTests: XCTestCase {
         }
     }
     @MainActor func testConversationRoutesTorchToPhoneButNotBedroomLight() {
-        for s in ["Oi Jarvis, vocÃƒÂª pode acender a lanterna do meu celular?", "Liga o flash pra mim", "Acende minha lanterna"] {
+        for s in ["Oi Jarvis, você pode acender a lanterna do meu celular?", "Liga o flash pra mim", "Acende minha lanterna"] {
             XCTAssertEqual(PhoneLocalKit.torchAction(s), .torchOn, s)
         }
         XCTAssertEqual(PhoneLocalKit.torchAction("Pode desligar a lanterna agora?"), .torchOff)
-        for s in ["acenda a luz do quarto","nÃƒÂ£o ligue a lanterna","ligue a lanterna e a cafeteira"] { XCTAssertNil(PhoneLocalKit.torchAction(s),s) }
+        for s in ["acenda a luz do quarto","não ligue a lanterna","ligue a lanterna e a cafeteira"] { XCTAssertNil(PhoneLocalKit.torchAction(s),s) }
     }
     func testNotificationQueueIsLiteralFreshAndOrdered() {
         var q = VoiceInbox(); let t=Date()
@@ -1569,16 +1569,16 @@ final class PhoneCommandTests: XCTestCase {
         let assistant = RemoteAssistant()
         assistant.paired = false
         assistant.ready = false
-        await assistant.say("Que horas sÃƒÂ£o?")
-        XCTAssertEqual(assistant.lines.first?.text, "Que horas sÃƒÂ£o?")
+        await assistant.say("Que horas são?")
+        XCTAssertEqual(assistant.lines.first?.text, "Que horas são?")
         XCTAssertEqual(assistant.lines.last?.user, false)
-        XCTAssertTrue(assistant.lines.last?.text.hasPrefix("Agora sÃƒÂ£o ") == true)
+        XCTAssertTrue(assistant.lines.last?.text.hasPrefix("Agora são ") == true)
         XCTAssertFalse(assistant.busy)
     }
 
     @MainActor
     func testLocalTimeDoesNotConsumeCalendarRequest() async {
-        let result = await PhoneLocalKit.resolve("Que horas sÃƒÂ£o as reuniÃƒÂµes da minha agenda?")
+        let result = await PhoneLocalKit.resolve("Que horas são as reuniões da minha agenda?")
         XCTAssertNil(result)
     }
 
@@ -1597,25 +1597,25 @@ final class PhoneCommandTests: XCTestCase {
     func testPhoneCalendarUsesDeviceZoneAcrossMidnight() throws {
         let instant = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-01-02T01:05:00Z"))
         let zone = try XCTUnwrap(TimeZone(identifier: "America/Sao_Paulo"))
-        XCTAssertEqual(PhoneAlmanac.calendarReply(.time, date: instant, zone: zone), "Agora sÃƒÂ£o 22:05.")
-        XCTAssertEqual(PhoneAlmanac.calendarReply(.weekday(1), date: instant, zone: zone), "AmanhÃƒÂ£ ÃƒÂ© sexta-feira.")
-        XCTAssertEqual(PhoneAlmanac.calendarReply(.date(0), date: instant, zone: zone), "Hoje ÃƒÂ© quinta-feira, 1 de janeiro de 2026.")
+        XCTAssertEqual(PhoneAlmanac.calendarReply(.time, date: instant, zone: zone), "Agora são 22:05.")
+        XCTAssertEqual(PhoneAlmanac.calendarReply(.weekday(1), date: instant, zone: zone), "Amanhã é sexta-feira.")
+        XCTAssertEqual(PhoneAlmanac.calendarReply(.date(0), date: instant, zone: zone), "Hoje é quinta-feira, 1 de janeiro de 2026.")
     }
 
     @MainActor func testAlmanacDashboardButtonsUseTheLocalRoutes() async {
         let reply = await PhoneLocalKit.resolve("Qual a data e a hora de hoje?")
-        XCTAssertNotNil(reply?.range(of: #"Hoje ÃƒÂ© .+ [0-9]{4}, [0-9]{2}:[0-9]{2}\."#, options: .regularExpression))
+        XCTAssertNotNil(reply?.range(of: #"Hoje é .+ [0-9]{4}, [0-9]{2}:[0-9]{2}\."#, options: .regularExpression))
         XCTAssertEqual(PhoneAlmanac.request("como esta o tempo hoje"), .weather(.today, nil))
     }
 
     func testWeatherSelectsTomorrowByLocalDayAndDoesNotInventMissingData() throws {
         let fixture = #"{"current":{"temperature_2m":19.7,"weather_code":2},"daily":{"time":["2026-01-01","2026-01-02"],"weather_code":[0,61],"temperature_2m_min":[18,17],"temperature_2m_max":[30,25],"precipitation_probability_max":[0,80]}}"#
         let forecast = try JSONDecoder().decode(PhoneAlmanac.Forecast.self, from: Data(fixture.utf8))
-        XCTAssertTrue(PhoneAlmanac.forecastReply(forecast, period: .now, place: "Em Recife").contains("20 Ã‚Â°C"))
+        XCTAssertTrue(PhoneAlmanac.forecastReply(forecast, period: .now, place: "Em Recife").contains("20 °C"))
         let nextDay = PhoneAlmanac.forecastReply(forecast, period: .tomorrow, place: "Em Recife")
-        XCTAssertTrue(nextDay.contains("17 e mÃƒÂ¡xima de 25"))
+        XCTAssertTrue(nextDay.contains("17 e máxima de 25"))
         XCTAssertTrue(nextDay.contains("80%"))
-        XCTAssertTrue(PhoneAlmanac.forecastReply(forecast, period: .afterTomorrow, place: "Em Recife").contains("indisponÃƒÂ­vel"))
+        XCTAssertTrue(PhoneAlmanac.forecastReply(forecast, period: .afterTomorrow, place: "Em Recife").contains("indisponível"))
     }
 
     func testAllNineteenActionsHaveUniqueIDs() {

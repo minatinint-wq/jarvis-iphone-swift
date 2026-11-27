@@ -601,7 +601,7 @@ enum SpatialTheme: String, CaseIterable {
     private func footprint(_ model: String?) -> Float {
         if model == "animated_robot" { return 0.42 }
         if model == "animated_fox" { return 0.32 }
-        if model == "animated_dragon" { return 0.65 }
+        if model == "animated_dragon" { return 1.1 }
         return model.flatMap { SpatialDemo(rawValue:$0)?.radius } ?? (model == nil || model?.hasPrefix("theme:") == true ? 0.48 : 0.24)
     }
     private func triangles(_ node:SCNNode)->Int {
@@ -917,7 +917,7 @@ enum SpatialTheme: String, CaseIterable {
                         Button("Impacto na parede") { world.onAttackRequest?() }
                     } else if world.selectedCharacterID == "animated_dragon" {
                         Button("Observar") { world.animate("Idle") }
-                        Button("Rugir") { world.animate("DragonArmature|DragonArmature|Dragon_Attack2") }
+                        Button("Atacar") { world.animate("DragonArmature|DragonArmature|Dragon_Attack2") }
                         Button("Reagir") { world.animate("DragonArmature|DragonArmature|Dragon_Hit") }
                     } else { Button("Observar") { world.animate("Survey") };Button("Correr") { world.walk(running:true) } }
                     if world.selectedCharacterID != "animated_dragon" { Button("Andar") { world.walk() } }

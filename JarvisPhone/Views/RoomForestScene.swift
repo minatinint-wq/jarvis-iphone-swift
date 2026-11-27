@@ -177,7 +177,7 @@ import SwiftUI
             var free=true
             for dx in [-0.25,Float(0),0.25] { for dz in [-0.25,Float(0),0.25] { if occupied.contains(key(p+SIMD3(dx,0,dz))) { free=false } } }
             guard free else { continue };planted.append(p)
-            add(planted.count<=1 && ids.count/3<230000 ? "treestump" : "fern",at:p,size:planted.count<=1 && ids.count/3<230000 ? 0.55 : 0.42,yaw:Float(f)*0.7)
+            add(planted.count<=1 && ids.count/3<280000 ? "treestump" : "fern",at:p,size:planted.count<=1 && ids.count/3<280000 ? 0.55 : 0.42,yaw:Float(f)*0.7)
         }
         for plane in m.planes.filter({$0.kind=="wall" && $0.center.count==3 && $0.normal.count==3}).prefix(12) {
             let p=SIMD3(plane.center[0],plane.center[1],plane.center[2]),n=simd_normalize(SIMD3(plane.normal[0],0,plane.normal[2]))
