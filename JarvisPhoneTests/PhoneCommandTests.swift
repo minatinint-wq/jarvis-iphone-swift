@@ -805,11 +805,11 @@ final class PhoneCommandTests: XCTestCase {
         }
     }
     @MainActor func testTwentyAdditionalModelsRenderActualGeometry() throws {
-        XCTAssertEqual(SpatialAssets.catalog.filter { !$0.id.hasPrefix("demo_") && !$0.id.hasPrefix("animated_") }.count,20)
+        XCTAssertEqual(SpatialAssets.catalog.filter { !$0.id.hasPrefix("demo_") && !$0.id.hasPrefix("animated_") }.count,22)
         XCTAssertEqual(Set(SpatialAssets.catalog.map(\.id)).count,SpatialAssets.catalog.count)
         guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
-        let atlas=UIGraphicsImageRenderer(size:CGSize(width:1400,height:1400)).image { ctx in
-            UIColor.black.setFill();ctx.fill(CGRect(x:0,y:0,width:1400,height:1400))
+        let atlas=UIGraphicsImageRenderer(size:CGSize(width:1400,height:1750)).image { ctx in
+            UIColor.black.setFill();ctx.fill(CGRect(x:0,y:0,width:1400,height:1750))
             for (i,item) in SpatialAssets.catalog.filter({ !$0.id.hasPrefix("demo_") && !$0.id.hasPrefix("animated_") }).enumerated() {
                 do {
                     let scene=SCNScene();scene.background.contents=UIColor(white:0.08,alpha:1)
@@ -830,7 +830,7 @@ final class PhoneCommandTests: XCTestCase {
                 } catch { XCTFail("Model \(item.id): \(error)") }
             }
         }
-        let attachment=XCTAttachment(image:atlas);attachment.name="Spatial-20-models-catalog";attachment.lifetime = .keepAlways;add(attachment)
+        let attachment=XCTAttachment(image:atlas);attachment.name="Spatial-22-models-catalog";attachment.lifetime = .keepAlways;add(attachment)
     }
     @MainActor func testPortraitPerspectivePanelPreviewAndPagination() throws {
         guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
