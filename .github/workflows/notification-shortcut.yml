@@ -17,10 +17,10 @@ jobs:
       - name: Generate the native intent action
         env:
           JARVIS_TARGET_BUNDLE: ${{ inputs.bundle_id }}
-        run: python3 scripts/build-notification-shortcut.py --bundle-id "$JARVIS_TARGET_BUNDLE" --output "$RUNNER_TEMP/JARVIS+Notificacoes.plist"
+        run: python3 scripts/build-notification-shortcut.py --bundle-id "$JARVIS_TARGET_BUNDLE" --output "$RUNNER_TEMP/JARVIS+Notificacoes.unsigned.shortcut"
       - name: Sign with Apple Shortcuts
         run: |
-          shortcuts sign --mode anyone --input "$RUNNER_TEMP/JARVIS+Notificacoes.plist" --output "$RUNNER_TEMP/JARVIS+Notificacoes.shortcut"
+          shortcuts sign --mode anyone --input "$RUNNER_TEMP/JARVIS+Notificacoes.unsigned.shortcut" --output "$RUNNER_TEMP/JARVIS+Notificacoes.shortcut"
           python3 - <<'PY'
           import os,hashlib,json
           from pathlib import Path
@@ -33,5 +33,5 @@ jobs:
           name: JARVIS-Notificacoes-Nativo
           path: |
             ${{ runner.temp }}/JARVIS+Notificacoes.shortcut
-            ${{ runner.temp }}/JARVIS+Notificacoes.plist
+            ${{ runner.temp }}/JARVIS+Notificacoes.unsigned.shortcut
             ${{ runner.temp }}/notification-shortcut-verification.json

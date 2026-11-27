@@ -22,10 +22,10 @@ def build(bundle_id, output):
             'preview':reference,'ShowWhenRun':False,'UUID':str(uuid.uuid4())}},
     ]
     result={**old,'WFWorkflowName':'JARVIS+Notificacoes','WFWorkflowActions':actions,'WFWorkflowImportQuestions':[],
-            'WFWorkflowInputContentItemClasses':['WFStringContentItem','WFNotificationContentItem'],
+            'WFWorkflowInputContentItemClasses':['WFStringContentItem'],
             'WFAssociatedAppBundleIdentifiers':[bundle_id]}
     output.parent.mkdir(parents=True,exist_ok=True)
-    output.write_bytes(plistlib.dumps(result,sort_keys=False))
+    output.write_bytes(plistlib.dumps(result,fmt=plistlib.FMT_BINARY,sort_keys=False))
     assert len(actions)==3
     assert all('url' not in a['WFWorkflowActionIdentifier'].lower() for a in actions)
     assert actions[-1]['WFWorkflowActionParameters']['preview']['Value']['OutputUUID']==identifier
