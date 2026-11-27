@@ -545,7 +545,7 @@ enum WallMeasureMode { case none, outline, opening }
             scanTask?.cancel();scanTask=nil;scanning=false
             recoveryTimer?.cancel();recoveryTimer=nil
             spatial.stopMoving()
-            spatial.saveMap(force:false)
+            spatial.saveMap(force:true)
             spatial.requireSurfaceConfirmation()
             desktop.setTracking(false)
             videoRunning=false;view.session.pause(); view.isPlaying = false;view.rendersContinuously=false
@@ -559,7 +559,7 @@ enum WallMeasureMode { case none, outline, opening }
         if headset { setHeadset(false) }
         scanTask?.cancel();scanTask=nil;scanning=false
         recoveryTimer?.cancel();recoveryTimer=nil
-        spatial.saveMap(force:false)
+        spatial.saveMap(force:true)
         stopped = true
         hands.reset()
         videoRunning=false;view.session.pause(); view.isPlaying = false;view.rendersContinuously=false
