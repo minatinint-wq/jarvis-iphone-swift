@@ -100,6 +100,7 @@ enum WallMeasureMode { case none, outline, opening }
     var liveWall:LiveWallEffect!
     var portal:SpatialWallPortal!
     private var savedMapSuspended=false
+    private var portalRequested=false
     @Published var roomSetupPresented=false
     private var fistMenu=SpatialFistMenuGesture()
     @Published var status = "Ambiente fixo. Escaneie somente para ler uma nova superfície."
@@ -301,16 +302,14 @@ enum WallMeasureMode { case none, outline, opening }
             catch { notice = "Modelo local indisponível: \(id)." }
             await Task.yield()
         }
-        view.prepare(Array(materials.values)) { [weak self] ready in
-            Task { @MainActor in
-                guard let self, !self.stopped else { return }
-                self.prepared = ready
-                self.started = true
-                if self.foreground {
-                    if self.localizationTimedOut { self.spatial.suspendSavedMap();self.savedMapSuspended=true;self.initialMap=nil;self.localizationTimedOut=false }
-                    self.calibrateCurrentRoom()
-                }
-            }
+        let ready:Bool = await withCheckedContinuation { continuation in
+            view.prepare(Array(materials.values)) { ready in continuation.resume(returning:ready) }
+        }
+        guard !stopped else { return }
+        prepared=ready;started=true
+        if foreground {
+            if localizationTimedOut { spatial.suspendSavedMap();savedMapSuspended=true;initialMap=nil;localizationTimedOut=false }
+            calibrateCurrentRoom()
         }
     }
 
@@ -412,6 +411,7 @@ enum WallMeasureMode { case none, outline, opening }
         feedback("Olhe para uma área livre do piso ou da mesa. Depois aponte por dois segundos para colocar o modelo.")
     }
     private func cancelLiveWallCapture() {
+        portalRequested=false
         let reading=liveWall.capturing
         liveWall.cancel()
         if reading {
@@ -429,17 +429,25 @@ enum WallMeasureMode { case none, outline, opening }
     }
 
     func beginPortal() {
-        beginHandsFreeWall("white")
-        liveWall.onSurface = { [weak self] hit,meshes in self?.portal.place(hit,meshes:meshes) ?? false }
+        portalRequested=true;beginHandsFreeWall("white")
+        guard liveWall.armed else { portalRequested=false;return }
+        liveWall.onSurface = { [weak self] hit,meshes in
+            guard let self else { return false }
+            let placed=self.portal.place(hit,meshes:meshes)
+            if placed { self.portalRequested=false }
+            return placed
+        }
         feedback("Aponte para uma área livre da parede por dois segundos. Vou abrir um portal para um bosque.")
     }
     private func releaseUnlocalizedMap() {
         // A saved coordinate frame is never transplanted to a guessed camera pose.
+        let resumePortal=portalRequested
         scanTask?.cancel();scanTask=nil;scanning=false
         panel.close(recordChange:false);desktop.close(recordChange:false);portal.clear(recordChange:false)
         roomWall.clear();liveWall.clear();spatial.suspendSavedMap()
         savedMapSuspended=true;initialMap=nil;mapStarted=false;planes.removeAll();occluders.values.forEach{$0.removeFromParentNode()};occluders.removeAll()
-        poseStability.reset();tracking=false;interactionReady=false;run(reset:true);calibrateCurrentRoom()
+        poseStability.reset();tracking=false;interactionReady=false;run(reset:true)
+        if resumePortal { beginPortal() } else { calibrateCurrentRoom() }
         feedback("O mapa antigo não foi reconhecido. Liberei uma sessão nova sem apagar o salvo. Diga recuperar mapa para tentar de novo; salvar mapa substitui o anterior.")
     }
     private func armRecoveryTimer() {
@@ -539,7 +547,10 @@ enum WallMeasureMode { case none, outline, opening }
 
     func setForeground(_ active: Bool) {
         foreground = active
-        if active && started && !recoveryBusy { run() }
+        if active && started && !recoveryBusy {
+            if liveWall.capturing { if portalRequested { beginPortal() } else { calibrateCurrentRoom() } }
+            else { run() }
+        }
         else if !active {
             frameLink?.isPaused=true
             scanTask?.cancel();scanTask=nil;scanning=false
@@ -664,7 +675,7 @@ enum WallMeasureMode { case none, outline, opening }
         guard !recoveryBusy else { return }
         switch command {
         case .portal: beginPortal()
-        case .closePortal: liveWall.onSurface=nil;portal.clear();feedback("Portal fechado.")
+        case .closePortal: portalRequested=false;liveWall.onSurface=nil;portal.clear();feedback("Portal fechado.")
         case .calibrate: calibrateCurrentRoom()
         case .effects: panel.openEffectsRadial(tracking:interactionReady)
         case .roomSetup:
