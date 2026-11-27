@@ -481,7 +481,7 @@ enum SpatialPanelGeometry {
         case .creation:
             return [("Desenhar","pencil.tip",.studio("sketch")),("Gerar imagem por voz","photo",.command("gere uma imagem")),("Objetos e cenários","cube",.module(.scenes))]
         case .scenes,.walls:
-            return [("Portal na parede","door.left.hand.open",.wall(.portal)),("Fechar portal","xmark",.wall(.closePortal)),
+            return [("Caçada da Floresta","scope",.wall(.forestGame("start"))),("Pausar jogo","pause",.wall(.forestGame("pause"))),("Continuar jogo","play",.wall(.forestGame("resume"))),("Sair do jogo","xmark",.wall(.forestGame("stop"))),("Floresta do meu quarto","leaf.fill",.wall(.roomForest(true))),("Voltar ao quarto real","house",.wall(.roomForest(false))),("Arma de portal na porta","hand.point.up.left",.wall(.doorPortal)),("Calibrar floresta","viewfinder",.wall(.registerForest)),("Portal na parede","door.left.hand.open",.wall(.portal)),("Fechar portal","xmark",.wall(.closePortal)),
                     ("Parede branca","paintbrush",.wall(.roomWall("white"))),("Tijolos","square.grid.3x3",.wall(.roomWall("brick"))),
                     ("Marcar parede","ruler",.wall(.measure)),("Adicionar ponto","plus.circle",.wall(.point)),
                     ("Excluir porta ou móvel","rectangle.dashed",.wall(.opening)),("Aplicar recorte","checkmark",.wall(.approve)),
@@ -515,7 +515,7 @@ enum SpatialPanelGeometry {
     }
     private var radialItems:[(String,String,SpatialPanelAction)] {
         if effectsCatalog {
-            return [("Portal","door.left.hand.open",.wall(.portal)),("Fechar portal","xmark",.wall(.closePortal)),("Branco","paintbrush.fill",.wall(.roomWall("white"))),
+            return [("Caçada da Floresta","scope",.wall(.forestGame("start"))),("Guardião","pawprint.fill",.model("animated_dragon")),("Portal na porta","door.left.hand.open",.wall(.doorPortal)),("Quarto floresta","leaf.fill",.wall(.roomForest(true))),("Quarto real","house",.wall(.roomForest(false))), ("Portal na parede","door.left.hand.open",.wall(.portal)),("Fechar portal","xmark",.wall(.closePortal)),("Branco","paintbrush.fill",.wall(.roomWall("white"))),
                     ("Tijolos","square.grid.3x3.fill",.wall(.roomWall("brick"))),
                     ("Robô","figure.wave",.model("animated_robot")),
                     ("Raposa","pawprint.fill",.model("animated_fox")),

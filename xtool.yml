@@ -431,3 +431,25 @@ resources:
 - JarvisPhone/Resources/Spatial_treestump_0_NormalGL.jpg
 
 - JarvisPhone/Resources/Spatial_treestump_0_Roughness.jpg
+
+- JarvisPhone/Resources/RoomForest_pickup.wav
+
+- JarvisPhone/Resources/RoomForest_sky.jpg
+
+- JarvisPhone/Resources/Spatial_animated_dragon_0.mesh
+
+- JarvisPhone/Resources/Spatial_animated_dragon_0.skin
+
+- JarvisPhone/Resources/Spatial_animated_dragon_1.mesh
+
+- JarvisPhone/Resources/Spatial_animated_dragon_1.skin
+
+- JarvisPhone/Resources/Spatial_animated_dragon_2.mesh
+
+- JarvisPhone/Resources/Spatial_animated_dragon_2.skin
+
+- JarvisPhone/Resources/Spatial_animated_dragon_3.mesh
+
+- JarvisPhone/Resources/Spatial_animated_dragon_3.skin
+
+- JarvisPhone/Resources/Spatial_animated_dragon_rig.json

@@ -20,7 +20,7 @@ import SwiftUI
         let bones: [Bone]
         let animations: [Clip]
     }
-    static let identifiers=["animated_robot","animated_fox"]
+    static let identifiers=["animated_robot","animated_fox","animated_dragon"]
     private static var specs: [String:Spec]=[:]
 
     static func matrix(_ values: [Float]) throws -> simd_float4x4 {
@@ -84,7 +84,7 @@ import SwiftUI
             let skinner=SCNSkinner(baseGeometry:geometry,bones:joints,boneInverseBindTransforms:inverse,boneWeights:weights,boneIndices:indices)
             skinner.skeleton=skeleton;node.skinner=skinner;root.addChildNode(node)
         }
-        play(root,clip:id == "animated_robot" ? "Idle" : "Survey")
+        play(root,clip:id == "animated_fox" ? "Survey" : "Idle")
         return root
     }
 
@@ -112,7 +112,7 @@ import SwiftUI
         }
         if !looping {
             root.runAction(.sequence([.wait(duration:clip.duration),.run { [weak root] _ in
-                Task { @MainActor in if let root { play(root,clip:id == "animated_robot" ? "Idle" : "Survey") } }
+                Task { @MainActor in if let root { play(root,clip:id == "animated_fox" ? "Survey" : "Idle") } }
             }]),forKey:"rig-return")
         }
         return true

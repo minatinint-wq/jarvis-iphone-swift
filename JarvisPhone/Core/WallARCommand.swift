@@ -40,6 +40,7 @@ enum WallARCommand: Equatable {
     case model(String), resizeObject(Float), moveObject(Float,Float), saveMap, room(String), desktop
     case character(String), headset(Bool), recover, keyboard(Bool)
     case roomSetup,roomWall(String),roomClear,effects,calibrate,portal,closePortal
+    case roomForest(Bool),doorPortal,registerForest,forestGame(String)
 
     /// Only navigation-like speech enters the spatial interpreter; ordinary tools stay available.
     static func needsInterpretation(_ input: String) -> Bool {
@@ -51,6 +52,18 @@ enum WallARCommand: Equatable {
     static func parse(_ input: String, inStudio: Bool) -> Self? {
         let s = PhoneIntentPhrases.normalized(input)
         guard !s.isEmpty, s.range(of: #"\b(nao|nunca|nem|talvez|disse|dizer|dissesse|se)\b"#, options: .regularExpression) == nil else { return nil }
+        if inStudio,s.contains("portal"),s.range(of:#"^(?:fecha|feche|fechar|apaga|apague|remova|remover)\b"#,options:.regularExpression) != nil { return .closePortal }
+        if s.contains("portal"),s.contains("porta"),!s.contains("parede") { return .doorPortal }
+        if s.contains("floresta"),(s.contains("quarto") || s.contains("casa")),s.range(of:#"^(?:transforma|transforme|transformar|cria|crie|criar|ativa|ative|ativar)\b"#,options:.regularExpression) != nil { return .roomForest(true) }
+        if ["iniciar jogo da floresta","jogar na floresta","iniciar cacada","cacada da floresta","modo jogo","jogar novamente","iniciar minigame"].contains(s) { return .forestGame("start") }
+        if inStudio,["pausar jogo","pausa o jogo"].contains(s) { return .forestGame("pause") }
+        if inStudio,["continuar jogo","continua o jogo","retomar jogo"].contains(s) { return .forestGame("resume") }
+        if inStudio,["sair do jogo","fechar jogo","parar jogo"].contains(s) { return .forestGame("stop") }
+        if inStudio,["mostrar placar","qual minha pontuacao","meu placar"].contains(s) { return .forestGame("score") }
+        if ["quarto tomado por floresta","modo floresta","ativar floresta do quarto","floresta no meu quarto","entrar no portal","entra no portal","entrar na floresta","cria uma floresta neste quarto","transformar meu quarto em floresta","transforma meu quarto numa floresta","transforma o quarto em floresta","transforme meu quarto em floresta"].contains(s) { return .roomForest(true) }
+        if inStudio,["sair da floresta","sair do portal","voltar para o quarto real","volta pro quarto real","desativar floresta","fechar floresta"].contains(s) { return .roomForest(false) }
+        if ["abrir portal","abre o portal","portal na porta","abrir portal na porta","coloca o portal na porta","arma de portal","modo arma de portal","ativar arma de portal","portal com a mao","ativar portal com a mao"].contains(s) { return .doorPortal }
+        if inStudio,["calibrar floresta","alinhar floresta","reconhecer meu quarto","reconhecer o quarto","alinhar quarto automaticamente"].contains(s) { return .registerForest }
         if ["abrir portal","abre o portal","abrir portal na parede","abre um portal na parede","cria um portal","criar portal","portal na parede","portal de parede"].contains(s) { return .portal }
         if inStudio,["fechar portal","fecha o portal","remover portal","apagar portal"].contains(s) { return .closePortal }
         if ["modo vr box","vr box","ativar vr box","abrir vr box","modo oculos","ativar modo oculos"].contains(s) { return .headset(true) }
@@ -60,7 +73,7 @@ enum WallARCommand: Equatable {
         if inStudio,["fechar teclado","fecha o teclado","recolher teclado","esconder teclado"].contains(s) { return .keyboard(false) }
         if s.range(of: #"^(?:(?:abre|abra|abrir|ativa|ative|ativar) (?:o )?)?(?:modo ar|realidade aumentada|pintura ar|parede ar|pintar parede)$"#, options: .regularExpression) != nil { return .open }
         if let module=SpatialModule.opening(input), inStudio || s.range(of:#"\b(painel|modulo|modulos|central|interface|controles)\b"#,options:.regularExpression) != nil { return .panel(module) }
-        let scenes: [String:SpatialTheme] = ["abre o bosque":.forest,"abre a floresta":.forest,"cria uma floresta neste quarto":.forest,"coloca uma floresta":.forest,"cenario floresta":.forest,"cenario bosque":.forest,"bosque noturno":.enchanted,"floresta encantada":.enchanted,"cenario noturno":.enchanted,"cenario estudio":.studio,"abre o estudio ar":.studio,"coloca o radio":.studio,"cenario garagem":.garage,"abrir garagem":.garage,"abre a garagem":.garage,"cenario sala":.lounge,"sala interativa":.lounge,"jardim aquatico":.aquarium,"cenario aquario":.aquarium]
+        let scenes: [String:SpatialTheme] = ["abre o bosque":.forest,"abre a floresta":.forest,"coloca uma floresta":.forest,"cenario floresta":.forest,"cenario bosque":.forest,"bosque noturno":.enchanted,"floresta encantada":.enchanted,"cenario noturno":.enchanted,"cenario estudio":.studio,"abre o estudio ar":.studio,"coloca o radio":.studio,"cenario garagem":.garage,"abrir garagem":.garage,"abre a garagem":.garage,"cenario sala":.lounge,"sala interativa":.lounge,"jardim aquatico":.aquarium,"cenario aquario":.aquarium]
         if let scene=scenes[s] { return .theme(scene) }
         if ["abre o modo espacial","abre o modo cenarios","cenarios ar","modo espacial"].contains(s) { return .theme(.forest) }
         if inStudio {
@@ -75,7 +88,7 @@ enum WallARCommand: Equatable {
             if ["esta e a sala","estou na sala","ambiente sala"].contains(s) { return .room("Sala") }
             let actions=["robo acene":"Wave","robo dance":"Dance","robo ande":"walk","robo pare":"stop","testar impacto":"impact","socar parede":"impact","reparar parede":"repair"]
             if let action=actions[s] { return .character(action) }
-            let models:[String:String] = ["personagem":"animated_robot","robo":"animated_robot","raposa":"animated_fox","humanoide":"demo_human","caixa":"demo_box","cadeira":"demo_chair","mesa":"demo_table","abacate":"avocado","garrafa":"waterbottle","lanterna antiga":"lantern","carro":"toycar","peixe":"barramundifish","poltrona":"sheenchair","sofa de veludo":"glamvelvetsofa","tenis":"materialsvariantsshoe","capacete espacial":"scifihelmet","capacete de piloto":"flighthelmet","camera antiga":"antiquecamera","cone":"trafficcone","geladeira":"commercialrefrigerator","relogio":"chronographwatch","cadeira classica":"chairdamaskpurplegold","pufe":"specularsilkpouf","sofa de couro":"sheenwoodleathersofa","luminaria":"anisotropybarnlamp","concha":"iridescenceabalone","vaso de flores":"glassvaseflowers"]
+            let models:[String:String] = ["monstro":"animated_dragon","dragao":"animated_dragon","guardiao":"animated_dragon","personagem":"animated_robot","robo":"animated_robot","raposa":"animated_fox","humanoide":"demo_human","caixa":"demo_box","cadeira":"demo_chair","mesa":"demo_table","abacate":"avocado","garrafa":"waterbottle","lanterna antiga":"lantern","carro":"toycar","peixe":"barramundifish","poltrona":"sheenchair","sofa de veludo":"glamvelvetsofa","tenis":"materialsvariantsshoe","capacete espacial":"scifihelmet","capacete de piloto":"flighthelmet","camera antiga":"antiquecamera","cone":"trafficcone","geladeira":"commercialrefrigerator","relogio":"chronographwatch","cadeira classica":"chairdamaskpurplegold","pufe":"specularsilkpouf","sofa de couro":"sheenwoodleathersofa","luminaria":"anisotropybarnlamp","concha":"iridescenceabalone","vaso de flores":"glassvaseflowers"]
             if s.range(of:#"^(?:coloca|coloque|cria|crie|adiciona|adicione)\b"#,options:.regularExpression) != nil,
                let model=models.keys.sorted(by:{$0.count>$1.count}).first(where:{ s.range(of:"\\b"+NSRegularExpression.escapedPattern(for:$0)+"\\b",options:.regularExpression) != nil }).flatMap({models[$0]}) { return .model(model) }
             if ["aumente esse objeto","aumenta esse objeto","aumentar objeto"].contains(s) { return .resizeObject(1.15) }

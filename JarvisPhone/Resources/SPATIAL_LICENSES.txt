@@ -238,3 +238,8 @@ Portal ground: Forest Floor by eye-candy.xyz, Poly Haven, CC0-1.0. https://polyh
 Ground color/normal/roughness derived from 2K originals, resized to 1K for mobile. HDRI remains original 2K. See AR_MATERIALS.json hashes.
 
 Tree Stump 01 by Rob Tuytel; Rubber Duck Toy by Plat251; Concrete Moss by Rob Tuytel. Poly Haven, CC0-1.0. See SPATIAL_ASSETS.json and AR_MATERIALS.json for original URLs and file hashes.
+
+Guardião da floresta / Dragon — Quaternius, Animated Monster Pack, CC0. https://quaternius.com/packs/animatedmonster.html
+GLB conversion: CAIRNFALL contributors. Changes: metric normalization to 1.65m and native skeletal animation sampling.
+RoomForest_sky.jpg: tone-mapped forest_slope HDR, Andreas Mischok / Poly Haven, CC0.
+RoomForest_pickup.wav: original procedural tone for Jarvis.

@@ -1,0 +1,24 @@
+name: Forest geometry and Swift verification
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: macos-26
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify metric registration and gesture state machines
+        run: |
+          swiftc JarvisPhone/Core/RoomForestMath.swift scripts/probe-forest-math.swift -o /tmp/forest-probe
+          /tmp/forest-probe
+      - name: Typecheck native application before packaging
+        run: |
+          set -o pipefail
+          find JarvisPhone -name '*.swift' -print0 | xargs -0 xcrun swiftc -typecheck -parse-as-library -swift-version 5 -D DEBUG -module-name JarvisPhone -sdk "$(xcrun --sdk iphonesimulator --show-sdk-path)" -target "$(uname -m)-apple-ios17.0-simulator" 2>&1 | tee forest-typecheck.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: forest-swift-verification
+          path: forest-typecheck.log

@@ -137,6 +137,64 @@ enum WallMeasureMode { case none, outline, opening }
     var onFeedback: ((String) -> Void)?
     var webWindowVisible = false
     var hands:SpatialHands!
+    var forestGame:RoomForestGame!
+    private var gameRequested=false
+    private var forestWanted=UserDefaults.standard.bool(forKey:"jarvis.roomForest.enabled.v40")
+    private var portalGunArmed=false
+    private var portalTrigger=SpatialPortalTrigger()
+    private var roomRegistering=false
+    private var roomMeshes:[UUID:ARMeshAnchor]=[:]
+    private var registrationRestarted=false
+    private func setRoomForest(_ value:Bool,announce:Bool=true) {
+        forestWanted=value;hands?.setSkeletonVisible(value || !panel.immersive);UserDefaults.standard.set(value,forKey:"jarvis.roomForest.enabled.v40")
+        if value,!roomWall.aligned { beginForestRegistration();return }
+        guard roomWall.forestActive != value else { return }
+        if roomWall.setForest(value) {
+            if announce { feedback(value ? "Seu quarto está tomado pela floresta. Piso, paredes e móveis continuam nas posições capturadas." : "De volta ao quarto real.") }
+            spatial.markDirty();spatial.saveMap(force:true)
+        }
+    }
+    func resumeRoomForest() {
+        guard forestWanted,!roomRegistering else { return }
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for:.seconds(3))
+            guard let self,!self.stopped,self.forestWanted else { return }
+            if self.roomWall.aligned { self.setRoomForest(true,announce:false) }
+            else { self.beginForestRegistration() }
+        }
+    }
+    private func armDoorPortal() {
+        portalGunArmed=true;portalTrigger.reset();endManualWallInput();panel.close();registrationRestarted=false
+        if !roomWall.aligned { beginForestRegistration();return }
+        if !scanning { toggleScan() } else { run() }
+        feedback("Mostre a porta. Faça uma arma com indicador estendido e os outros três dedos dobrados. Segure o polegar levantado e abaixe para disparar.")
+    }
+    private func beginForestRegistration() {
+        guard started,foreground,!stopped,!recoveryBusy,!fatal else { return }
+        guard roomWall.sourceCapture() != nil else { feedback(roomWall.status);return }
+        scanTask?.cancel();liveWall.cancel();roomWall.cancelPaint();roomMeshes=[:];roomRegistering=true;scanning=true;run()
+        feedback("Vou reconhecer o quarto em oito segundos. Mostre o piso, três paredes e um móvel. Não precisa marcar pontos.")
+        scanTask=Task { @MainActor [weak self] in
+            try? await Task.sleep(for:.seconds(8))
+            guard !Task.isCancelled,let self,!self.stopped else { return }
+            let frame=self.view.session.currentFrame
+            let capture=RoomForestScene.live(meshes:Array(self.roomMeshes.values),planes:Array(self.planes.values))
+            self.roomRegistering=false;self.scanning=false;self.roomMeshes=[:];self.run()
+            if self.roomWall.aligned {
+                if self.forestWanted { self.setRoomForest(true) };return
+            }
+            guard let frame,case .normal=frame.camera.trackingState else {
+                if !self.registrationRestarted { self.registrationRestarted=true;self.releaseUnlocalizedMap() }
+                else { self.feedback("Não obtive posição estável. Diga calibrar floresta para repetir com a câmera livre.") }
+                return
+            }
+            guard let capture else { self.feedback("Não li piso e paredes suficientes. Diga calibrar floresta e mostre mais um canto.");return }
+            self.status="Comparando a geometria atual com sua captura…"
+            if await self.roomWall.registerAutomatically(capture) {
+                self.spatial.approveLiveMapReplacement();self.spatial.markDirty();self.spatial.saveMap(force:true)
+            } else if !Task.isCancelled { self.feedback(self.roomWall.status) }
+        }
+    }
     @Published var handStatus="Mostre a mão à câmera traseira."
     private var palmRecall=SpatialPalmRecall()
     private var lastWindow="panel"
@@ -148,9 +206,16 @@ enum WallMeasureMode { case none, outline, opening }
         spatial = SpatialWorld(view:view)
         desktop=SpatialDesktop(view:view)
         roomWall=ScannedRoomWall(view:view)
+        forestGame=RoomForestGame(view:view);forestGame.onFeedback = { [weak self] in self?.feedback($0) }
         portal=SpatialWallPortal(view:view)
         portal.onChange = { [weak self] in self?.spatial.markDirty() }
         portal.onFeedback = { [weak self] in self?.feedback($0) }
+        portal.roomPose = { [weak self] in self?.roomWall.pose }
+        portal.roomPreview = { [weak self] wall in guard let self,self.roomWall.aligned else { return nil };return self.roomWall.forestPreview(excludingWall:wall) }
+        portal.mappedWallID = { [weak self] point in self?.roomWall.wallID(at:point) }
+        portal.onDoorwayReady = { [weak self] opening in self?.roomWall.setDoorway(opening) }
+        portal.forestVisible = { [weak self] in self?.roomWall.forestActive ?? false }
+        portal.onCross = { [weak self] entered in self?.setRoomForest(entered) }
         spatial.portalSnapshot = { [weak self] in self?.portal.snapshot() }
         liveWall=LiveWallEffect(view:view)
         liveWall.onFeedback = { [weak self] in self?.feedback($0) }
@@ -159,7 +224,9 @@ enum WallMeasureMode { case none, outline, opening }
         roomWall.onRegistered = { [weak self] in
             guard let self else { return }
             self.scanTask?.cancel();self.scanTask=nil;self.scanning=false;self.run()
-            self.roomWall.arm("white");self.notice=self.roomWall.status
+            if self.forestWanted { self.setRoomForest(true);if self.gameRequested { self.forestGame.start(room:self.roomWall);self.run() } }
+            else if self.portalGunArmed { self.notice="Quarto reconhecido. Mire na porta, levante e abaixe o polegar para disparar.";self.run();self.feedback(self.notice) }
+            else { self.roomWall.arm("white");self.notice=self.roomWall.status }
         }
         spatial.panelSnapshot = { [weak self] in self?.panel.snapshot() }
         spatial.desktopSnapshot = { [weak self] in self?.desktop.snapshot() }
@@ -175,6 +242,7 @@ enum WallMeasureMode { case none, outline, opening }
             if self.desktop.inputBlocked { return }
             guard self.interactionReady,!self.recoveryBusy else {
                 _=self.fistMenu.update(closed:nil,time:sample?.time ?? ProcessInfo.processInfo.systemUptime)
+                self.portalTrigger.reset()
                 self.palmRecall=SpatialPalmRecall();self.dualScale=SpatialDualPinchScale();self.dualScaleTarget=nil
                 self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
                 self.hands.showProgress(0);return
@@ -188,6 +256,19 @@ enum WallMeasureMode { case none, outline, opening }
             if closed {
                 self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
                 self.hands.showProgress(0);return
+            }
+            if !self.panel.visible,self.forestGame.hand(sample) { self.hands.showProgress(0);return }
+            if self.portalGunArmed {
+                self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
+                let fire=self.portalTrigger.update(gun:sample.map{$0.portalGun},thumbRaised:sample?.thumbRaised ?? false,time:sample?.time ?? ProcessInfo.processInfo.systemUptime)
+                self.hands.showProgress(0)
+                self.handStatus=self.roomWall.aligned ? "Arma de portal · polegar para cima prepara, para baixo dispara" : "Reconhecendo a geometria do quarto…"
+                if fire,let sample,self.roomWall.aligned {
+                    if let opening=RoomDoorway.placement(point:sample.point,view:self.view,room:self.roomWall,planes:Array(self.planes.values)),self.portal.placeDoorway(opening) {
+                        self.portalGunArmed=false;self.run();self.spatial.markDirty();self.spatial.saveMap(force:true)
+                    } else { self.feedback("Não confirmei uma porta nesse alvo. Mostre a porta aberta por inteiro e tente de novo.") }
+                }
+                return
             }
             if self.liveWall.armed && !self.panel.contains(sample?.point ?? CGPoint(x:-1,y:-1)) {
                 self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
@@ -317,7 +398,8 @@ enum WallMeasureMode { case none, outline, opening }
         guard foreground, !stopped, !fatal else { return }
         let shouldReset=reset || pendingMapReset
         let config = SpatialCaptureProfile.configuration(scanning:scanning)
-        if liveWall.capturing,ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification) { config.sceneReconstruction = .meshWithClassification }
+        if (liveWall.capturing || roomRegistering),ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification) { config.sceneReconstruction = .meshWithClassification }
+        if (portalGunArmed || forestGame.enabled),ARWorldTrackingConfiguration.supportsFrameSemantics(.smoothedSceneDepth) { config.frameSemantics.insert(.smoothedSceneDepth) }
         if !mapStarted || shouldReset { config.initialWorldMap=initialMap;mapStarted=true }
         // Prefer moderate camera resolution at 60 Hz rather than 4K capture + AI.
         if activeVideoFormat == nil {
@@ -442,12 +524,13 @@ enum WallMeasureMode { case none, outline, opening }
     private func releaseUnlocalizedMap() {
         // A saved coordinate frame is never transplanted to a guessed camera pose.
         let resumePortal=portalRequested
+        let resumeForest=forestWanted || portalGunArmed
         scanTask?.cancel();scanTask=nil;scanning=false
         panel.close(recordChange:false);desktop.close(recordChange:false);portal.clear(recordChange:false)
         roomWall.clear();liveWall.clear();spatial.suspendSavedMap()
         savedMapSuspended=true;initialMap=nil;mapStarted=false;planes.removeAll();occluders.values.forEach{$0.removeFromParentNode()};occluders.removeAll()
         poseStability.reset();tracking=false;interactionReady=false;run(reset:true)
-        if resumePortal { beginPortal() } else { calibrateCurrentRoom() }
+        if resumePortal { beginPortal() } else if resumeForest { beginForestRegistration() } else { calibrateCurrentRoom() }
         feedback("O mapa antigo não foi reconhecido. Liberei uma sessão nova sem apagar o salvo. Diga recuperar mapa para tentar de novo; salvar mapa substitui o anterior.")
     }
     private func armRecoveryTimer() {
@@ -572,6 +655,7 @@ enum WallMeasureMode { case none, outline, opening }
         recoveryTimer?.cancel();recoveryTimer=nil
         spatial.saveMap(force:true)
         stopped = true
+        forestGame.stop();gameRequested=false
         hands.reset()
         videoRunning=false;view.session.pause(); view.isPlaying = false;view.rendersContinuously=false
         view.session.delegate = nil; view.delegate = nil
@@ -688,8 +772,19 @@ enum WallMeasureMode { case none, outline, opening }
     func apply(_ command: WallARCommand) {
         guard !recoveryBusy else { return }
         switch command {
+        case .forestGame(let action):
+            switch action {
+            case "start": gameRequested=true;portalGunArmed=false;setRoomForest(true);if roomWall.aligned { forestGame.start(room:roomWall);run() }
+            case "pause": forestGame.pause(true);feedback("Jogo pausado.")
+            case "resume": forestGame.pause(false);feedback("Jogo retomado.")
+            case "score": forestGame.showScore()
+            default: gameRequested=false;forestGame.stop();run();feedback("Jogo encerrado.")
+            }
+        case .doorPortal: armDoorPortal()
+        case .roomForest(let value): setRoomForest(value)
+        case .registerForest: registrationRestarted=false;beginForestRegistration()
         case .portal: beginPortal()
-        case .closePortal: cancelLiveWallCapture();portal.clear();feedback("Portal fechado.")
+        case .closePortal: portalGunArmed=false;portalTrigger.reset();cancelLiveWallCapture();portal.clear();setRoomForest(false,announce:false);run();feedback("Portal fechado.")
         case .calibrate: calibrateCurrentRoom()
         case .effects: panel.openEffectsRadial(tracking:interactionReady)
         case .roomSetup:
@@ -822,6 +917,9 @@ enum WallMeasureMode { case none, outline, opening }
         roomWall.setTracking(good)
         liveWall.setTracking(good)
         portal.frame(frame,stable:interactionReady)
+        forestGame.frame(time:frame.timestamp,stable:interactionReady && roomWall.forestActive && !panel.visible)
+        if gameRequested,roomWall.aligned,!forestGame.enabled { forestGame.start(room:roomWall);run() }
+        if interactionReady,forestWanted,roomWall.aligned,!roomWall.forestActive { setRoomForest(true,announce:false) }
         // Vision's 2D skeleton does not need a mapped room or an active module.
         // Spatial actions remain gated in onSample above, separately from drawing.
         if headset { onHeadsetFrame?(frame) }
@@ -888,7 +986,11 @@ enum WallMeasureMode { case none, outline, opening }
                 }
                 continue
             }
-            if let mesh=anchor as? ARMeshAnchor { liveWall.remember(mesh);continue }
+            if let mesh=anchor as? ARMeshAnchor {
+                liveWall.remember(mesh)
+                if roomRegistering,roomMeshes[mesh.identifier] != nil || roomMeshes.count<64 { roomMeshes[mesh.identifier]=mesh }
+                continue
+            }
             panel.update(anchor)
             desktop.update(anchor)
             liveWall.update(anchor)
@@ -1170,6 +1272,7 @@ struct WallCameraView: UIViewRepresentable {
                 }
                 await controller.start()
                 consume()
+                if model.wallARRequest == nil { controller.resumeRoomForest() }
             }
             .sheet(isPresented:$controller.roomSetupPresented) {
                 ScannedRoomSetup(room:controller.roomWall) { controller.beginRoomMatching() }
@@ -1221,7 +1324,7 @@ struct WallCameraView: UIViewRepresentable {
             }
             .onReceive(controller.panel.$visible) { panelVisible=$0;controller.spatial.panelBlocking=($0 && !immersive) || overlayVisible }
             .onReceive(controller.panel.$immersive) {
-                immersive=$0;controller.hands.setSkeletonVisible(!$0)
+                immersive=$0;controller.hands.setSkeletonVisible(!$0 || controller.roomWall.forestActive || controller.forestGame.enabled)
                 controller.spatial.panelBlocking=(panelVisible && !$0) || overlayVisible
             }
             .onReceive(controller.panel.$status) { panelStatus=$0 }

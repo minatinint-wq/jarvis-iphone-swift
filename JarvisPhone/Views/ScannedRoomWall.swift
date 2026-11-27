@@ -20,6 +20,69 @@ struct ScannedRoomManifest:Decodable {
     @Published private(set) var aligned=false
     private(set) var manifest:ScannedRoomManifest?
     private var base:SCNGeometry?
+    @Published private(set) var forestActive=false
+    private var forestModel:SCNNode?
+    private var forestNode:SCNNode?
+    private var captureCache:RoomForestRegistration.Capture?
+    private var doorway:RoomDoorwayOpening?
+    private var hitFaces:Data?
+    private var gameFloor:[SIMD3<Float>]?
+    func setDoorway(_ opening:RoomDoorwayOpening) {
+        guard let pose else { return }
+        let active=forestActive
+        _ = setForest(false);doorway=RoomDoorwayOpening(pose:simd_inverse(pose)*opening.pose,width:opening.width,height:opening.height);forestModel=nil
+        if let base,let faces,let doorway,let m=manifest,let root {
+            let (geometry,labels)=RoomForestScene.cut(base:base,assignments:faces,opening:doorway)
+            let occluder=SCNGeometry(sources:geometry.sources,elements:geometry.elements);occluder.materials=root.geometry?.materials ?? [];root.geometry=occluder;hitFaces=labels
+            forestModel=RoomForestScene.make(base:geometry,manifest:m,assignments:labels)
+        }
+        if active { _ = setForest(true) }
+    }
+    var pose:simd_float4x4? { aligned ? root?.simdTransform : nil }
+    var floorCenter:SIMD3<Float>? {
+        guard let m=manifest,let p=m.planes.first(where:{$0.kind=="floor"}),p.center.count==3 else { return nil }
+        return SIMD3(p.center[0],m.floorY,p.center[2])
+    }
+    func gameSpots()->[SIMD3<Float>] {
+        if let gameFloor { return gameFloor }
+        guard let base,let manifest,let faces else { return [] }
+        let spots=RoomForestScene.floorSpots(base:base,manifest:manifest,assignments:faces);gameFloor=spots;return spots
+    }
+    func sourceCapture()->RoomForestRegistration.Capture? {
+        if let captureCache { return captureCache }
+        guard prepare(),let base,let manifest,let faces else { return nil }
+        let capture=RoomForestScene.capture(base:base,manifest:manifest,assignments:faces);captureCache=capture;return capture
+    }
+    func registerAutomatically(_ live:RoomForestRegistration.Capture) async -> Bool {
+        guard let source=sourceCapture() else { return false }
+        let fit=await Task.detached(priority:.userInitiated) { RoomForestRegistration.fit(source:source,live:live) }.value
+        guard !Task.isCancelled else { return false }
+        guard let fit else { status="Não confirmei um encaixe único. Diga calibrar floresta e mostre três paredes, um canto e um móvel.";return false }
+        clear();let anchor=ARAnchor(name:"JarvisScannedRoom",transform:fit.pose);install(anchor);view.session.add(anchor:anchor)
+        status="Captura reconhecida pela geometria · erro médio \(Int(fit.error*100)) cm."
+        onChange?();onRegistered?();return true
+    }
+    func forestPreview(excludingWall:Int?=nil)->SCNNode? {
+        guard prepare(),let base,let m=manifest,let faces else { return nil }
+        if forestModel==nil { forestModel=RoomForestScene.make(base:base,manifest:m,assignments:faces,opening:doorway) }
+        guard let node=forestModel?.clone() else { return nil }
+        if let excludingWall { node.childNode(withName:"RoomForest-plane-\(excludingWall)",recursively:true)?.removeFromParentNode() }
+        return node
+    }
+    @discardableResult func setForest(_ value:Bool)->Bool {
+        guard value != forestActive else { return true }
+        if value {
+            guard aligned,let root,let node=forestPreview() else { status="Primeiro preciso reconhecer o quarto capturado.";return false }
+            node.categoryBitMask=1;root.addChildNode(node);forestNode=node
+        } else { forestNode?.removeFromParentNode();forestNode=nil }
+        forestActive=value;onChange?();return true
+    }
+    func wallID(at point:CGPoint)->Int? {
+        guard aligned,let root,let faces=hitFaces ?? faces,let m=manifest,
+              let hit=view.hitTest(point,options:[.categoryBitMask:16,.backFaceCulling:false]).first(where:{$0.node===root}),hit.faceIndex>=0,hit.faceIndex*4+4<=faces.count else { return nil }
+        let id=Int(faces.withUnsafeBytes{$0.loadUnaligned(fromByteOffset:hit.faceIndex*4,as:Int32.self)})
+        return m.planes.contains(where:{$0.id==id && $0.kind=="wall"}) ? id : nil
+    }
     private var faces:Data?
     private var realPoints:[SIMD3<Float>]=[]
     private var anchor:ARAnchor?
@@ -112,7 +175,7 @@ struct ScannedRoomManifest:Decodable {
             } else { status="Toque no mesmo ponto \(realPoints.count+1)/3 do piso real." }
             return true
         }
-        guard armed,tracking,let root,let faces,let m=manifest else { return false }
+        guard armed,tracking,let root,let faces=hitFaces ?? faces,let m=manifest else { return false }
         let hits=view.hitTest(point,options:[.categoryBitMask:16,.searchMode:SCNHitTestSearchMode.closest.rawValue,.backFaceCulling:false])
         guard let hit=hits.first(where:{$0.node===root}),hit.faceIndex>=0,hit.faceIndex*4+4<=faces.count else { return true }
         let id=Int(faces.withUnsafeBytes{$0.loadUnaligned(fromByteOffset:hit.faceIndex*4,as:Int32.self)})
@@ -135,7 +198,7 @@ struct ScannedRoomManifest:Decodable {
         return dwell.progress
     }
     private func wallTarget(_ point:CGPoint)->String? {
-        guard let root,let faces,let m=manifest,
+        guard let root,let faces=hitFaces ?? faces,let m=manifest,
               let hit=view.hitTest(point,options:[.categoryBitMask:16,.backFaceCulling:false]).first(where:{$0.node===root}),
               hit.faceIndex>=0,hit.faceIndex*4+4<=faces.count else { return nil }
         let id=Int(faces.withUnsafeBytes{$0.loadUnaligned(fromByteOffset:hit.faceIndex*4,as:Int32.self)})
@@ -147,7 +210,7 @@ struct ScannedRoomManifest:Decodable {
         material.colorBufferWriteMask=[];material.writesToDepthBuffer=true;material.readsFromDepthBuffer=true;material.isDoubleSided=true
         geometry.materials=[material]
         let node=SCNNode(geometry:geometry);node.categoryBitMask=16;node.simdTransform=anchor.transform;node.renderingOrder = -50
-        root=node;view.scene.rootNode.addChildNode(node);aligned=true;node.isHidden = !tracking
+        root=node;hitFaces=faces;view.scene.rootNode.addChildNode(node);aligned=true;node.isHidden = !tracking
     }
     private func paint(_ id:Int) {
         guard let base,let root,let m=manifest,let p=m.planes.first(where:{$0.id==id && $0.kind=="wall"}),p.normal.count==3,
@@ -170,7 +233,7 @@ struct ScannedRoomManifest:Decodable {
             material.multiply.contents=UIColor.white
             for (prop,key) in [(material.diffuse,"Color"),(material.normal,"NormalGL"),(material.roughness,"Roughness")] {
                 if let path=Bundle.main.path(forResource:"RoomFX_brick_"+key,ofType:"jpg") { prop.contents=UIImage(contentsOfFile:path) }
-                prop.contentsTransform=SCNMatrix4MakeScale(1/3,1/3,1)
+                prop.contentsTransform=SCNMatrix4MakeScale(1/0.75,1/0.75,1)
             }
             material.normal.intensity=0.5
         }
@@ -187,15 +250,15 @@ struct ScannedRoomManifest:Decodable {
     func update(_ anchor:ARAnchor) { if anchor.identifier==self.anchor?.identifier { self.anchor=anchor;root?.simdTransform=anchor.transform } }
     func snapshot()->SpatialScannedRoomRecord? {
         guard let anchor,let m=manifest else { return nil }
-        return SpatialScannedRoomRecord(anchor:anchor.identifier,transform:SpatialArchive.values(anchor.transform),sourceSHA256:m.sourceSHA256,plane:chosen,style:style)
+        return SpatialScannedRoomRecord(anchor:anchor.identifier,transform:SpatialArchive.values(anchor.transform),sourceSHA256:m.sourceSHA256,plane:chosen,style:style,forest:forestActive)
     }
     @discardableResult func restore(_ saved:SpatialScannedRoomRecord,anchor:ARAnchor)->Bool {
         guard prepare(),manifest?.sourceSHA256==saved.sourceSHA256 else { return false }
-        clear();style=saved.style;install(anchor);if let id=saved.plane { paint(id) };return true
+        clear();style=saved.style;install(anchor);if let id=saved.plane { paint(id) };_ = setForest(saved.forest ?? false);return true
     }
     func clear(preserveAnchor:Bool=false) {
         if !preserveAnchor,let anchor { view.session.remove(anchor:anchor) }
-        root?.removeFromParentNode();root=nil;patch=nil;anchor=nil;chosen=nil;aligned=false;armed=false
+        root?.removeFromParentNode();root=nil;patch=nil;anchor=nil;chosen=nil;aligned=false;armed=false;forestNode=nil;forestActive=false;doorway=nil;forestModel=nil
         cancelMatching()
     }
 }

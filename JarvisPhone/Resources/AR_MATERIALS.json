@@ -151,5 +151,12 @@
     "height": 1024,
     "license": "CC0-1.0",
     "source": "https://polyhaven.com/a/concrete_moss"
+  },
+  {
+    "file": "RoomForest_sky.jpg",
+    "sha256": "89bf5f968055f98c48aa876c146df24556a1e65957e9d618321efc6a2c9c017d",
+    "width": 2048,
+    "height": 1024,
+    "source": "Tone-mapped derivative of Portal_forest_slope_2k.hdr; Andreas Mischok, Poly Haven, CC0."
   }
 ]

@@ -6,7 +6,10 @@ struct SpatialPortalRecord: Codable, Equatable {
     var width: Float
     var height: Float
     var theme: String = "forest"
-    var valid: Bool { width.isFinite && height.isFinite && (0.3...1.5).contains(width) && (0.4...2).contains(height) && theme == "forest" }
+    var doorway: Bool? = nil
+    var capturedWall: Int? = nil
+    var hasExited: Bool? = nil
+    var valid: Bool { width.isFinite && height.isFinite && (0.3...1.5).contains(width) && (0.4...(doorway == true ? 2.3 : 2)).contains(height) && theme == "forest" }
 }
 
 enum SpatialPortalMath {

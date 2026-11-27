@@ -4242,5 +4242,114 @@
     ],
     "triangles": 4288,
     "vertices": 2489
+  },
+  {
+    "id": "animated_dragon",
+    "title": "Guardião da floresta · animado",
+    "author": "Quaternius / CAIRNFALL conversion",
+    "license": "CC0-1.0",
+    "source": "https://raw.githubusercontent.com/euuuuuuan/cairnfall-public/8ee4cfd789282c59632a9339e61564b7d6c1acfe/assets/vendor/quaternius_monsters/Dragon.glb",
+    "sourceSHA256": "95ed1323831ea74b1268e3a9d583a5293ed56297638729992c0ddfc2dc0eda30",
+    "rig": "Spatial_animated_dragon_rig.json",
+    "heightMeters": 1.65,
+    "triangles": 1104,
+    "parts": [
+      {
+        "mesh": "Spatial_animated_dragon_0.mesh",
+        "skin": "Spatial_animated_dragon_0.skin",
+        "roughness": 0.690034806728363,
+        "metalness": 0.0,
+        "baseColor": [
+          0.04970657452940941,
+          0.011612245813012123,
+          0.014443841762840748,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_animated_dragon_1.mesh",
+        "skin": "Spatial_animated_dragon_1.skin",
+        "roughness": 0.690034806728363,
+        "metalness": 0.0,
+        "baseColor": [
+          0.013410413637757301,
+          0.013410413637757301,
+          0.013410413637757301,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_animated_dragon_2.mesh",
+        "skin": "Spatial_animated_dragon_2.skin",
+        "roughness": 0.690034806728363,
+        "metalness": 0.0,
+        "baseColor": [
+          0.32637572288513184,
+          0.2261408418416977,
+          0.023456988856196404,
+          1.0
+        ]
+      },
+      {
+        "mesh": "Spatial_animated_dragon_3.mesh",
+        "skin": "Spatial_animated_dragon_3.skin",
+        "roughness": 0.690034806728363,
+        "metalness": 0.0,
+        "baseColor": [
+          0.009018179029226303,
+          0.009018179029226303,
+          0.009018179029226303,
+          1.0
+        ]
+      }
+    ],
+    "files": [
+      {
+        "file": "Spatial_animated_dragon_0.mesh",
+        "bytes": 86844,
+        "sha256": "5460ad518c825a8c8d4bca332344f570f56041b4590713edaa36d713c673fbb9"
+      },
+      {
+        "file": "Spatial_animated_dragon_0.skin",
+        "bytes": 48240,
+        "sha256": "d3d5d8d0e5c823602d0a8ee424ee56c974799853f40c1796e57ff2e42844222b"
+      },
+      {
+        "file": "Spatial_animated_dragon_1.mesh",
+        "bytes": 11028,
+        "sha256": "fda22e1757b5a116a3d063e217c2ffabdef8fb24023fea482759a14369f28424"
+      },
+      {
+        "file": "Spatial_animated_dragon_1.skin",
+        "bytes": 6120,
+        "sha256": "bc070537be1f807ea2a89635d529ae1ff0c5f380b5d8e5f500e01edcd7a536ae"
+      },
+      {
+        "file": "Spatial_animated_dragon_2.mesh",
+        "bytes": 1740,
+        "sha256": "2311974c2f1eb299bf2e5f35b8a72ad4ba4ec54874b93b43b28c98a779ba19fc"
+      },
+      {
+        "file": "Spatial_animated_dragon_2.skin",
+        "bytes": 960,
+        "sha256": "08a6c7d44a4859060102cfef53005906c7b7e47654be8c9d7a3d4e90f2134776"
+      },
+      {
+        "file": "Spatial_animated_dragon_3.mesh",
+        "bytes": 19668,
+        "sha256": "099167b7c78f8581d304d0309369eb7d620416cacdab68441f65374a109643a1"
+      },
+      {
+        "file": "Spatial_animated_dragon_3.skin",
+        "bytes": 10920,
+        "sha256": "dbc5124d70f2938609d74f17a237dd8f3eee250cf2f14cb12732a47ce0facf11"
+      },
+      {
+        "file": "Spatial_animated_dragon_rig.json",
+        "bytes": 639653,
+        "sha256": "4c15353f81893d2fa1dbfd8a4d3bfe2b8df43854905a4e031f7740403347f05d"
+      }
+    ],
+    "animationSkinErrorMeters": 2.699743350147223e-07
   }
 ]

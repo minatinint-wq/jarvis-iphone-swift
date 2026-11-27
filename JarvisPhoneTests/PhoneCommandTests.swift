@@ -9,6 +9,97 @@ import ARKit
 @testable import JarvisPhone
 
 final class PhoneCommandTests: XCTestCase {
+
+    func testDoorPortalThumbTriggerRejectsLostTrackingAndDoesNotRepeat() {
+        var trigger=SpatialPortalTrigger()
+        for t in [0.0,0.15,0.31] { XCTAssertFalse(trigger.update(gun:true,thumbRaised:true,time:t)) }
+        XCTAssertTrue(trigger.update(gun:true,thumbRaised:false,time:0.35))
+        XCTAssertFalse(trigger.update(gun:true,thumbRaised:false,time:0.4))
+        _=trigger.update(gun:nil,thumbRaised:false,time:0.5)
+        XCTAssertFalse(trigger.update(gun:true,thumbRaised:false,time:0.6))
+    }
+    func testDoorPassageRequiresContinuousExitThenReturnThroughOpening() {
+        var door=SpatialDoorPassage(),events:[Bool]=[];var time=0.0
+        for z:Float in [1,0.7,0.4,0.1,-0.1,-0.4,-0.1,0.1,0.4] {
+            if let e=door.update(position:SIMD3(0,0.55,z),time:time,width:0.8,height:2,stable:true) { events.append(e) };time+=0.1
+        }
+        XCTAssertEqual(events,[false,true])
+        door.reset();_=door.update(position:SIMD3(0,0,-0.5),time:0,width:0.8,height:2,stable:true)
+        XCTAssertNil(door.update(position:SIMD3(0,0,0.5),time:0.1,width:0.8,height:2,stable:true))
+        door.reset();time=0
+        for z:Float in [-0.4,-0.1,0.1,0.4] {
+            XCTAssertNil(door.update(position:SIMD3(1.2,0,z),time:time,width:0.8,height:2,stable:true));time+=0.1
+        }
+    }
+    func testForestRegistrationMatchesGeometryAndRejectsSymmetricRoom() throws {
+        var pose=simd_float4x4(simd_quatf(angle:0.63,axis:SIMD3(0,1,0)));pose.columns.3=SIMD4(0.7,0.4,-1.2,1)
+        func live(_ capture:RoomForestRegistration.Capture)->RoomForestRegistration.Capture {
+            let walls=capture.walls.enumerated().filter{$0.offset != 1}.map { _,w -> RoomForestRegistration.Wall in
+                let c=pose*SIMD4(w.center,1),n=pose*SIMD4(w.normal,0)
+                return .init(center:SIMD3(c.x,c.y,c.z),normal:SIMD3(n.x,n.y,n.z),low:0,high:0,bottom:0,top:3)
+            }
+            let points=capture.points.filter{$0.p.x<3.95}.map { x -> RoomForestRegistration.Point in
+                let p=pose*SIMD4(x.p,1),n=pose*SIMD4(x.n,0)
+                return .init(p:SIMD3(p.x,p.y,p.z),n:SIMD3(n.x,n.y,n.z),kind:x.kind)
+            }
+            return .init(floor:0.4,walls:walls,points:points)
+        }
+        let source=roomFixture(),fit=try XCTUnwrap(RoomForestRegistration.fit(source:source,live:live(source)))
+        XCTAssertLessThan(simd_distance(fit.pose.columns.3,pose.columns.3),0.02)
+        XCTAssertGreaterThan(simd_dot(fit.pose.columns.0,pose.columns.0),0.999)
+        let symmetric=roomFixture(detail:false)
+        XCTAssertNil(RoomForestRegistration.fit(source:symmetric,live:live(symmetric)))
+    }
+    func testForestGameAndDoorCommandsWorkLocallyAndRespectNegation() {
+        for phrase in ["modo floresta","quarto tomado por floresta","transforma meu quarto numa floresta"] { XCTAssertEqual(WallARCommand.parse(phrase,inStudio:false),.roomForest(true)) }
+        XCTAssertEqual(WallARCommand.parse("portal na porta",inStudio:false),.doorPortal)
+        XCTAssertEqual(WallARCommand.parse("iniciar jogo da floresta",inStudio:false),.forestGame("start"))
+        XCTAssertEqual(WallARCommand.parse("pausar jogo",inStudio:true),.forestGame("pause"))
+        XCTAssertEqual(WallARCommand.parse("sair do jogo",inStudio:true),.forestGame("stop"))
+        XCTAssertEqual(WallARCommand.parse("coloca um monstro",inStudio:true),.model("animated_dragon"))
+        XCTAssertNil(WallARCommand.parse("não abrir portal",inStudio:true))
+        XCTAssertNil(WallARCommand.parse("não iniciar jogo da floresta",inStudio:true))
+        var record=SpatialPortalRecord(anchor:UUID(),width:0.8,height:2.15);record.doorway=true
+        XCTAssertTrue(record.valid);record.doorway=false;XCTAssertFalse(record.valid)
+    }
+    @MainActor private func forestFixture()->(SCNGeometry,ScannedRoomManifest,Data) {
+        let points:[SCNVector3]=[.init(-2,0,0),.init(2,0,0),.init(2,3,0),.init(-2,3,0),.init(0.7,0,0.6),.init(1.7,0,0.6),.init(1.7,1,0.6),.init(0.7,1,0.6),.init(-2,0,-2),.init(2,0,-2),.init(2,0,2),.init(-2,0,2)]
+        let indices:[UInt32]=[0,1,2,0,2,3,4,5,6,4,6,7,8,10,9,8,11,10]
+        let g=SCNGeometry(sources:[SCNGeometrySource(vertices:points),SCNGeometrySource(normals:(0..<12).map{ $0<8 ? SCNVector3(0,0,1) : SCNVector3(0,1,0) }),SCNGeometrySource(textureCoordinates:points.map{CGPoint(x:CGFloat($0.x),y:CGFloat($0.y))})],elements:[SCNGeometryElement(data:indices.withUnsafeBytes{Data($0)},primitiveType:.triangles,primitiveCount:6,bytesPerIndex:4)])
+        let material=SCNMaterial();material.diffuse.contents=UIColor.brown;g.materials=[material]
+        let manifest=ScannedRoomManifest(sourceSHA256:String(repeating:"0",count:64),mesh:"fixture",texture:"fixture",previewIndices:"fixture",facePlanes:"fixture",floorY:0,lower:[-2,0,-2],upper:[2,3,2],planes:[.init(id:0,kind:"wall",normal:[0,0,1],center:[0,1.5,0],indices:"fixture"),.init(id:1,kind:"floor",normal:[0,1,0],center:[0,0,0],indices:"fixture")],files:[])
+        let faces:[Int32]=[0,0,-1,-1,1,1]
+        return (g,manifest,faces.withUnsafeBytes{Data($0)})
+    }
+    @MainActor func testDoorCutPreservesCapturedFurnitureAndExactWallArea() {
+        let (geometry,_,labels)=forestFixture()
+        var pose=matrix_identity_float4x4;pose.columns.3.y=1
+        let (cut,assignments)=RoomForestScene.cut(base:geometry,assignments:labels,opening:RoomDoorwayOpening(pose:pose,width:0.8,height:2))
+        let p=RoomForestScene.points(cut),ids=RoomForestScene.indices(cut),kinds=assignments.withUnsafeBytes{b in (0..<(assignments.count/4)).map{b.loadUnaligned(fromByteOffset:$0*4,as:Int32.self)}}
+        var wallArea:Float=0,furnitureArea:Float=0
+        for i in kinds.indices {
+            let a=p[Int(ids[i*3])],b=p[Int(ids[i*3+1])],c=p[Int(ids[i*3+2])],area=simd_length(simd_cross(b-a,c-a))/2
+            if kinds[i]==0 { wallArea+=area };if kinds[i] == -1 { furnitureArea+=area }
+        }
+        XCTAssertEqual(wallArea,10.4,accuracy:0.001);XCTAssertEqual(furnitureArea,1,accuracy:0.001)
+    }
+    @MainActor func testForestAndGuardianRenderWithRealBoneAnimation() throws {
+        guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
+        let (g,manifest,labels)=forestFixture(),scene=SCNScene();scene.rootNode.addChildNode(RoomForestScene.make(base:g,manifest:manifest,assignments:labels))
+        let model=try SpatialAssets.load("animated_dragon");model.position=SCNVector3(-0.45,0,0.8);scene.rootNode.addChildNode(model)
+        let camera=SCNNode();camera.camera=SCNCamera();camera.camera?.zNear=0.01;camera.camera?.zFar=20;camera.position=SCNVector3(2.5,2.0,4.5);camera.look(at:SCNVector3(0,0.9,0));scene.rootNode.addChildNode(camera)
+        let ambient=SCNNode();ambient.light=SCNLight();ambient.light?.type = .ambient;ambient.light?.intensity=350;scene.rootNode.addChildNode(ambient)
+        let renderer=SCNRenderer(device:device,options:nil);renderer.scene=scene;renderer.pointOfView=camera
+        var images:[Data]=[]
+        for fraction in [0.0,0.6] {
+            try SpatialRig.previewPose(model,clip:"DragonArmature|DragonArmature|Dragon_Attack2",fraction:fraction)
+            let image=renderer.snapshot(atTime:0,with:CGSize(width:1000,height:800),antialiasingMode:.multisampling4X)
+            images.append(try XCTUnwrap(image.pngData()))
+            let attachment=XCTAttachment(image:image);attachment.name="Forest-guardian-native-\(fraction)";attachment.lifetime = .keepAlways;add(attachment)
+        }
+        XCTAssertNotEqual(images[0],images[1]);XCTAssertNotNil(SpatialRig.character(in:model))
+    }
+
     func testPortalProjectionKeepsTheWallFixedAndChangesDepthWithViewpoint() throws {
         let w:Float=0.65,h:Float=0.85
         func project(_ point:SIMD3<Float>,eye:SIMD3<Float>)->SIMD2<Float> {
@@ -1584,4 +1675,23 @@ final class PhoneCommandTests: XCTestCase {
     func testAppIntentsExposeSameActionSet() {
         XCTAssertEqual(Set(PhoneActionParameter.allCases.map(\.rawValue)), Set(PhoneAction.allCases.map(\.rawValue)))
     }
+}
+
+func roomFixture(detail:Bool=true)->RoomForestRegistration.Capture {
+    let walls:[RoomForestRegistration.Wall]=[
+        .init(center:SIMD3(0,1,1.5),normal:SIMD3(1,0,0),low:-3,high:0,bottom:0,top:2.5),
+        .init(center:SIMD3(4,1,1.5),normal:SIMD3(1,0,0),low:-3,high:0,bottom:0,top:2.5),
+        .init(center:SIMD3(2,1,0),normal:SIMD3(0,0,1),low:0,high:4,bottom:0,top:2.5),
+        .init(center:SIMD3(2,1,3),normal:SIMD3(0,0,1),low:0,high:4,bottom:0,top:2.5)]
+    var points:[RoomForestRegistration.Point]=[]
+    for i in 0...12 { for j in 0...12 {
+        let x=Float(i)/3,z=Float(i)/4,y=Float(j)*2.5/12
+        points += [.init(p:SIMD3(0,y,z),n:SIMD3(1,0,0),kind:1),.init(p:SIMD3(4,y,z),n:SIMD3(1,0,0),kind:1),.init(p:SIMD3(x,y,0),n:SIMD3(0,0,1),kind:1),.init(p:SIMD3(x,y,3),n:SIMD3(0,0,1),kind:1)]
+        if detail {
+            points.append(.init(p:SIMD3(0.45+Float(i)*0.06,0.65,0.65+Float(j)*0.05),n:SIMD3(0,1,0),kind:0))
+            points.append(.init(p:SIMD3(0.45+Float(i)*0.06,Float(j)*0.05,0.65),n:SIMD3(0,0,1),kind:0))
+            points.append(.init(p:SIMD3(0.45,Float(j)*0.05,0.65+Float(i)*0.05),n:SIMD3(1,0,0),kind:0))
+        }
+    }}
+    return .init(floor:0,walls:walls,points:points)
 }

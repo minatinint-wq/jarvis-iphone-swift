@@ -17,6 +17,8 @@ struct SpatialHandSample {
     var dualPinch:[CGPoint]? = nil
     var keyboardPose=false
     var closedFist=false
+    var portalGun=false
+    var thumbRaised=false
 }
 
 enum SpatialHandMath {
@@ -63,6 +65,14 @@ enum SpatialHandMath {
         }
         let others = [9,13,17].compactMap(extensionScore)
         return others.count >= 2 && others.allSatisfy { $0 < 0.5 }
+    }
+    static func portalGun(_ joints:[CGPoint?])->(gun:Bool,thumb:Bool) {
+        guard pointing(joints),let thumb=joints[4],let knuckle=joints[5],let pinky=joints[17],let ip=joints[3],let base=joints[2] else { return (false,false) }
+        let span=hypot(knuckle.x-pinky.x,knuckle.y-pinky.y)
+        guard span>18 else { return (false,false) }
+        let a=CGPoint(x:ip.x-base.x,y:ip.y-base.y),b=CGPoint(x:thumb.x-ip.x,y:thumb.y-ip.y),den=hypot(a.x,a.y)*hypot(b.x,b.y)
+        let extended=den>1 && (a.x*b.x+a.y*b.y)/den>0.25
+        return (true,extended && hypot(thumb.x-knuckle.x,thumb.y-knuckle.y)/span>0.60)
     }
     static func openPalm(_ joints: [CGPoint?]) -> Bool {
         guard joints.count==21 else { return false }
@@ -315,6 +325,7 @@ enum SpatialHandMath {
                 self.hasHand=true
                 self.cursor.layer.borderColor=(amount == nil ? UIColor.yellow : amount!<0.28 ? UIColor.orange : .cyan).cgColor
                 let pointing = SpatialHandMath.pointing(result)
+                let gun=SpatialHandMath.portalGun(result)
                 self.report(closed ? "Mão fechada · abrir catálogo de efeitos" : pointing ? "Indicador · mantenha sobre o alvo por 2 segundos" : amount == nil ? "Mostre indicador e polegar para usar pinça." : amount! < 0.28 ? "Pinça · arrastar" : "Mão livre")
                 let world=tip.flatMap { SpatialHandMath.worldPoint($0,frame:frame) },palmWorld=palm.flatMap { SpatialHandMath.worldPoint($0,frame:frame) }
                 self.hasDepth=world != nil
@@ -323,7 +334,7 @@ enum SpatialHandMath {
                 let palmPoint=palm.map { raw -> CGPoint in let q=raw.applying(transform);return CGPoint(x:q.x*size.width,y:q.y*size.height) }
                 let span:Double?
                 if let a=result[5],let b=result[17] { span=Double(hypot(a.x-b.x,a.y-b.y)/sqrt(max(1,size.width*size.height))) } else { span=nil }
-                self.onSample?(SpatialHandSample(point:p,ratio:amount ?? .nan,menuPose:SpatialHandMath.pointing(result,twoFingers:true),pointing:pointing,time:stamp,worldPoint:self.smoothedWorld,palmWorld:self.smoothedPalm,openPalm:SpatialHandMath.openPalm(result),palmPoint:palmPoint,palmSpan:span,dualPinch:both,keyboardPose:SpatialHandMath.keyboardPose(result),closedFist:closed))
+                self.onSample?(SpatialHandSample(point:p,ratio:amount ?? .nan,menuPose:SpatialHandMath.pointing(result,twoFingers:true),pointing:pointing,time:stamp,worldPoint:self.smoothedWorld,palmWorld:self.smoothedPalm,openPalm:SpatialHandMath.openPalm(result),palmPoint:palmPoint,palmSpan:span,dualPinch:both,keyboardPose:SpatialHandMath.keyboardPose(result),closedFist:closed,portalGun:gun.gun,thumbRaised:gun.thumb))
             }
             }
         }

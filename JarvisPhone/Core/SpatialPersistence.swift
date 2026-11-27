@@ -30,6 +30,7 @@ struct SpatialScannedRoomRecord:Codable {
     var sourceSHA256:String
     var plane:Int? = nil
     var style:String = "white"
+    var forest:Bool? = nil
 }
 
 enum SpatialRoomAlignment {

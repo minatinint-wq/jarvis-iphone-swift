@@ -12,5 +12,20 @@
     "licenseSource": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/e124e8d8d7330a5372bc2b4d00d39a4a9d7997ea/Models/Fox/README.md",
     "sha256": "d97044e701822bac5a62696459b27d7b375aada5de8574ed4362edbba94771f7",
     "bytes": 162852
+  },
+  {
+    "id": "dragon",
+    "source": "https://raw.githubusercontent.com/euuuuuuan/cairnfall-public/8ee4cfd789282c59632a9339e61564b7d6c1acfe/assets/vendor/quaternius_monsters/Dragon.glb",
+    "sha256": "95ed1323831ea74b1268e3a9d583a5293ed56297638729992c0ddfc2dc0eda30",
+    "bytes": 324860,
+    "licenseSource": "https://quaternius.com/packs/animatedmonster.html",
+    "credit": "Quaternius, Animated Monster Pack, CC0; FBX to GLB conversion by CAIRNFALL contributors.",
+    "clips": [
+      "2H_Melee_Attack_Chop",
+      "Death_A",
+      "DragonArmature|DragonArmature|Dragon_Attack2",
+      "DragonArmature|DragonArmature|Dragon_Hit",
+      "Idle"
+    ]
   }
 ]

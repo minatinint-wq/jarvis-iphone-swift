@@ -78,6 +78,13 @@ import UIKit
             scene.rootNode.addChildNode(mote)
         }
     }
+    private var mappedRoom:SCNNode?
+    func mapRoom(_ node:SCNNode,transform:simd_float4x4) {
+        scene.rootNode.childNodes.filter{$0 !== camera}.forEach{$0.removeFromParentNode()}
+        mappedRoom=node;node.simdTransform=transform;scene.rootNode.addChildNode(node)
+        let ambient=SCNNode();ambient.light=SCNLight();ambient.light?.type = .ambient;ambient.light?.intensity=240;scene.rootNode.addChildNode(ambient)
+    }
+    func updateRoomTransform(_ pose:simd_float4x4) { mappedRoom?.simdTransform=pose }
     func frame(eye:SIMD3<Float>,width:Float,height:Float,time:Double) {
         guard !busy,time-lastTime>=1/30,let projection=SpatialPortalMath.projection(eye:eye,width:width,height:height),let buffer=queue.makeCommandBuffer() else { return }
         busy=true;lastTime=time;cursor=(cursor+1)%textures.count
@@ -107,6 +114,31 @@ import UIKit
     private var renderer:SpatialPortalRenderer?
     private var record:SpatialPortalRecord?
     private var tracking=false
+    private var passage=SpatialDoorPassage()
+    private var roomInstalled=false
+    var roomPreview:((Int?)->SCNNode?)?
+    var roomPose:(()->simd_float4x4?)?
+    var mappedWallID:((CGPoint)->Int?)?
+    var onDoorwayReady:((RoomDoorwayOpening)->Void)?
+    var onCross:((Bool)->Void)?
+    var forestVisible:(()->Bool)?
+    @discardableResult func placeDoorway(_ opening:RoomDoorwayOpening)->Bool {
+        guard roomPose?() != nil,let renderer=SpatialPortalRenderer(device:view.device) else { return false }
+        clear(recordChange:false)
+        let anchor=ARAnchor(name:"JarvisWallPortal",transform:opening.pose)
+        self.anchor=anchor;self.renderer=renderer
+        var saved=SpatialPortalRecord(anchor:anchor.identifier,width:opening.width,height:opening.height);saved.doorway=true;record=saved
+        build(pose:opening.pose,animate:true);view.session.add(anchor:anchor);configureRoom();onChange?()
+        onFeedback?("Portal na porta. Saia por ela e volte para entrar no seu quarto florestado.")
+        return true
+    }
+    private func configureRoom() {
+        guard !roomInstalled,let record,let root,let pose=roomPose?() else { return }
+        if record.doorway == true { onDoorwayReady?(RoomDoorwayOpening(pose:root.simdTransform,width:record.width,height:record.height)) }
+        guard let model=roomPreview?(record.capturedWall) else { return }
+        let turn=simd_float4x4(simd_quatf(angle:.pi,axis:SIMD3(0,1,0)))
+        renderer?.mapRoom(model,transform:turn*simd_inverse(root.simdTransform)*pose);roomInstalled=true
+    }
     var onChange:(()->Void)?
     var onFeedback:((String)->Void)?
     init(view:ARSCNView) { self.view=view }
@@ -142,20 +174,22 @@ import UIKit
         clear(recordChange:false)
         let anchor=ARAnchor(name:"JarvisWallPortal",transform:pose)
         self.renderer=renderer;self.anchor=anchor;record=SpatialPortalRecord(anchor:anchor.identifier,width:width,height:height)
-        build(pose:pose,animate:true);view.session.add(anchor:anchor);onChange?()
+        let screen=view.projectPoint(SCNVector3(origin));record?.capturedWall=mappedWallID?(CGPoint(x:CGFloat(screen.x),y:CGFloat(screen.y)))
+        build(pose:pose,animate:true);view.session.add(anchor:anchor);configureRoom();onChange?()
         onFeedback?("Portal fixado na parede. Pode mudar de lugar para testar a profundidade. Diga fechar portal para remover.")
         return true
     }
     private func build(pose:simd_float4x4,animate:Bool) {
         guard let record,let renderer else { return }
         let root=SCNNode();root.simdTransform=pose;root.isHidden = !tracking
-        let hole=SCNNode(geometry:Self.aperture(width:record.width,height:record.height));hole.geometry?.materials=[renderer.material];root.addChildNode(hole)
+        let hole=SCNNode(geometry:Self.aperture(width:record.width,height:record.height));hole.name="portal-window";renderer.material.isDoubleSided=record.doorway == true;hole.geometry?.materials=[renderer.material];root.addChildNode(hole)
         let edge=SpatialPortalMath.outline(width:record.width,height:record.height)
         for i in 0..<edge.count {
             let a=edge[i],b=edge[(i+1)%edge.count],delta=b-a
             let chunk=SCNNode(geometry:SCNBox(width:CGFloat(simd_length(delta)+0.012),height:0.045, length:0.065,chamferRadius:0.008))
             chunk.position=SCNVector3((a.x+b.x)/2,(a.y+b.y)/2,0.018);chunk.eulerAngles.z=atan2(delta.y,delta.x)
-            chunk.geometry?.materials=[WallMaterials.effect("brick")];root.addChildNode(chunk)
+            let rim=SCNMaterial();rim.lightingModel = .constant;rim.diffuse.contents=UIColor(red:0.15,green:0.82,blue:0.52,alpha:1);rim.emission.contents=UIColor(red:0.02,green:0.17,blue:0.05,alpha:1)
+            chunk.geometry?.materials=[record.doorway == true ? rim : WallMaterials.effect("brick")];root.addChildNode(chunk)
             if animate,i%2==0 {
                 let debris=chunk.clone();debris.position.z+=0.04;debris.scale=SCNVector3(0.7,0.8,0.7);root.addChildNode(debris)
                 debris.runAction(.sequence([.group([.moveBy(x:CGFloat(a.x)*0.4,y:-0.6,z:0.3,duration:0.9),.rotateBy(x:1.3,y:0.8,z:0.5,duration:0.9),.sequence([.wait(duration:0.4),.fadeOut(duration:0.5)])]),.removeFromParentNode()]))
@@ -175,13 +209,31 @@ import UIKit
     func frame(_ frame:ARFrame,stable:Bool) {
         tracking=stable
         guard let root,let record else { return }
+        if stable { configureRoom() }
         let local=simd_inverse(root.simdTransform)*frame.camera.transform.columns.3,eye=SIMD3(local.x,local.y,local.z)
-        root.isHidden = !stable || eye.z<=0.08
-        if !root.isHidden { renderer?.frame(eye:eye,width:record.width,height:record.height,time:frame.timestamp) }
+        if record.doorway == true {
+            if let entered=passage.update(position:eye,time:frame.timestamp,width:record.width,height:record.height,stable:stable) {
+                if !entered { self.record?.hasExited=true;onChange?() }
+                onCross?(entered)
+            }
+            if stable,record.hasExited==true,eye.z>0.25,forestVisible?() != true { onCross?(true) }
+            if stable,eye.z < -0.25,forestVisible?()==true { onCross?(false) }
+        }
+        root.isHidden = !stable || (record.doorway == true ? abs(eye.z)<=0.06 : eye.z<=0.08)
+        let inside=forestVisible?()==true
+        root.childNode(withName:"portal-window",recursively:false)?.isHidden=inside
+        if let pose=roomPose?(),roomInstalled {
+            let turn=simd_float4x4(simd_quatf(angle:.pi,axis:SIMD3(0,1,0)))
+            renderer?.updateRoomTransform(turn*simd_inverse(root.simdTransform)*pose)
+        }
+        if !root.isHidden && !inside {
+            let front=eye.z>0 ? eye : SIMD3(-eye.x,eye.y,-eye.z)
+            renderer?.frame(eye:front,width:record.width,height:record.height,time:frame.timestamp)
+        }
     }
     func clear(recordChange:Bool=true,preserveAnchor:Bool=false) {
         if !preserveAnchor,let anchor { view.session.remove(anchor:anchor) }
-        anchor=nil;root?.removeFromParentNode();root=nil;record=nil;renderer=nil
+        anchor=nil;root?.removeFromParentNode();root=nil;record=nil;renderer=nil;roomInstalled=false;passage.reset()
         if recordChange { onChange?() }
     }
 }
