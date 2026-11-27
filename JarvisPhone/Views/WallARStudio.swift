@@ -675,7 +675,7 @@ enum WallMeasureMode { case none, outline, opening }
         guard !recoveryBusy else { return }
         switch command {
         case .portal: beginPortal()
-        case .closePortal: portalRequested=false;liveWall.onSurface=nil;portal.clear();feedback("Portal fechado.")
+        case .closePortal: cancelLiveWallCapture();portal.clear();feedback("Portal fechado.")
         case .calibrate: calibrateCurrentRoom()
         case .effects: panel.openEffectsRadial(tracking:interactionReady)
         case .roomSetup:
@@ -683,6 +683,7 @@ enum WallMeasureMode { case none, outline, opening }
             if roomWall.prepare() { roomWall.resetSource();roomSetupPresented=true }
             else { notice=roomWall.status;feedback(notice) }
         case .roomWall(let style):
+            portalRequested=false
             if roomWall.aligned { roomWall.arm(style);notice=roomWall.status }
             else { beginHandsFreeWall(style) }
         case .roomClear: cancelLiveWallCapture();roomWall.clearPaint();liveWall.clear();notice="Pintura removida."
@@ -879,7 +880,7 @@ enum WallMeasureMode { case none, outline, opening }
             liveWall.update(anchor)
             portal.update(anchor)
             if let saved=spatial.restoredPortal,saved.anchor==anchor.identifier {
-                portal.restore(saved,anchor:anchor);spatial.restoredPortal=nil
+                if portal.restore(saved,anchor:anchor) { spatial.restoredPortal=nil }
             }
             roomWall.update(anchor)
             if let saved=spatial.restoredScannedRoom,saved.anchor==anchor.identifier {

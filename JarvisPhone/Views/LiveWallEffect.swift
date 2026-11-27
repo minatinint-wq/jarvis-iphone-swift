@@ -37,6 +37,7 @@ enum LiveWallRegion {
         status="Lendo o ambiente por oito segundos. Olhe devagar para o piso e as paredes."
     }
     func arm(_ style:String) {
+        onSurface=nil
         self.style=style=="brick" ? "brick" : "white";armed=true;busy=false
         if completed,!meshes.isEmpty {
             capturing=false;gesture.reset();status="Ambiente já lido. Aponte para a parede por dois segundos.";return

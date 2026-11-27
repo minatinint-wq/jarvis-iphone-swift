@@ -167,9 +167,9 @@ import UIKit
         self.root=root;view.scene.rootNode.addChildNode(root)
     }
     func snapshot()->SpatialPortalRecord? { record }
-    func restore(_ saved:SpatialPortalRecord,anchor:ARAnchor) {
-        guard saved.valid,saved.anchor==anchor.identifier,anchor.name=="JarvisWallPortal",let renderer=SpatialPortalRenderer(device:view.device) else { return }
-        clear(recordChange:false);record=saved;self.anchor=anchor;self.renderer=renderer;build(pose:anchor.transform,animate:false)
+    @discardableResult func restore(_ saved:SpatialPortalRecord,anchor:ARAnchor)->Bool {
+        guard saved.valid,saved.anchor==anchor.identifier,anchor.name=="JarvisWallPortal",let renderer=SpatialPortalRenderer(device:view.device) else { return false }
+        clear(recordChange:false);record=saved;self.anchor=anchor;self.renderer=renderer;build(pose:anchor.transform,animate:false);return true
     }
     func update(_ updated:ARAnchor) {
         guard updated.identifier==anchor?.identifier else { return };anchor=updated;root?.simdTransform=updated.transform
