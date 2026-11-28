@@ -150,6 +150,8 @@ final class PhoneCommandTests: XCTestCase {
             XCTAssertGreaterThan(spec["triangles"] as? Int ?? 0,50000)
             let parts=try XCTUnwrap(spec["parts"] as? [[String:Any]])
             XCTAssertTrue(parts.contains{$0["NormalGL"] != nil})
+            XCTAssertTrue(parts.contains{$0["Color"] != nil})
+            XCTAssertTrue(parts.contains{$0["vertexColor"] != nil})
             let model=try SpatialAssets.load(id)
             for clip in ["Idle","Walk","Run","Attack","Roar","Die"] { XCTAssertTrue(SpatialRig.play(model,clip:clip)) }
             try SpatialRig.previewPose(model,clip:"Idle",fraction:0.25)
@@ -159,6 +161,15 @@ final class PhoneCommandTests: XCTestCase {
             let light=SCNNode();light.light=SCNLight();light.light?.type = .omni;light.light?.intensity=900;light.position=SCNVector3(2,4,3);scene.rootNode.addChildNode(light)
             let renderer=SCNRenderer(device:device,options:nil);renderer.scene=scene;renderer.pointOfView=camera
             let image=renderer.snapshot(atTime:0,with:CGSize(width:900,height:1000),antialiasingMode:.multisampling4X)
+            let cg=try XCTUnwrap(image.cgImage),ci=CIImage(cgImage:cg)
+            var pixels=[UInt8](repeating:0,count:cg.width*cg.height*4)
+            CIContext().render(ci,toBitmap:&pixels,rowBytes:cg.width*4,bounds:ci.extent,format:.RGBA8,colorSpace:CGColorSpaceCreateDeviceRGB())
+            var paintedPixels=0
+            for i in stride(from:0,to:pixels.count,by:4) {
+                let r=Int(pixels[i]),g=Int(pixels[i+1]),b=Int(pixels[i+2])
+                if max(r,g,b)-min(r,g,b)>28 && max(r,g,b)>55 { paintedPixels+=1 }
+            }
+            XCTAssertGreaterThan(paintedPixels,800,"Imported creature must retain colored surfaces, not a white silhouette: "+id)
             let attachment=XCTAttachment(image:image);attachment.name="DETAILED-"+id;attachment.lifetime = .keepAlways;add(attachment)
         }
         let game=try RoomForestGame.guardian(scale:1)

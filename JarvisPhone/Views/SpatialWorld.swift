@@ -62,9 +62,15 @@ enum SpatialTheme: String, CaseIterable {
         guard count>0, count<300000, faces>0, faces<300000, data.count==12+count*32+faces*12 else { throw CocoaError(.fileReadCorruptFile) }
         let buffer=data.subdata(in:12..<(12+count*32)), indices=data.suffix(faces*12)
         guard indices.withUnsafeBytes({ raw in (0..<(faces*3)).allSatisfy { raw.loadUnaligned(fromByteOffset:$0*4,as:UInt32.self)<UInt32(count) } }) else { throw CocoaError(.fileReadCorruptFile) }
-        let sources=[SCNGeometrySource(data:buffer,semantic:.vertex,vectorCount:count,usesFloatComponents:true,componentsPerVector:3,bytesPerComponent:4,dataOffset:0,dataStride:32),
+        var sources=[SCNGeometrySource(data:buffer,semantic:.vertex,vectorCount:count,usesFloatComponents:true,componentsPerVector:3,bytesPerComponent:4,dataOffset:0,dataStride:32),
                      SCNGeometrySource(data:buffer,semantic:.normal,vectorCount:count,usesFloatComponents:true,componentsPerVector:3,bytesPerComponent:4,dataOffset:12,dataStride:32),
                      SCNGeometrySource(data:buffer,semantic:.texcoord,vectorCount:count,usesFloatComponents:true,componentsPerVector:2,bytesPerComponent:4,dataOffset:24,dataStride:32)]
+        if let name=spec["vertexColor"] as? String {
+            guard let file=Self.file(name) else { throw CocoaError(.fileNoSuchFile) }
+            let colors=try Data(contentsOf:file)
+            guard colors.count==count*16 else { throw CocoaError(.fileReadCorruptFile) }
+            sources.append(SCNGeometrySource(data:colors,semantic:.color,vectorCount:count,usesFloatComponents:true,componentsPerVector:4,bytesPerComponent:4,dataOffset:0,dataStride:16))
+        }
         let geometry=SCNGeometry(sources:sources,elements:[SCNGeometryElement(data:indices,primitiveType:.triangles,primitiveCount:faces,bytesPerIndex:4)])
         let mat=SCNMaterial(); mat.lightingModel = .physicallyBased; mat.isDoubleSided=spec["doubleSided"] as? Bool ?? false
         mat.metalness.contents=spec["metalness"] as? Double ?? 0
