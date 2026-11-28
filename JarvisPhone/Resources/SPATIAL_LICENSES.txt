@@ -248,3 +248,5 @@ TREANT, STONE GOLEM, BOG MONSTER — vinish.dev
 Source and license: https://vinish.dev/free-3d-models/monsters
 CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
 Modified: converted to native SceneKit mesh/skinning, scaled to 1.8m; original texture and normal maps retained.
+
+Creature calls: six original, offline procedural audio effects, generated for this project. No downloaded recordings or model-generation API used.

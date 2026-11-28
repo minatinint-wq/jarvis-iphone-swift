@@ -19,7 +19,7 @@ import SwiftUI
         var names=Set<String>(),total=0
         for f in files {
             guard let name=f["file"] as? String,name==URL(fileURLWithPath:name).lastPathComponent,name.hasPrefix("Spatial_"+id),
-                  ["mesh","skin","color","json","jpg","png","texture"].contains(URL(fileURLWithPath:name).pathExtension),names.insert(name).inserted,
+                  ["mesh","skin","color","json","jpg","png","texture","wav"].contains(URL(fileURLWithPath:name).pathExtension),names.insert(name).inserted,
                   let bytes=f["bytes"] as? Int,(1...25*1024*1024).contains(bytes),let hash=f["sha256"] as? String,
                   hash.count==64,hash.allSatisfy({$0.isHexDigit}) else { return false }
             total+=bytes

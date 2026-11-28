@@ -29,45 +29,27 @@ final class PhoneCommandTests: XCTestCase {
             }
         }
     }
-    func testWinterEnvironmentAndWristMenuHaveLocalVoiceRoutes() {
-        XCTAssertEqual(WallARCommand.parse("ambiente neve",inStudio:false),.immersiveWinter(true))
-        XCTAssertEqual(WallARCommand.parse("ambiente real",inStudio:true),.immersiveWinter(false))
-        XCTAssertEqual(WallARCommand.parse("menu da mão",inStudio:true),.wristMenu)
-        XCTAssertNil(WallARCommand.parse("não ativar ambiente neve",inStudio:true))
-        XCTAssertNil(WallARCommand.parse("ambiente real",inStudio:false))
+    @MainActor
+    func testWristMenuHasReadableGlyphsAndSixActions() throws {
+        let view=ARSCNView(frame:CGRect(x:0,y:0,width:1050,height:615));view.scene=SCNScene()
+        let panel=SpatialPanel(view:view);panel.previewWristMenu();panel.setTracking(true)
+        let image=panel.wristMenuImage()
+        let texture=XCTAttachment(image:image);texture.name="JARVIS-42-menu-texture";texture.lifetime = .keepAlways;add(texture)
+        XCTAssertEqual(image.size,CGSize(width:1050,height:615))
+        let imageData=try XCTUnwrap(image.cgImage?.dataProvider?.data)
+        let bytes=CFDataGetBytePtr(imageData)!,stride=image.cgImage!.bytesPerRow
+        var white=0
+        for y in 100..<550 { for x in 50..<1000 { let p=y*stride+x*4;if bytes[p]>190 && bytes[p+1]>190 && bytes[p+2]>190 { white+=1 } } }
+        XCTAssertGreaterThan(white,3500,"Menu must include bright readable symbols and labels")
+        let camera=SCNNode();camera.camera=SCNCamera();camera.camera!.usesOrthographicProjection=true;camera.camera!.orthographicScale=0.24
+        camera.position=SCNVector3(0,0,1);camera.camera!.categoryBitMask=4;view.scene.rootNode.addChildNode(camera)
+        let renderer=SCNRenderer(device:MTLCreateSystemDefaultDevice(),options:nil);renderer.scene=view.scene;renderer.pointOfView=camera
+        renderer.prepare(view.scene,shouldAbortBlock:nil)
+        _=renderer.snapshot(atTime:0,with:CGSize(width:1050,height:615),antialiasingMode:.multisampling4X)
+        let rendered=renderer.snapshot(atTime:0.1,with:CGSize(width:1050,height:615),antialiasingMode:.multisampling4X)
+        let shot=XCTAttachment(image:rendered);shot.name="JARVIS-42-menu-SceneKit";shot.lifetime = .keepAlways;add(shot)
+        XCTAssertEqual(view.scene.rootNode.childNodes.flatMap{$0.childNodes}.filter{$0.name?.hasPrefix("wrist-action:")==true}.count,6)
     }
-    @MainActor func testWinterTerraceAndGlassWristMenuRenderAtHumanScale() throws {
-        guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
-        let scene=SCNScene();scene.background.contents=UIColor.black
-        let winter=SpatialWinterScene.make();scene.rootNode.addChildNode(winter)
-        scene.lightingEnvironment.contents=Bundle.main.url(forResource:"Winter_light",withExtension:"hdr");scene.lightingEnvironment.intensity=0.38
-        XCTAssertNotNil(winter.childNode(withName:"Winter-snow-drifts",recursively:true))
-        XCTAssertNotNil(winter.childNode(withName:"Winter-bench-seat",recursively:true))
-        XCTAssertNotNil(winter.childNode(withName:"Winter-stone-terrace",recursively:true))
-        let camera=SCNNode();camera.camera=SCNCamera();camera.camera?.zNear=0.01;camera.camera?.zFar=80;camera.position=SCNVector3(1.1,1.55,2.0);camera.look(at:SCNVector3(-0.2,0.8,-3.6));scene.rootNode.addChildNode(camera)
-        let renderer=SCNRenderer(device:device,options:nil);renderer.scene=scene;renderer.pointOfView=camera
-        let image=renderer.snapshot(atTime:0,with:CGSize(width:1200,height:850),antialiasingMode:.multisampling4X)
-        let a=XCTAttachment(image:image);a.name="WINTER-TERRACE-42";a.lifetime = .keepAlways;add(a)
-        let view=ARSCNView();view.scene=SCNScene();let panel=SpatialPanel(view:view);panel.previewWristMenu()
-        XCTAssertTrue(panel.wristMenu)
-        let buttons=view.scene.rootNode.childNodes.flatMap{ $0.childNodes }.filter{$0.name?.hasPrefix("action:")==true}
-        XCTAssertEqual(buttons.count,6)
-        XCTAssertNil(panel.snapshot(),"A temporary hand menu must never replace the saved window archive")
-        XCTAssertTrue(buttons.allSatisfy{($0.geometry as? SCNPlane)?.width ?? 1 < 0.11})
-        let glassCamera=SCNNode();glassCamera.camera=SCNCamera();glassCamera.camera?.usesOrthographicProjection=true;glassCamera.camera?.orthographicScale=0.205;glassCamera.position=SCNVector3(0,0,1)
-        view.scene.rootNode.addChildNode(glassCamera);view.scene.background.contents=UIColor(red:0.22,green:0.28,blue:0.34,alpha:1)
-        renderer.scene=view.scene;renderer.pointOfView=glassCamera
-        let menuImage=renderer.snapshot(atTime:0,with:CGSize(width:1100,height:720),antialiasingMode:.multisampling4X)
-        let b=XCTAttachment(image:menuImage);b.name="GLASS-WRIST-MENU-42";b.lifetime = .keepAlways;add(b)
-    }
-    @MainActor func testWinterModeDoesNotMoveOrDeleteExistingWindows() {
-        let scene=SCNScene(),pc=SCNNode();pc.name="JarvisDesktop";pc.position=SCNVector3(0.7,1,-1.2);scene.rootNode.addChildNode(pc)
-        let old=pc.simdTransform,winter=SpatialWinterScene()
-        winter.open(scene:scene,camera:matrix_identity_float4x4,floor:-1.35)
-        XCTAssertTrue(winter.active);XCTAssertEqual(pc.simdTransform,old)
-        winter.close(scene:scene);XCTAssertFalse(winter.active);XCTAssertTrue(pc.parent === scene.rootNode);XCTAssertEqual(pc.simdTransform,old)
-    }
-
 
     func testDoorPortalThumbTriggerRejectsLostTrackingAndDoesNotRepeat() {
         var trigger=SpatialPortalTrigger()

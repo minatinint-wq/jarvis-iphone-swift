@@ -29,8 +29,6 @@ struct ScannedRoomManifest:Decodable {
     private var forestNode:SCNNode?
     private var captureCache:RoomForestRegistration.Capture?
     private var doorway:RoomDoorwayOpening?
-    private var immersiveHidden=false
-    func setImmersiveHidden(_ value:Bool) { immersiveHidden=value;root?.isHidden = !tracking || value }
     private var hitFaces:Data?
     private var gameFloors:[Int:[SIMD3<Float>]]=[:]
     private var cleanCapture:(base:SCNGeometry,manifest:ScannedRoomManifest,faces:Data)?
@@ -332,7 +330,7 @@ struct ScannedRoomManifest:Decodable {
     }
     func clearPaint() { patch?.removeFromParentNode();patch=nil;chosen=nil;armed=false;onChange?() }
     func cancelPaint() { armed=false;dwell.reset() }
-    func setTracking(_ value:Bool) { tracking=value;root?.isHidden = !value || immersiveHidden }
+    func setTracking(_ value:Bool) { tracking=value;root?.isHidden = !value }
     func update(_ anchor:ARAnchor) { if anchor.identifier==self.anchor?.identifier { self.anchor=anchor;root?.simdTransform=anchor.transform } }
     func snapshot()->SpatialScannedRoomRecord? {
         guard let anchor,let m=manifest else { return nil }

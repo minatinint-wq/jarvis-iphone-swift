@@ -34,7 +34,7 @@ final class SpatialEyeCompositor {
         spec.colorAttachments[0].pixelFormat = .bgra8Unorm
         pipeline=try device.makeRenderPipelineState(descriptor:spec)
         renderer=SCNRenderer(device:device,options:nil);renderer.isPlaying=true
-        camera.camera=SCNCamera();camera.camera?.zNear=0.01;camera.camera?.zFar=80
+        camera.camera=SCNCamera();camera.camera?.zNear=0.01;camera.camera?.zFar=20
         guard CVMetalTextureCacheCreate(nil,nil,device,nil,&cache)==kCVReturnSuccess else { throw CocoaError(.coderInvalidValue) }
     }
     func renderWorld(scene:SCNScene,transform:simd_float4x4,projection:simd_float4x4,size:CGSize,time:Double,command:MTLCommandBuffer)->MTLTexture? {
@@ -190,7 +190,7 @@ final class SpatialEyeCompositor {
         // does not wait for SceneKit, drawable acquisition or world localization.
         displayCamera(frame.capturedImage,orientation:orientation,time:frame.timestamp)
         let transform=simd_inverse(frame.camera.viewMatrix(for:orientation))
-        let projection=frame.camera.projectionMatrix(for:orientation,viewportSize:primary.bounds.size,zNear:0.01,zFar:80)
+        let projection=frame.camera.projectionMatrix(for:orientation,viewportSize:primary.bounds.size,zNear:0.01,zFar:20)
         inputCamera.simdTransform=transform;inputCamera.camera?.projectionTransform=SCNMatrix4(projection);primary.pointOfView=inputCamera
         let interval=1/Double(max(1,primary.preferredFramesPerSecond))
         guard !busy,frame.timestamp-lastPresented>=interval-0.001 else { return }

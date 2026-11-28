@@ -38,9 +38,9 @@ enum WallARCommand: Equatable {
     case open, select, finish(WallFinish), undo, clear, compare, close
     case measure, point, opening, approve, theme(SpatialTheme), interact, removeObject, panel(SpatialModule), navigate(String)
     case model(String), resizeObject(Float), moveObject(Float,Float), saveMap, room(String), desktop
-    case character(String), headset(Bool), recover, keyboard(Bool)
+    case character(String), headset(Bool), recover, keyboard(Bool),wristMenu
     case roomSetup,roomWall(String),roomClear,effects,calibrate,portal,closePortal
-    case roomForest(Bool),doorPortal,registerForest,forestGame(String),immersiveWinter(Bool),wristMenu
+    case roomForest(Bool),doorPortal,registerForest,forestGame(String)
 
     /// Only navigation-like speech enters the spatial interpreter; ordinary tools stay available.
     static func needsInterpretation(_ input: String) -> Bool {
@@ -52,9 +52,8 @@ enum WallARCommand: Equatable {
     static func parse(_ input: String, inStudio: Bool) -> Self? {
         let s = PhoneIntentPhrases.normalized(input)
         guard !s.isEmpty, s.range(of: #"\b(nao|nunca|nem|talvez|disse|dizer|dissesse|se)\b"#, options: .regularExpression) == nil else { return nil }
-        if ["ambiente neve","ambiente de neve","cenario de neve","modo neve","terraco de inverno","ativar ambiente neve"].contains(s) { return .immersiveWinter(true) }
-        if inStudio,["ambiente real","voltar ao ambiente real","volta pro quarto","sair do ambiente imersivo","desativar ambiente neve"].contains(s) { return .immersiveWinter(false) }
         if ["menu da mao","abrir menu da mao","menu de pulso","abrir menu de pulso"].contains(s) { return .wristMenu }
+        if inStudio,let action=SpatialCreatureVoice.command(s) { return .character(action) }
         if inStudio,s.contains("portal"),s.range(of:#"^(?:fecha|feche|fechar|apaga|apague|remova|remover)\b"#,options:.regularExpression) != nil { return .closePortal }
         if s.contains("portal"),s.range(of:#"\bportas?\b"#,options:.regularExpression) != nil,!s.contains("parede") { return .doorPortal }
         if s.contains("floresta"),(s.contains("quarto") || s.contains("casa")),s.range(of:#"^(?:transforma|transforme|transformar|cria|crie|criar|ativa|ative|ativar)\b"#,options:.regularExpression) != nil { return .roomForest(true) }
@@ -95,7 +94,7 @@ enum WallARCommand: Equatable {
             for name in ["guardiao","monstro","golem"] {
                 if s.hasPrefix(name+" "),let action=creatureActions[String(s.dropFirst(name.count+1))] { return .character(action) }
             }
-            let models:[String:String] = ["monstro":"animated_bog_monster","guardiao de madeira":"animated_treant","guardiao":"animated_treant","golem":"animated_stone_golem","monstro de musgo":"animated_bog_monster","dragao":"animated_dragon","personagem":"animated_robot","robo":"animated_robot","raposa":"animated_fox","humanoide":"demo_human","caixa":"demo_box","cadeira":"demo_chair","mesa":"demo_table","abacate":"avocado","garrafa":"waterbottle","lanterna antiga":"lantern","carro":"toycar","peixe":"barramundifish","poltrona":"sheenchair","sofa de veludo":"glamvelvetsofa","tenis":"materialsvariantsshoe","capacete espacial":"scifihelmet","capacete de piloto":"flighthelmet","camera antiga":"antiquecamera","cone":"trafficcone","geladeira":"commercialrefrigerator","relogio":"chronographwatch","cadeira classica":"chairdamaskpurplegold","pufe":"specularsilkpouf","sofa de couro":"sheenwoodleathersofa","luminaria":"anisotropybarnlamp","concha":"iridescenceabalone","vaso de flores":"glassvaseflowers"]
+            let models:[String:String] = ["raiz":"animated_treant","granito":"animated_stone_golem","lodo":"animated_bog_monster","atlas":"animated_robot","faisca":"animated_fox","draco":"animated_dragon","monstro":"animated_bog_monster","guardiao de madeira":"animated_treant","guardiao":"animated_treant","golem":"animated_stone_golem","monstro de musgo":"animated_bog_monster","dragao":"animated_dragon","personagem":"animated_robot","robo":"animated_robot","raposa":"animated_fox","humanoide":"demo_human","caixa":"demo_box","cadeira":"demo_chair","mesa":"demo_table","abacate":"avocado","garrafa":"waterbottle","lanterna antiga":"lantern","carro":"toycar","peixe":"barramundifish","poltrona":"sheenchair","sofa de veludo":"glamvelvetsofa","tenis":"materialsvariantsshoe","capacete espacial":"scifihelmet","capacete de piloto":"flighthelmet","camera antiga":"antiquecamera","cone":"trafficcone","geladeira":"commercialrefrigerator","relogio":"chronographwatch","cadeira classica":"chairdamaskpurplegold","pufe":"specularsilkpouf","sofa de couro":"sheenwoodleathersofa","luminaria":"anisotropybarnlamp","concha":"iridescenceabalone","vaso de flores":"glassvaseflowers"]
             if s.range(of:#"^(?:coloca|coloque|cria|crie|adiciona|adicione)\b"#,options:.regularExpression) != nil,
                let model=models.keys.sorted(by:{$0.count>$1.count}).first(where:{ s.range(of:"\\b"+NSRegularExpression.escapedPattern(for:$0)+"\\b",options:.regularExpression) != nil }).flatMap({models[$0]}) { return .model(model) }
             if ["aumente esse objeto","aumenta esse objeto","aumentar objeto"].contains(s) { return .resizeObject(1.15) }

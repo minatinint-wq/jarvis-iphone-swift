@@ -6,5 +6,3 @@ https://polyhaven.com/license
 See AR_MATERIALS.json for provenance and SHA-256 hashes.
 
 RoomFX_brick_*: brick_wall_001, Poly Haven, CC0, Dimitrios Savva & Rob Tuytel. https://polyhaven.com/a/brick_wall_001
-
-Winter terrace: Snow 02 and Cobblestone Floor 03 by Rob Tuytel, Snowy Park 01 by Oliksiy Yakovlyev. Poly Haven, CC0 1.0. Sky tone-mapped for mobile. Original URLs and SHA256 in AR_MATERIALS.json.

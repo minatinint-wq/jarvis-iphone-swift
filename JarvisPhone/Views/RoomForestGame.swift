@@ -126,6 +126,7 @@ import AVFoundation
     private func hit(_ id:String,points:Int) {
         guard let node=targets[id] else { return };sound?.currentTime=0;sound?.play()
         if id=="game-guardian" {
+            _=SpatialCreatureAudio.shared.play("animated_treant",position:node.simdWorldPosition,camera:view.session.currentFrame?.camera.transform)
             bossHealth-=1;score+=25
             _=SpatialRig.play(node,clip:bossHealth==0 ? "Die" : "Roar")
             if bossHealth==0 { node.runAction(.sequence([.wait(duration:2.5),.fadeOut(duration:0.4),.removeFromParentNode()]));finished=true;score+=100;onFeedback?("Caçada concluída. Você fez \(score) pontos.") }

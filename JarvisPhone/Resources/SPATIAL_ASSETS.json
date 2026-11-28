@@ -4076,9 +4076,17 @@
         "file": "Spatial_animated_robot_rig.json",
         "bytes": 1392778,
         "sha256": "04575018ff1b6270f37d2f55168693955b58949b78157dcd7fd6940beedfea1c"
+      },
+      {
+        "file": "Spatial_animated_robot_voice.wav",
+        "bytes": 57644,
+        "sha256": "962a86f2aebf317cdb97acc3b95f3e9f7eacd70d129185e94c18eedf59f9e84f"
       }
     ],
-    "animationSkinErrorMeters": 7.251217997429632e-07
+    "animationSkinErrorMeters": 7.251217997429632e-07,
+    "callName": "Atlas",
+    "sound": "Spatial_animated_robot_voice.wav",
+    "responseClip": "Wave"
   },
   {
     "id": "animated_fox",
@@ -4125,9 +4133,17 @@
         "file": "Spatial_animated_fox_rig.json",
         "bytes": 358873,
         "sha256": "6afc1e4ddd02c0eeba210d4e12965ef5cc52b5b75af0a9f6dbed764c894a4104"
+      },
+      {
+        "file": "Spatial_animated_fox_voice.wav",
+        "bytes": 45644,
+        "sha256": "3d01db1dc6f67759ab2f44a5387886737833b6ad3db781a3a6dc29bca499bf19"
       }
     ],
-    "animationSkinErrorMeters": 7.450580596923828e-08
+    "animationSkinErrorMeters": 7.450580596923828e-08,
+    "callName": "Faísca",
+    "sound": "Spatial_animated_fox_voice.wav",
+    "responseClip": "Survey"
   },
   {
     "id": "treestump",
@@ -4348,9 +4364,17 @@
         "file": "Spatial_animated_dragon_rig.json",
         "bytes": 639653,
         "sha256": "4c15353f81893d2fa1dbfd8a4d3bfe2b8df43854905a4e031f7740403347f05d"
+      },
+      {
+        "file": "Spatial_animated_dragon_voice.wav",
+        "bytes": 96044,
+        "sha256": "b455dfd4dca4575f55ee2d81fb894fdd13e9472d570e27d05f176e9147b086c3"
       }
     ],
-    "animationSkinErrorMeters": 2.699743350147223e-07
+    "animationSkinErrorMeters": 2.699743350147223e-07,
+    "callName": "Draco",
+    "sound": "Spatial_animated_dragon_voice.wav",
+    "responseClip": "DragonArmature|DragonArmature|Dragon_Attack2"
   },
   {
     "id": "animated_treant",
@@ -4573,9 +4597,17 @@
         "file": "Spatial_animated_treant_rig.json",
         "bytes": 1450716,
         "sha256": "ce8daab6b8bd88b27b1877e3006e7f5fdbf98ede0e44a3a95af520767b1bd73a"
+      },
+      {
+        "file": "Spatial_animated_treant_voice.wav",
+        "bytes": 79244,
+        "sha256": "bc42a7d116a29eed3fe9fbc928b69f01d511ae0d73c7c3fdc90ea4b77c6c3d3d"
       }
     ],
-    "animationSkinErrorMeters": 4.77825663829564e-07
+    "animationSkinErrorMeters": 4.77825663829564e-07,
+    "callName": "Raiz",
+    "sound": "Spatial_animated_treant_voice.wav",
+    "responseClip": "Roar"
   },
   {
     "id": "animated_stone_golem",
@@ -4748,9 +4780,17 @@
         "file": "Spatial_animated_stone_golem_rig.json",
         "bytes": 1236079,
         "sha256": "d731b4fbd6abde77eb705250366ea6353a5c601ee7c92bfa3b5a64d9bb8f75dc"
+      },
+      {
+        "file": "Spatial_animated_stone_golem_voice.wav",
+        "bytes": 72044,
+        "sha256": "6d3b8a839b6b23b5c6ea061339f892ff7ea11e4fd184a117c1de0d9085c467e5"
       }
     ],
-    "animationSkinErrorMeters": 2.4671436384019926e-07
+    "animationSkinErrorMeters": 2.4671436384019926e-07,
+    "callName": "Granito",
+    "sound": "Spatial_animated_stone_golem_voice.wav",
+    "responseClip": "Roar"
   },
   {
     "id": "animated_bog_monster",
@@ -5033,8 +5073,16 @@
         "file": "Spatial_animated_bog_monster_rig.json",
         "bytes": 1199711,
         "sha256": "7095283f284883025c8e193ea77804f54093648e8855bdc6efa53b72b2fde58f"
+      },
+      {
+        "file": "Spatial_animated_bog_monster_voice.wav",
+        "bytes": 81644,
+        "sha256": "5dc8e19cc561f691cd6836859df749b8d32904b1e025f6774e2cb1c83f4b9e66"
       }
     ],
-    "animationSkinErrorMeters": 3.5886748369909214e-07
+    "animationSkinErrorMeters": 3.5886748369909214e-07,
+    "callName": "Lodo",
+    "sound": "Spatial_animated_bog_monster_voice.wav",
+    "responseClip": "Roar"
   }
 ]

@@ -214,11 +214,29 @@ enum SpatialTheme: String, CaseIterable {
     var selectedCharacterID: String? { selected.flatMap { objects[$0] }.flatMap { SpatialRig.character(in:$0)?.1 } }
     var selectedCharacterPosition: SIMD3<Float>? { selected.flatMap { objects[$0]?.simdWorldPosition } }
 
+    @discardableResult func creatureCommand(_ action:String)->Bool {
+        let audio=SpatialCreatureAudio.shared
+        if action=="sound:off" || action=="sound:on" { audio.enabled=action=="sound:on";status=audio.enabled ? "Sons das criaturas ligados." : "Sons das criaturas silenciados.";return true }
+        for prefix in ["mute:","unmute:"] where action.hasPrefix(prefix) {
+            let model=String(action.dropFirst(prefix.count));guard let profile=SpatialCreatureVoice.profile(model) else { return false }
+            audio.setMuted(model,prefix=="mute:");status=profile.name+(prefix=="mute:" ? " silenciado." : " com som ligado.");return true
+        }
+        guard action.hasPrefix("call:") else { return false }
+        let model=String(action.dropFirst(5));guard let profile=SpatialCreatureVoice.profile(model) else { return false }
+        guard visibility else { status="Espere recuperar a posição dos personagens.";return true }
+        let camera=view.session.currentFrame?.camera.transform,eye=camera.map{SIMD3($0.columns.3.x,$0.columns.3.y,$0.columns.3.z)} ?? .zero
+        let matches=objects.filter{records[$0.key]?.model==model && !$0.value.isHidden}
+        guard let target=matches.min(by:{simd_distance($0.value.simdWorldPosition,eye)<simd_distance($1.value.simdWorldPosition,eye)})?.value else { status="Coloque "+profile.name+" no cenário antes de chamar.";return true }
+        _=SpatialRig.play(target,clip:profile.clip)
+        let played=audio.play(model,position:target.simdWorldPosition,camera:camera)
+        status=played ? profile.name+" respondeu ao chamado." : "Som de "+profile.name+" indisponível ou silenciado."
+        return true
+    }
     func animate(_ action: String) {
         guard let id=selected,let root=objects[id],let (_,model)=SpatialRig.character(in:root) else { status="Selecione um personagem animado.";return }
         stopMoving()
         let clip=model == "animated_fox" && action == "Idle" ? "Survey" : action
-        if SpatialRig.play(root,clip:clip) { status="\(clip) · animação do personagem." }
+        if SpatialRig.play(root,clip:clip) { if !["Idle","Walk","Run","Walking","Running"].contains(clip) { _=SpatialCreatureAudio.shared.play(model,position:root.simdWorldPosition,camera:view.session.currentFrame?.camera.transform) };status="\(clip) · animação do personagem." }
     }
 
     func walk(to point: SIMD3<Float>? = nil,impact: SIMD3<Float>? = nil,running: Bool = false) {
@@ -821,7 +839,7 @@ enum SpatialTheme: String, CaseIterable {
         if let (_,model)=SpatialRig.character(in:root) {
             stopMoving()
             let clip=model == "animated_robot" ? "Wave" : model == "animated_fox" ? "Survey" : model == "animated_dragon" ? "DragonArmature|DragonArmature|Dragon_Attack2" : "Roar"
-            if SpatialRig.play(root,clip:clip) { status="Personagem reagindo. Diga guardião ataque, guardião ande ou guardião pare." }
+            if SpatialRig.play(root,clip:clip) { _=SpatialCreatureAudio.shared.play(model,position:root.simdWorldPosition,camera:view.session.currentFrame?.camera.transform);status="Personagem reagindo. Diga guardião ataque, guardião ande ou guardião pare." }
         } else if let car=root.childNode(withName:"movingCar",recursively:true) {
             if car.action(forKey:"drive") != nil { car.removeAction(forKey:"drive");car.position=SCNVector3(0,0.005,0);status="Carro parado." }
             else { car.runAction(.repeatForever(.sequence([.moveBy(x:0,y:0,z:0.12,duration:1.2),.moveBy(x:0,y:0,z:-0.12,duration:1.2)])),forKey:"drive");status="Carro em movimento dentro da base." }
@@ -895,7 +913,7 @@ enum SpatialTheme: String, CaseIterable {
         let allowed=value && !recovering
         guard allowed != visibility else { return }
         if !allowed { if let id=handDragging { reanchor(id);handDragging=nil };handGesture.reset();palmScale=SpatialPalmScale() }
-        if !allowed { stopMoving() }
+        if !allowed { stopMoving();SpatialCreatureAudio.shared.stop() }
         visibility=allowed
         for (id,node) in objects { node.isHidden = !allowed || supportProofs[id]?.confirmed != true }
         if !allowed { player?.pause() }
@@ -907,6 +925,7 @@ enum SpatialTheme: String, CaseIterable {
         objects.values.forEach { $0.isPaused=paused }
     }
     func stop() {
+        SpatialCreatureAudio.shared.stop()
         autosave?.cancel();autosave=nil
         stopMoving();onImpact=nil;onAttackRequest=nil
         supportProofs.removeAll()

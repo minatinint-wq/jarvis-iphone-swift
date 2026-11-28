@@ -353,6 +353,10 @@ import ActivityKit
         sound.sharesWakeSession = { [weak self] in self?.wake.running == true }
         wake.onPrompt = { [weak self] in self?.heardCall() }
         wake.onMute = { [weak self] in self?.muteUntilCalled() }
+        wake.isSpatialCallEnabled = { [weak self] in
+            guard let self else { return false }
+            return self.studioMode == "wallAR" && !self.quietUntilCalled && self.active
+        }
         wake.isOutputEcho = { [weak self] phrase in
             guard let self, self.isSpeaking else { return false }
             return (" " + self.spokenWords + " ").contains(" " + PhoneVoiceControl.words(phrase) + " ")

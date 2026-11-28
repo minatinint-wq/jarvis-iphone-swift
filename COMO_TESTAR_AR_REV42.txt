@@ -1,13 +1,20 @@
-JARVIS 42 — AMBIENTE E MENU DA MÃO
-Escopo desta atualização: ambiente imersivo de inverno e apresentação/gesto do menu. Biblioteca de 31 modelos preservada.
+JARVIS 42 — MENU DE MÃO E SONS DOS PERSONAGENS EXISTENTES
+O mapa, ambiente, tela do PC e geometria dos 31 modelos da revisão 41 foram preservados.
 
-1. Abra Cenário 3D e aguarde a câmera estabilizar. Diga "ambiente neve".
-2. O chão, degraus, bancos e lanternas do terraço são geometria 3D. O céu e as árvores distantes usam um panorama HDR adaptado. Não é uma digitalização de outro quarto.
-3. Para o menu: mostre a palma voltada para você, com os dedos para cima, abra a mão por um instante e recolha os quatro dedos. O menu abre uma vez na posição da mão. Solte o gesto e aponte por dois segundos para escolher.
-4. Neve ativa o terraço; Real volta à câmera do quarto; PC abre a tela existente; Web usa o navegador; Central abre os controles existentes; Fechar recolhe.
-5. As janelas continuam no espaço durante a troca. A pinça continua reservada para arrastar.
-6. "Menu da mão" abre o mesmo menu por voz se a palma estiver fora do campo. "Ambiente real" sai da neve sem depender do toque no celular.
-7. "Modo VR Box" mantém o compositor já instalado de duas imagens. Faça a primeira conferência fora do suporte.
+MENU NOVO
+Palma de frente para a câmera, dedos para cima: abra a mão brevemente e depois dobre os quatro dedos para chamar o menu de vidro. Repita para recolher. Também pode dizer "Jarvis, abrir menu de pulso".
+PC, Web, Spotify, Cenários, Central e Fechar ficam no menu compacto. Indicador por 2 segundos seleciona; pinça continua arrastando. Solte a mão após chamar para selecionar.
 
-A orientação usa os pontos da mão; quando disponível, a profundidade ajuda a posicionar o menu. Luz, enquadramento e precisão física ainda precisam do teste no aparelho.
-Nenhum som ou personagem novo foi incluído nesta revisão.
+ÁUDIOS: reprodução não testada, conforme solicitado; teste no iPhone.
+
+No Cenário 3D, com Oi Jarvis/escuta ativada:
+Raiz = guardião de madeira; Granito = golem; Lodo = monstro de musgo; Atlas = robô; Faísca = raposa; Draco = dragão.
+Coloque o personagem e diga somente o nome. Ele reage com sua animação e seu próprio som, localmente no iPhone.
+"Coloca Raiz"/"Coloca Granito" também selecionam o modelo correspondente, como os nomes genéricos anteriores.
+"Silenciar Granito" silencia só o golem. "Ativar som Granito" reativa.
+"Silenciar criaturas" e "Ativar sons das criaturas" controlam todos os efeitos.
+A chamada só é recebida no Cenário 3D com a escuta ligada; "Jarvis, muta" continua sendo respeitado.
+O volume acompanha o volume do iPhone. Sair do AR ou colocar o app em segundo plano para os efeitos.
+Os sons são efeitos originais sintetizados localmente, curtos e diferentes para cada modelo. Não são gravações de atores ou animais reais.
+
+O cenário de neve e os novos modelos solicitados antes foram cancelados e não estão nesta entrega.

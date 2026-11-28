@@ -59,6 +59,7 @@ private final class WakeAudioInput: @unchecked Sendable {
     private var pendingMute = false
     var onMute: (() -> Void)?
     var isOutputEcho: ((String) -> Bool)?
+    var isSpatialCallEnabled:(()->Bool)?
     private var generation = UUID()
     private var waiting = false
     private var pendingText = ""
@@ -173,7 +174,7 @@ private final class WakeAudioInput: @unchecked Sendable {
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.requiresOnDeviceRecognition = true
         request.shouldReportPartialResults = true
-        request.contextualStrings = ["Oi Jarvis", "Ei Jarvis", "Jarvis muta", "Jarvis", "Spotify", "lanterna", "luz do quarto"]
+        request.contextualStrings = ["Oi Jarvis", "Ei Jarvis", "Jarvis muta", "Jarvis", "Spotify", "lanterna", "luz do quarto"] + SpatialCreatureVoice.profiles.map{$0.name}
         input.replace(request)
         recognition = recognizer.recognitionTask(with: request) { @Sendable [weak self] result, error in
             let text = result?.bestTranscription.formattedString
@@ -281,6 +282,10 @@ private final class WakeAudioInput: @unchecked Sendable {
         if case let .listening(until) = window.phase, now >= until {
             window.expire(at: now); waiting = false; needsNewPhrase = false; pendingText = ""; greetIfSilent = false
             onWindowChanged?(false); listen(); return
+        }
+        if !waiting,isSpatialCallEnabled?()==true,SpatialCreatureVoice.named(text) != nil {
+            waiting=true;needsNewPhrase=true;greetIfSilent=false;lastPartial=now
+            window.listen(at:now);armIdleTimer();onWindowChanged?(true)
         }
         let wake = text.range(of: #"\b(?:oi|ei)[\s,.!?:–—-]+(?:jarvis|jarves|jarvbis)\b"#,
                               options: [.regularExpression, .caseInsensitive, .diacriticInsensitive, .backwards])

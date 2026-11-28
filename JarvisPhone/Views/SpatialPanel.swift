@@ -329,11 +329,11 @@ enum SpatialPanelGeometry {
     private func activate(_ action: SpatialPanelAction) {
         contextRevision += 1
         switch action {
-        case .hideInterface: cleanInterface();onAction?(.hideInterface)
+        case .hideInterface: cleanInterface()
         case .radialToggle: radialExpanded.toggle();render()
         case .radialPage(let direction):
             radialIndex=(radialIndex+direction+radialPageCount)%radialPageCount;render()
-        case .showInterface: wristMenu=false;immersive=false;compact=false;radialExpanded=false;render();onAction?(.showInterface)
+        case .showInterface: wristMenu=false;immersive=false;compact=false;radialExpanded=false;render()
         case .switchOutput:
             guard pending == nil else { return }
             pcOutput.toggle()
@@ -552,7 +552,32 @@ enum SpatialPanelGeometry {
         return SpatialModule.navigationCases.filter { $0 != .dashboard }.map { ($0.title,$0.symbol,.module($0)) }
             + [("Tela do PC","desktopcomputer",.wall(.desktop)),("Mostrar interface","eye",.showInterface)]
     }
-    private var wristItems:[(String,String,SpatialPanelAction)] { [("Neve","snowflake",.wall(.immersiveWinter(true))),("Real","eye",.wall(.immersiveWinter(false))),("PC","desktopcomputer",.wall(.desktop)),("Web","safari",.module(.browser)),("Central","square.grid.2x2",.showInterface),("Fechar","xmark",.close)] }
+    func wristMenuImage()->UIImage {
+        let format=UIGraphicsImageRendererFormat();format.scale=1
+        let size=CGSize(width:1050,height:615)
+        return UIGraphicsImageRenderer(size:size,format:format).image { context in
+            let frame=UIBezierPath(roundedRect:CGRect(origin:.zero,size:size),cornerRadius:66)
+            UIColor(red:0.06,green:0.09,blue:0.12,alpha:0.70).setFill();frame.fill()
+            UIColor(white:1,alpha:0.27).setStroke();frame.lineWidth=2;frame.stroke()
+            for (i,b) in wristItems.enumerated() {
+                let rect=CGRect(x:31.5+CGFloat(i%3)*336,y:69+CGFloat(i/3)*258,width:315,height:219)
+                let tile=UIBezierPath(roundedRect:rect,cornerRadius:30)
+                context.cgContext.saveGState();tile.addClip()
+                let colors=[UIColor(white:1,alpha:0.18).cgColor,UIColor(red:0.28,green:0.42,blue:0.50,alpha:0.09).cgColor] as CFArray
+                if let gradient=CGGradient(colorsSpace:CGColorSpaceCreateDeviceRGB(),colors:colors,locations:[0,1]) {
+                    context.cgContext.drawLinearGradient(gradient,start:rect.origin,end:CGPoint(x:rect.minX,y:rect.maxY),options:[])
+                }
+                context.cgContext.restoreGState();UIColor(white:1,alpha:0.36).setStroke();tile.lineWidth=1.5;tile.stroke()
+                if let icon=UIImage(systemName:b.1,withConfiguration:UIImage.SymbolConfiguration(pointSize:48,weight:.regular))?.withTintColor(.white,renderingMode:.alwaysOriginal) {
+                    icon.draw(in:CGRect(x:rect.midX-27,y:rect.minY+40,width:54,height:54))
+                }
+                let paragraph=NSMutableParagraphStyle();paragraph.alignment = .center
+                (b.0 as NSString).draw(in:CGRect(x:rect.minX+8,y:rect.minY+135,width:rect.width-16,height:46),withAttributes:[.font:UIFont.systemFont(ofSize:30,weight:.medium),.foregroundColor:UIColor.white,.paragraphStyle:paragraph])
+            }
+            UIColor(white:1,alpha:0.55).setFill();UIBezierPath(roundedRect:CGRect(x:471,y:585,width:108,height:9),cornerRadius:4.5).fill()
+        }
+    }
+    private var wristItems:[(String,String,SpatialPanelAction)] { [("PC","desktopcomputer",.wall(.desktop)),("Web","safari",.module(.browser)),("Spotify","music.note",.module(.spotify)),("Cenários","cube.transparent",.module(.scenes)),("Central","square.grid.2x2",.showInterface),("Fechar","xmark",.close)] }
     private var radialPageCount:Int { max(1,(radialItems.count+5)/6) }
     private func render() {
         hovered=nil
@@ -593,32 +618,19 @@ enum SpatialPanelGeometry {
             root.addChildNode(node)
         }
         if wristMenu {
-            let backdrop=SCNNode(geometry:SCNPlane(width:0.35,height:0.205));(backdrop.geometry as? SCNPlane)?.cornerRadius=0.022
-            let back=SCNMaterial();back.diffuse.contents=UIColor(red:0.10,green:0.14,blue:0.18,alpha:0.56);back.lightingModel = .constant;back.readsFromDepthBuffer=false;back.writesToDepthBuffer=false
-            backdrop.geometry?.materials=[back];backdrop.categoryBitMask=4;backdrop.renderingOrder=100;root.addChildNode(backdrop)
-            let buttons=wristItems
-            for (i,b) in buttons.enumerated() {
-                let format=UIGraphicsImageRendererFormat();format.scale=1
-                let size=CGSize(width:294,height:202)
-                let image=UIGraphicsImageRenderer(size:size,format:format).image { context in
-                    let path=UIBezierPath(roundedRect:CGRect(x:2,y:2,width:290,height:198),cornerRadius:30)
-                    UIColor(white:0.78,alpha:0.12).setFill();path.fill()
-                    context.cgContext.saveGState();path.addClip()
-                    let colors=[UIColor(white:1,alpha:0.12).cgColor,UIColor(red:0.12,green:0.20,blue:0.26,alpha:0.12).cgColor] as CFArray
-                    if let gradient=CGGradient(colorsSpace:CGColorSpaceCreateDeviceRGB(),colors:colors,locations:[0,1]) { context.cgContext.drawLinearGradient(gradient,start:.zero,end:CGPoint(x:0,y:202),options:[]) }
-                    context.cgContext.restoreGState();UIColor(white:1,alpha:0.38).setStroke();path.lineWidth=1.5;path.stroke()
-                    if let icon=UIImage(systemName:b.1,withConfiguration:UIImage.SymbolConfiguration(pointSize:47,weight:.regular))?.withTintColor(.white,renderingMode:.alwaysOriginal) {
-                        icon.draw(in:CGRect(x:(size.width-52)/2,y:39,width:52,height:52))
-                    }
-                    let paragraph=NSMutableParagraphStyle();paragraph.alignment = .center
-                    (b.0 as NSString).draw(in:CGRect(x:12,y:123,width:270,height:42),withAttributes:[.font:UIFont.systemFont(ofSize:27,weight:.medium),.foregroundColor:UIColor(white:1,alpha:0.94),.paragraphStyle:paragraph])
-                }
-                plate(b.0,b.1,width:0.105,height:0.073,x:Float(i%3-1)*0.112,y:0.043-Float(i/3)*0.086,color:.clear,action:b.2)
-                root.childNodes.last?.geometry?.firstMaterial?.diffuse.contents=image
+            // One composited surface keeps translucent tiles and glyphs in the same draw call.
+            let geometry=SCNPlane(width:0.35,height:0.205);geometry.cornerRadius=0.022
+            let material=SCNMaterial();material.diffuse.contents=wristMenuImage();material.lightingModel = .constant
+            material.isDoubleSided=true;material.readsFromDepthBuffer=false;material.writesToDepthBuffer=false
+            let surface=SCNNode(geometry:geometry);geometry.materials=[material];surface.categoryBitMask=4;surface.renderingOrder=100
+            root.addChildNode(surface)
+            for (i,b) in wristItems.enumerated() {
+                let hit=SCNNode(geometry:SCNPlane(width:0.105,height:0.073))
+                hit.position=SCNVector3(Float(i%3-1)*0.112,0.043-Float(i/3)*0.086,0.012)
+                hit.name="wrist-action:"+String(i);hit.categoryBitMask=4
+                let invisible=SCNMaterial();invisible.colorBufferWriteMask=[];invisible.writesToDepthBuffer=false;invisible.readsFromDepthBuffer=false
+                hit.geometry?.materials=[invisible];root.addChildNode(hit);actions[hit.name!]=b.2
             }
-            let handle=SCNNode(geometry:SCNPlane(width:0.036,height:0.003));(handle.geometry as? SCNPlane)?.cornerRadius=0.0015
-            handle.position=SCNVector3(0,-0.094,0.010);handle.renderingOrder=102;handle.categoryBitMask=4
-            handle.geometry?.firstMaterial?.lightingModel = .constant;handle.geometry?.firstMaterial?.diffuse.contents=UIColor(white:1,alpha:0.55);handle.geometry?.firstMaterial?.readsFromDepthBuffer=false;handle.geometry?.firstMaterial?.writesToDepthBuffer=false;root.addChildNode(handle)
             return
         }
         if compact {
