@@ -3,6 +3,13 @@ import Foundation
 /// Upturned, open palm followed by a deliberate four-finger curl. Pinches and
 /// pointing never trigger; a held pose cannot repeatedly toggle the menu.
 struct SpatialPalmMenuGesture {
+    static func facing(_ points:[CGPoint?])->Bool {
+        guard points.count==21,let wrist=points[0],let index=points[5],let middle=points[9],let pinky=points[17] else { return false }
+        let span=hypot(index.x-pinky.x,index.y-pinky.y),height=hypot(wrist.x-middle.x,wrist.y-middle.y)
+        guard span>0.001,height>span*0.28 else { return false }
+        let area=abs((index.x-wrist.x)*(pinky.y-wrist.y)-(index.y-wrist.y)*(pinky.x-wrist.x))
+        return area/(span*height)>0.28 && [index,middle,pinky].allSatisfy{$0.y<wrist.y-span*0.06} && abs(index.y-pinky.y)<span*0.85
+    }
     private var openSince:Double?
     private var curledSince:Double?
     private var primed=false

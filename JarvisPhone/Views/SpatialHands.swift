@@ -336,16 +336,7 @@ enum SpatialHandMath {
                 let palmPoint=palm.map { raw -> CGPoint in let q=raw.applying(transform);return CGPoint(x:q.x*size.width,y:q.y*size.height) }
                 let span:Double?
                 if let a=result[5],let b=result[17] { span=Double(hypot(a.x-b.x,a.y-b.y)/sqrt(max(1,size.width*size.height))) } else { span=nil }
-                let palmBones=[0,5,17].compactMap { index -> SIMD3<Float>? in
-                    guard let q=result[index] else { return nil }
-                    let raw=CGPoint(x:q.x/size.width,y:q.y/size.height).applying(transform.inverted())
-                    return SpatialHandMath.worldPoint(raw,frame:frame)
-                }
-                var palmUp=false
-                if palmBones.count==3 {
-                    let normal=simd_cross(palmBones[1]-palmBones[0],palmBones[2]-palmBones[0])
-                    if simd_length(normal)>0.0001 { palmUp=abs(simd_normalize(normal).y)>0.55 }
-                }
+                let palmUp=SpatialPalmMenuGesture.facing(result)
                 let curled:Bool
                 if let wrist=result[0] {
                     curled=[5,9,13,17].allSatisfy { base in

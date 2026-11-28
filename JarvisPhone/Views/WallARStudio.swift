@@ -256,7 +256,7 @@ enum WallMeasureMode { case none, outline, opening }
             if self.palmMenu.update(palmUp:sample.map{$0.palmUp},open:sample?.openPalm == true,curled:sample?.fingersCurled == true,time:sample?.time ?? ProcessInfo.processInfo.systemUptime,dragging:dragging) {
                 self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
                 self.fistMenu=SpatialFistMenuGesture()
-                self.panel.openWristMenu(tracking:true,palm:sample?.palmWorld);self.hands.showProgress(0);return
+                self.panel.openWristMenu(tracking:true,palm:sample?.palmWorld,screen:sample?.palmPoint);self.hands.showProgress(0);return
             }
             let wristHeld=self.panel.wristMenu && sample?.palmUp == true
             let closed=sample?.closedFist == true && !wristHeld && !self.desktop.isDragging && !self.panel.isDragging && !self.portal.isDragging && !self.spatial.isDragging

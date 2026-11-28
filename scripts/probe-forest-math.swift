@@ -49,6 +49,16 @@ func roomFixture(detail:Bool=true)->RoomForestRegistration.Capture {
         assert(events==[false,true],"Door passage direction or hysteresis failed")
         door.reset();_=door.update(position:SIMD3(0,0,-0.5),time:0,width:0.8,height:2,stable:true)
         assert(door.update(position:SIMD3(0,0,0.5),time:0.1,width:0.8,height:2,stable:true)==nil)
+        var palm=[CGPoint?](repeating:nil,count:21);palm[0]=CGPoint(x:0,y:3);palm[5]=CGPoint(x:-1,y:1);palm[9]=CGPoint(x:0,y:0.8);palm[17]=CGPoint(x:1,y:1)
+        assert(SpatialPalmMenuGesture.facing(palm),"Upright palm facing viewer rejected")
+        let sideways=palm.map{$0.map{CGPoint(x:-$0.y,y:$0.x)}}
+        assert(!SpatialPalmMenuGesture.facing(sideways),"Sideways palm summoned menu")
+        var gate=SpatialPalmMenuGesture()
+        for t in [0.0,0.10,0.20] { assert(!gate.update(palmUp:true,open:true,curled:false,time:t)) }
+        assert(!gate.update(palmUp:true,open:false,curled:true,time:0.25))
+        assert(gate.update(palmUp:true,open:false,curled:true,time:0.50))
+        assert(!gate.update(palmUp:true,open:false,curled:true,time:0.60))
+        print("PALM_MENU_PROBE_OK upright facing pose, sideways rejection, deliberate curl and held-pose latch")
         print("FOREST_MATH_OK unique fit, ambiguous rejection, thumb trigger, exit/reentry and tracking-jump rejection")
     }
 }

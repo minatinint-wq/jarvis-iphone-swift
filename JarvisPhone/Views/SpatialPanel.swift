@@ -81,12 +81,16 @@ enum SpatialPanelGeometry {
         status="Catálogo de efeitos · solte a mão e aponte por dois segundos para escolher."
         render();onChange?()
     }
-    func openWristMenu(tracking:Bool,palm:SIMD3<Float>?=nil) {
+    func openWristMenu(tracking:Bool,palm:SIMD3<Float>?=nil,screen:CGPoint?=nil) {
         if wristMenu && visible { close(recordChange:false);return }
         open(.dashboard,tracking:tracking)
         guard tracking,let root,let camera=view.session.currentFrame?.camera.transform else { return }
         if let palm,simd_distance(palm,SIMD3(camera.columns.3.x,camera.columns.3.y,camera.columns.3.z))<1.6 {
             root.simdPosition=palm+SIMD3(0,0.14,0)
+        } else if let screen {
+            let far=view.unprojectPoint(SCNVector3(Float(screen.x),Float(screen.y),0.7)),eye=SIMD3(camera.columns.3.x,camera.columns.3.y,camera.columns.3.z)
+            let direction=SIMD3(far.x,far.y,far.z)-eye
+            if simd_length(direction)>0.001 { root.simdPosition=eye+simd_normalize(direction)*0.62+SIMD3(0,0.10,0) }
         }
         root.simdScale=SIMD3(repeating:0.85);wristMenu=true;compact=true;radialExpanded=false;immersive=true
         status="Menu da mão · solte os dedos e aponte por dois segundos para escolher."

@@ -46,7 +46,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify forest geometry and hand input
         run: |
-          swiftc JarvisPhone/Core/RoomForestMath.swift scripts/probe-forest-math.swift -o /tmp/forest-probe
+          swiftc JarvisPhone/Core/RoomForestMath.swift JarvisPhone/Core/SpatialPalmMenuGesture.swift scripts/probe-forest-math.swift -o /tmp/forest-probe
           /tmp/forest-probe
       - name: Typecheck the native app
         run: |
