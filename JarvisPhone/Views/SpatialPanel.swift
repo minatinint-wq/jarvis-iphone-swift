@@ -67,6 +67,7 @@ enum SpatialPanelGeometry {
     @Published var visible=false
     @Published private(set) var immersive=false
     private var compact=false
+    private(set) var wristMenu=false
     private var radialExpanded=false
     private var radialIndex=0
     private var effectsCatalog=false
@@ -79,6 +80,17 @@ enum SpatialPanelGeometry {
         effectsCatalog=true;immersive=true;compact=true;radialExpanded=true;radialIndex=0
         status="Catálogo de efeitos · solte a mão e aponte por dois segundos para escolher."
         render();onChange?()
+    }
+    func openWristMenu(tracking:Bool,palm:SIMD3<Float>?=nil) {
+        if wristMenu && visible { close(recordChange:false);return }
+        open(.dashboard,tracking:tracking)
+        guard tracking,let root,let camera=view.session.currentFrame?.camera.transform else { return }
+        if let palm,simd_distance(palm,SIMD3(camera.columns.3.x,camera.columns.3.y,camera.columns.3.z))<1.6 {
+            root.simdPosition=palm+SIMD3(0,0.14,0)
+        }
+        root.simdScale=SIMD3(repeating:0.85);wristMenu=true;compact=true;radialExpanded=false;immersive=true
+        status="Menu da mão · solte os dedos e aponte por dois segundos para escolher."
+        render()
     }
     func cleanInterface() {
         guard visible,root != nil else { return }
@@ -134,7 +146,7 @@ enum SpatialPanelGeometry {
         contextRevision += 1
         trackingGood=tracking
         guard tracking else { status="Aguarde o mapeamento estabilizar e abra o painel novamente.";return }
-        module=destination;compact=false;radialExpanded=false;effectsCatalog=false
+        module=destination;compact=false;radialExpanded=false;effectsCatalog=false;wristMenu=false
         cardPage=max(0,page)
         if root == nil { reposition() }
         guard root != nil else { return }
@@ -195,7 +207,7 @@ enum SpatialPanelGeometry {
         }
     }
     func snapshot() -> SpatialPanelRecord? {
-        guard visible,!dragging,let anchor,let root else { return nil }
+        guard visible,!dragging,!wristMenu,let anchor,let root else { return nil }
         return SpatialPanelRecord(anchor:anchor.identifier,module:module.rawValue,scale:root.simdScale.x)
     }
     func restore(_ saved: SpatialPanelRecord, anchor: ARAnchor) {
@@ -214,7 +226,7 @@ enum SpatialPanelGeometry {
         if recordChange,root != nil { onChange?() }
         contextRevision += 1;navigationContext=nil
         handGesture.reset();swipe=SpatialPageSwipe();dragging=false;hovered=nil
-        timeout?.cancel();pending=nil;visible=false;immersive=false;compact=false;radialExpanded=false
+        timeout?.cancel();pending=nil;visible=false;immersive=false;compact=false;radialExpanded=false;wristMenu=false
         if !preserveAnchor,let anchor { view.session.remove(anchor:anchor) };anchor=nil
         root?.removeFromParentNode();root=nil;actions.removeAll()
     }
@@ -225,7 +237,7 @@ enum SpatialPanelGeometry {
     }
     func contains(_ point: CGPoint) -> Bool { visible && root?.isHidden == false && (compact ? selectionNode(point) != nil : localHit(point) != nil) }
     var isFramed: Bool {
-        guard visible,let root else { return false };return SpatialPanelGeometry.framed(root,in:view,size:compact && !radialExpanded ? CGSize(width:0.10,height:0.10) : CGSize(width:0.64,height:0.58))
+        guard visible,let root else { return false };return SpatialPanelGeometry.framed(root,in:view,size:wristMenu ? CGSize(width:0.35,height:0.205) : compact && !radialExpanded ? CGSize(width:0.10,height:0.10) : CGSize(width:0.64,height:0.58))
     }
     private func selectionNode(_ point:CGPoint)->SCNNode? {
         guard let p=localHit(point),let root else { return nil }
@@ -313,11 +325,11 @@ enum SpatialPanelGeometry {
     private func activate(_ action: SpatialPanelAction) {
         contextRevision += 1
         switch action {
-        case .hideInterface: cleanInterface()
+        case .hideInterface: cleanInterface();onAction?(.hideInterface)
         case .radialToggle: radialExpanded.toggle();render()
         case .radialPage(let direction):
             radialIndex=(radialIndex+direction+radialPageCount)%radialPageCount;render()
-        case .showInterface: immersive=false;compact=false;radialExpanded=false;render()
+        case .showInterface: wristMenu=false;immersive=false;compact=false;radialExpanded=false;render();onAction?(.showInterface)
         case .switchOutput:
             guard pending == nil else { return }
             pcOutput.toggle()
@@ -342,6 +354,7 @@ enum SpatialPanelGeometry {
         case .refresh: refreshPage()
         case .spotify(let action,let playlist): request(action,playlist:playlist)
         default:
+            if wristMenu { close(recordChange:false);onAction?(action);return }
             if compact { radialExpanded=false;render() }
             onAction?(action)
         }
@@ -426,6 +439,9 @@ enum SpatialPanelGeometry {
         close();cardPage=0;module=destination;visible=true
         let node=SCNNode();root=node;view.scene.rootNode.addChildNode(node);render()
     }
+    func previewWristMenu() {
+        preview(.dashboard);wristMenu=true;compact=true;immersive=true;radialExpanded=false;render()
+    }
     func previewEffectsCatalog() {
         preview(.dashboard);effectsCatalog=true;compact=true;immersive=true;radialExpanded=true;radialIndex=0;render()
     }
@@ -502,6 +518,7 @@ enum SpatialPanelGeometry {
         return [("Anterior","backward.end.fill",.spotify("previous",nil)),(selectedTrack == nil ? (selectedPlaylist == nil ? "Retomar" : "Tocar playlist") : "Play: "+selectedTrack!.name,"play.fill",.playSelection),("Pausar","pause.fill",.spotify("pause",nil)),("Próxima","forward.end.fill",.spotify("next",nil))]
     }
     private func visibleItems()->[(String,String,SpatialPanelAction)] {
+        if wristMenu { return wristItems }
         if compact {
             guard radialExpanded else { return [("Abrir menu radial","circle.grid.2x2.fill",.radialToggle)] }
             return Array(radialItems.dropFirst(radialIndex*6).prefix(6))+[("Recolher menu","sparkles",.radialToggle),("Próxima página","chevron.right",.radialPage(1)),("Mostrar interface","eye",.showInterface)]
@@ -531,6 +548,7 @@ enum SpatialPanelGeometry {
         return SpatialModule.navigationCases.filter { $0 != .dashboard }.map { ($0.title,$0.symbol,.module($0)) }
             + [("Tela do PC","desktopcomputer",.wall(.desktop)),("Mostrar interface","eye",.showInterface)]
     }
+    private var wristItems:[(String,String,SpatialPanelAction)] { [("Neve","snowflake",.wall(.immersiveWinter(true))),("Real","eye",.wall(.immersiveWinter(false))),("PC","desktopcomputer",.wall(.desktop)),("Web","safari",.module(.browser)),("Central","square.grid.2x2",.showInterface),("Fechar","xmark",.close)] }
     private var radialPageCount:Int { max(1,(radialItems.count+5)/6) }
     private func render() {
         hovered=nil
@@ -569,6 +587,35 @@ enum SpatialPanelGeometry {
                 node.name=id;actions[id]=action
             }
             root.addChildNode(node)
+        }
+        if wristMenu {
+            let backdrop=SCNNode(geometry:SCNPlane(width:0.35,height:0.205));(backdrop.geometry as? SCNPlane)?.cornerRadius=0.022
+            let back=SCNMaterial();back.diffuse.contents=UIColor(red:0.10,green:0.14,blue:0.18,alpha:0.56);back.lightingModel = .constant;back.readsFromDepthBuffer=false;back.writesToDepthBuffer=false
+            backdrop.geometry?.materials=[back];backdrop.categoryBitMask=4;backdrop.renderingOrder=100;root.addChildNode(backdrop)
+            let buttons=wristItems
+            for (i,b) in buttons.enumerated() {
+                let format=UIGraphicsImageRendererFormat();format.scale=1
+                let size=CGSize(width:294,height:202)
+                let image=UIGraphicsImageRenderer(size:size,format:format).image { context in
+                    let path=UIBezierPath(roundedRect:CGRect(x:2,y:2,width:290,height:198),cornerRadius:30)
+                    UIColor(white:0.78,alpha:0.12).setFill();path.fill()
+                    context.cgContext.saveGState();path.addClip()
+                    let colors=[UIColor(white:1,alpha:0.12).cgColor,UIColor(red:0.12,green:0.20,blue:0.26,alpha:0.12).cgColor] as CFArray
+                    if let gradient=CGGradient(colorsSpace:CGColorSpaceCreateDeviceRGB(),colors:colors,locations:[0,1]) { context.cgContext.drawLinearGradient(gradient,start:.zero,end:CGPoint(x:0,y:202),options:[]) }
+                    context.cgContext.restoreGState();UIColor(white:1,alpha:0.38).setStroke();path.lineWidth=1.5;path.stroke()
+                    if let icon=UIImage(systemName:b.1,withConfiguration:UIImage.SymbolConfiguration(pointSize:47,weight:.regular))?.withTintColor(.white,renderingMode:.alwaysOriginal) {
+                        icon.draw(in:CGRect(x:(size.width-52)/2,y:39,width:52,height:52))
+                    }
+                    let paragraph=NSMutableParagraphStyle();paragraph.alignment = .center
+                    (b.0 as NSString).draw(in:CGRect(x:12,y:123,width:270,height:42),withAttributes:[.font:UIFont.systemFont(ofSize:27,weight:.medium),.foregroundColor:UIColor(white:1,alpha:0.94),.paragraphStyle:paragraph])
+                }
+                plate(b.0,b.1,width:0.105,height:0.073,x:Float(i%3-1)*0.112,y:0.043-Float(i/3)*0.086,color:.clear,action:b.2)
+                root.childNodes.last?.geometry?.firstMaterial?.diffuse.contents=image
+            }
+            let handle=SCNNode(geometry:SCNPlane(width:0.036,height:0.003));(handle.geometry as? SCNPlane)?.cornerRadius=0.0015
+            handle.position=SCNVector3(0,-0.094,0.010);handle.renderingOrder=102;handle.categoryBitMask=4
+            handle.geometry?.firstMaterial?.lightingModel = .constant;handle.geometry?.firstMaterial?.diffuse.contents=UIColor(white:1,alpha:0.55);handle.geometry?.firstMaterial?.readsFromDepthBuffer=false;handle.geometry?.firstMaterial?.writesToDepthBuffer=false;root.addChildNode(handle)
+            return
         }
         if compact {
             let color=UIColor(red:0.015,green:0.09,blue:0.12,alpha:0.94)

@@ -572,3 +572,12 @@ resources:
 - JarvisPhone/Resources/Spatial_animated_treant_2_Color.texture
 - JarvisPhone/Resources/Spatial_animated_treant_3.color
 - JarvisPhone/Resources/Spatial_animated_treant_4.color
+
+- JarvisPhone/Resources/Winter_snow_diff.jpg
+- JarvisPhone/Resources/Winter_snow_normal.jpg
+- JarvisPhone/Resources/Winter_snow_rough.jpg
+- JarvisPhone/Resources/Winter_stone_diff.jpg
+- JarvisPhone/Resources/Winter_stone_normal.jpg
+- JarvisPhone/Resources/Winter_stone_rough.jpg
+- JarvisPhone/Resources/Winter_light.hdr
+- JarvisPhone/Resources/Winter_panorama.jpg

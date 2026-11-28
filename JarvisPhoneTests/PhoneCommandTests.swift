@@ -10,6 +10,65 @@ import ARKit
 
 final class PhoneCommandTests: XCTestCase {
 
+    func testPalmMenuRequiresUpturnedOpenThenCurlAndDoesNotRepeat() {
+        var g=SpatialPalmMenuGesture()
+        for t in [0.0,0.10,0.20] { XCTAssertFalse(g.update(palmUp:true,open:true,curled:false,time:t)) }
+        for t in [0.25,0.40] { XCTAssertFalse(g.update(palmUp:true,open:false,curled:true,time:t)) }
+        XCTAssertTrue(g.update(palmUp:true,open:false,curled:true,time:0.50))
+        for t in [0.60,0.70,0.80] { XCTAssertFalse(g.update(palmUp:true,open:false,curled:true,time:t)) }
+        for t in [0.90,1.0,1.1] { XCTAssertFalse(g.update(palmUp:true,open:true,curled:false,time:t)) }
+        XCTAssertFalse(g.update(palmUp:true,open:false,curled:true,time:1.20))
+        XCTAssertTrue(g.update(palmUp:true,open:false,curled:true,time:1.45))
+    }
+    func testPalmMenuRejectsPinchDraggingWrongOrientationAndLostHand() {
+        for mode in 0...3 {
+            var g=SpatialPalmMenuGesture()
+            for i in 0..<20 {
+                let t=Double(i)*0.1
+                XCTAssertFalse(g.update(palmUp:mode==0 ? false : mode==3 && i>4 ? nil : true,open:i<4,curled:mode==1 ? false : i>=4,time:t,dragging:mode==2))
+            }
+        }
+    }
+    func testWinterEnvironmentAndWristMenuHaveLocalVoiceRoutes() {
+        XCTAssertEqual(WallARCommand.parse("ambiente neve",inStudio:false),.immersiveWinter(true))
+        XCTAssertEqual(WallARCommand.parse("ambiente real",inStudio:true),.immersiveWinter(false))
+        XCTAssertEqual(WallARCommand.parse("menu da mão",inStudio:true),.wristMenu)
+        XCTAssertNil(WallARCommand.parse("não ativar ambiente neve",inStudio:true))
+        XCTAssertNil(WallARCommand.parse("ambiente real",inStudio:false))
+    }
+    @MainActor func testWinterTerraceAndGlassWristMenuRenderAtHumanScale() throws {
+        guard let device=MTLCreateSystemDefaultDevice() else { throw XCTSkip("Metal unavailable") }
+        let scene=SCNScene();scene.background.contents=UIColor.black
+        let winter=SpatialWinterScene.make();scene.rootNode.addChildNode(winter)
+        scene.lightingEnvironment.contents=Bundle.main.url(forResource:"Winter_light",withExtension:"hdr");scene.lightingEnvironment.intensity=0.38
+        XCTAssertNotNil(winter.childNode(withName:"Winter-snow-drifts",recursively:true))
+        XCTAssertNotNil(winter.childNode(withName:"Winter-bench-seat",recursively:true))
+        XCTAssertNotNil(winter.childNode(withName:"Winter-stone-terrace",recursively:true))
+        let camera=SCNNode();camera.camera=SCNCamera();camera.camera?.zNear=0.01;camera.camera?.zFar=80;camera.position=SCNVector3(1.1,1.55,2.0);camera.look(at:SCNVector3(-0.2,0.8,-3.6));scene.rootNode.addChildNode(camera)
+        let renderer=SCNRenderer(device:device,options:nil);renderer.scene=scene;renderer.pointOfView=camera
+        let image=renderer.snapshot(atTime:0,with:CGSize(width:1200,height:850),antialiasingMode:.multisampling4X)
+        let a=XCTAttachment(image:image);a.name="WINTER-TERRACE-42";a.lifetime = .keepAlways;add(a)
+        let view=ARSCNView();view.scene=SCNScene();let panel=SpatialPanel(view:view);panel.previewWristMenu()
+        XCTAssertTrue(panel.wristMenu)
+        let buttons=view.scene.rootNode.childNodes.flatMap{ $0.childNodes }.filter{$0.name?.hasPrefix("action:")==true}
+        XCTAssertEqual(buttons.count,6)
+        XCTAssertNil(panel.snapshot(),"A temporary hand menu must never replace the saved window archive")
+        XCTAssertTrue(buttons.allSatisfy{($0.geometry as? SCNPlane)?.width ?? 1 < 0.11})
+        let glassCamera=SCNNode();glassCamera.camera=SCNCamera();glassCamera.camera?.usesOrthographicProjection=true;glassCamera.camera?.orthographicScale=0.205;glassCamera.position=SCNVector3(0,0,1)
+        view.scene.rootNode.addChildNode(glassCamera);view.scene.background.contents=UIColor(red:0.22,green:0.28,blue:0.34,alpha:1)
+        renderer.scene=view.scene;renderer.pointOfView=glassCamera
+        let menuImage=renderer.snapshot(atTime:0,with:CGSize(width:1100,height:720),antialiasingMode:.multisampling4X)
+        let b=XCTAttachment(image:menuImage);b.name="GLASS-WRIST-MENU-42";b.lifetime = .keepAlways;add(b)
+    }
+    @MainActor func testWinterModeDoesNotMoveOrDeleteExistingWindows() {
+        let scene=SCNScene(),pc=SCNNode();pc.name="JarvisDesktop";pc.position=SCNVector3(0.7,1,-1.2);scene.rootNode.addChildNode(pc)
+        let old=pc.simdTransform,winter=SpatialWinterScene()
+        winter.open(scene:scene,camera:matrix_identity_float4x4,floor:-1.35)
+        XCTAssertTrue(winter.active);XCTAssertEqual(pc.simdTransform,old)
+        winter.close(scene:scene);XCTAssertFalse(winter.active);XCTAssertTrue(pc.parent === scene.rootNode);XCTAssertEqual(pc.simdTransform,old)
+    }
+
+
     func testDoorPortalThumbTriggerRejectsLostTrackingAndDoesNotRepeat() {
         var trigger=SpatialPortalTrigger()
         for t in [0.0,0.15,0.31] { XCTAssertFalse(trigger.update(gun:true,thumbRaised:true,time:t)) }

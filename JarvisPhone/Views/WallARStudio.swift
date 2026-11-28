@@ -103,6 +103,11 @@ enum WallMeasureMode { case none, outline, opening }
     private var portalRequested=false
     @Published var roomSetupPresented=false
     private var fistMenu=SpatialFistMenuGesture()
+    private var palmMenu=SpatialPalmMenuGesture()
+    private let winter=SpatialWinterScene()
+    @Published private(set) var winterActive=false
+    @Published var cleanPresentation=true
+    var interactionReadyForUI:Bool { interactionReady }
     @Published var status = "Ambiente fixo. Escaneie somente para ler uma nova superfície."
     @Published var selected = false
     @Published var finish = WallFinish.white
@@ -247,8 +252,15 @@ enum WallMeasureMode { case none, outline, opening }
                 self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
                 self.hands.showProgress(0);return
             }
-            let closed=sample?.closedFist == true && !self.desktop.isDragging && !self.panel.isDragging && !self.portal.isDragging && !self.spatial.isDragging
-            if self.fistMenu.update(closed:sample.map{$0.closedFist && !self.panel.isDragging && !self.desktop.isDragging && !self.portal.isDragging && !self.spatial.isDragging},time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {
+            let dragging=self.desktop.isDragging || self.panel.isDragging || self.portal.isDragging || self.spatial.isDragging
+            if self.palmMenu.update(palmUp:sample.map{$0.palmUp},open:sample?.openPalm == true,curled:sample?.fingersCurled == true,time:sample?.time ?? ProcessInfo.processInfo.systemUptime,dragging:dragging) {
+                self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
+                self.fistMenu=SpatialFistMenuGesture()
+                self.panel.openWristMenu(tracking:true,palm:sample?.palmWorld);self.hands.showProgress(0);return
+            }
+            let wristHeld=self.panel.wristMenu && sample?.palmUp == true
+            let closed=sample?.closedFist == true && !wristHeld && !self.desktop.isDragging && !self.panel.isDragging && !self.portal.isDragging && !self.spatial.isDragging
+            if self.fistMenu.update(closed:sample.map{$0.closedFist && !wristHeld && !self.panel.isDragging && !self.desktop.isDragging && !self.portal.isDragging && !self.spatial.isDragging},time:sample?.time ?? ProcessInfo.processInfo.systemUptime) {
                 self.panel.hand(nil);_ = self.desktop.hand(nil);self.spatial.hand(nil)
                 self.dualScale=SpatialDualPinchScale();self.palmRecall=SpatialPalmRecall()
                 self.panel.openEffectsRadial(tracking:true);self.hands.showProgress(0);return
@@ -401,7 +413,7 @@ enum WallMeasureMode { case none, outline, opening }
         let shouldReset=reset || pendingMapReset
         let config = SpatialCaptureProfile.configuration(scanning:scanning)
         if (liveWall.capturing || roomRegistering),ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification) { config.sceneReconstruction = .meshWithClassification }
-        if (portalGunArmed || portal.root != nil || forestGame.enabled),ARWorldTrackingConfiguration.supportsFrameSemantics(.smoothedSceneDepth) { config.frameSemantics.insert(.smoothedSceneDepth) }
+        if ARWorldTrackingConfiguration.supportsFrameSemantics(.smoothedSceneDepth) { config.frameSemantics.insert(.smoothedSceneDepth) }
         if !mapStarted || shouldReset { config.initialWorldMap=initialMap;mapStarted=true }
         // Prefer moderate camera resolution at 60 Hz rather than 4K capture + AI.
         if activeVideoFormat == nil {
@@ -659,6 +671,7 @@ enum WallMeasureMode { case none, outline, opening }
         recoveryTimer?.cancel();recoveryTimer=nil
         spatial.saveMap(force:true)
         stopped = true
+        winter.close(scene:view.scene);winterActive=false
         forestGame.stop();gameRequested=false
         hands.reset()
         videoRunning=false;view.session.pause(); view.isPlaying = false;view.rendersContinuously=false
@@ -786,6 +799,18 @@ enum WallMeasureMode { case none, outline, opening }
             default: gameRequested=false;forestGame.stop();run();feedback("Jogo encerrado.")
             }
         case .doorPortal: armDoorPortal()
+        case .immersiveWinter(let value):
+            if value {
+                guard interactionReady,let frame=view.session.currentFrame else { feedback("Aguarde a câmera estabilizar.");return }
+                gameRequested=false;forestGame.stop();forestWanted=false;_ = roomWall.setForest(false)
+                let captured=roomWall.pose.flatMap { pose in roomWall.floorCenter.map{(pose*SIMD4($0,1)).y} }
+                let live=planes.values.filter{$0.classification == .floor}.map{($0.transform*SIMD4($0.center,1)).y}.min()
+                winter.open(scene:view.scene,camera:frame.camera.transform,floor:captured ?? live ?? (frame.camera.transform.columns.3.y-1.35))
+                winterActive=true;roomWall.setImmersiveHidden(true);occluders.values.forEach{$0.isHidden=true};notice="Terraço de inverno · menu da mão para voltar ao quarto real."
+            } else {
+                winter.close(scene:view.scene);winterActive=false;roomWall.setImmersiveHidden(false);occluders.values.forEach{$0.isHidden=false};notice="Ambiente real. As janelas continuam no lugar."
+            }
+        case .wristMenu: panel.openWristMenu(tracking:interactionReady)
         case .roomForest(let value): setRoomForest(value)
         case .registerForest: registrationRestarted=false;beginForestRegistration(force:true)
         case .portal: beginPortal()
@@ -918,11 +943,12 @@ enum WallMeasureMode { case none, outline, opening }
             else { spatial.reuseLocalizedSupports() }
         }
         if good && !comparing { spatial.stepSimulation(frame.timestamp) }
-        panel.setTracking(readiness.panelReady)
+        panel.setTracking(panel.wristMenu ? interactionReady : readiness.panelReady)
+        winter.setTracking(interactionReady)
         desktop.setTracking(readiness.desktopReady)
         roomWall.setTracking(good)
         liveWall.setTracking(good)
-        portal.frame(frame,stable:interactionReady)
+        portal.frame(frame,stable:interactionReady && !winter.active)
         forestGame.frame(time:frame.timestamp,stable:interactionReady && roomWall.forestActive && !panel.visible && !spatial.placing)
         if gameRequested,roomWall.aligned,!forestGame.enabled { forestGame.start(room:roomWall);run() }
         if interactionReady,forestWanted,roomWall.aligned,!roomWall.forestActive { setRoomForest(true,announce:false) }
@@ -1075,7 +1101,7 @@ enum WallMeasureMode { case none, outline, opening }
                 guard !self.stopped, self.meshUpdated[anchor.identifier] != nil else { return }
                 guard let geometry else { self.occluders.removeValue(forKey:anchor.identifier)?.removeFromParentNode(); return }
                 let node = self.occluders[anchor.identifier] ?? SCNNode()
-                node.geometry = geometry; node.simdTransform = anchor.transform; node.renderingOrder = -100;node.categoryBitMask=2
+                node.geometry = geometry; node.simdTransform = anchor.transform; node.renderingOrder = -100;node.categoryBitMask=2;node.isHidden=self.winterActive
                 if node.parent == nil { self.view.scene.rootNode.addChildNode(node) }
                 self.occluders[anchor.identifier] = node
             }
@@ -1230,6 +1256,11 @@ struct WallCameraView: UIViewRepresentable {
                 }
             }.padding(12)
             }
+            if !controller.headset && immersive && !panelVisible {
+                VStack { Spacer();HStack { Spacer();Button { controller.panel.openWristMenu(tracking:controller.interactionReadyForUI) } label: {
+                    Image(systemName:"hand.raised").font(.system(size:18,weight:.medium)).foregroundStyle(.white).frame(width:44,height:44)
+                }.background(.ultraThinMaterial,in:Circle()).accessibilityLabel("Abrir menu da mão") } }.padding(18)
+            }
             if controller.headset && !immersive {
                 VStack {
                     HStack(spacing:24) {
@@ -1268,6 +1299,8 @@ struct WallCameraView: UIViewRepresentable {
                     case .systemAction(let action):
                         if [.wifiOff,.bluetoothOff,.cellularOff,.lock].contains(action) { confirmAction=action }
                         else { runPhoneAction(action) }
+                    case .showInterface: controller.cleanPresentation=false
+                    case .hideInterface: controller.cleanPresentation=true
                     case .activateSpotify: model.showSpotify()
                     case .model(let id): controller.apply(.model(id));if controller.panel.immersive { controller.panel.cleanInterface() } else { controller.panel.close() }
                     case .scene(let theme): controller.apply(.theme(theme));if controller.panel.immersive { controller.panel.cleanInterface() } else { controller.panel.close() }
@@ -1330,8 +1363,17 @@ struct WallCameraView: UIViewRepresentable {
             }
             .onReceive(controller.panel.$visible) { panelVisible=$0;controller.spatial.panelBlocking=($0 && !immersive) || overlayVisible }
             .onReceive(controller.panel.$immersive) {
-                immersive=$0;controller.hands.setSkeletonVisible(!$0 || controller.roomWall.forestActive || controller.forestGame.enabled)
-                controller.spatial.panelBlocking=(panelVisible && !$0) || overlayVisible
+                immersive=$0 || controller.winterActive || controller.cleanPresentation;controller.hands.setSkeletonVisible(!immersive || controller.winterActive || controller.roomWall.forestActive || controller.forestGame.enabled)
+                controller.spatial.panelBlocking=(panelVisible && !immersive) || overlayVisible
+            }
+            .onReceive(controller.$cleanPresentation) { value in
+                immersive=value || controller.panel.immersive || controller.winterActive
+                controller.spatial.panelBlocking=(panelVisible && !immersive) || overlayVisible
+            }
+            .onReceive(controller.$winterActive) { value in
+                immersive=value || controller.panel.immersive || controller.cleanPresentation
+                controller.hands.setSkeletonVisible(value || !immersive || controller.roomWall.forestActive)
+                controller.spatial.panelBlocking=(panelVisible && !immersive) || overlayVisible
             }
             .onReceive(controller.panel.$status) { panelStatus=$0 }
             .onChange(of:model.spatialPanelResponse) { _,data in if let data { controller.panel.receive(data) } }
